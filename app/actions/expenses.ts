@@ -27,6 +27,7 @@ export async function createExpense(
   const splitRule = formData.get('split_rule') as SplitRule
   const paidBy = formData.get('paid_by') as string
   const expenseDate = formData.get('expense_date') as string
+  const rawCustomOtherShare = formData.get('custom_other_share') as string
 
   const fieldErrors: Record<string, string> = {}
 
@@ -40,6 +41,16 @@ export async function createExpense(
   if (!paidBy) fieldErrors.paid_by = 'Indica chi ha pagato.'
   if (!expenseDate) fieldErrors.expense_date = 'Inserisci la data.'
 
+  let customOtherShare: number | null = null
+  if (splitRule === 'custom') {
+    customOtherShare = parseFloat((rawCustomOtherShare ?? '').replace(',', '.'))
+    if (isNaN(customOtherShare) || customOtherShare <= 0) {
+      fieldErrors.custom_other_share = "Inserisci la quota dell'altra persona."
+    } else if (!isNaN(amount) && customOtherShare >= amount) {
+      fieldErrors.custom_other_share = "La quota dell'altra persona deve essere inferiore all'importo totale."
+    }
+  }
+
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors }
 
   const { error } = await supabase.from('expenses').insert({
@@ -50,6 +61,7 @@ export async function createExpense(
     paid_by: paidBy,
     expense_date: expenseDate,
     created_by: user.id,
+    custom_other_share: customOtherShare,
   })
 
   if (error) return { error: 'Errore durante il salvataggio. Riprova.' }
@@ -74,6 +86,7 @@ export async function updateExpense(
   const splitRule = formData.get('split_rule') as SplitRule
   const paidBy = formData.get('paid_by') as string
   const expenseDate = formData.get('expense_date') as string
+  const rawCustomOtherShare = formData.get('custom_other_share') as string
 
   const fieldErrors: Record<string, string> = {}
 
@@ -83,11 +96,29 @@ export async function updateExpense(
   }
   if (!description) fieldErrors.description = 'La descrizione è obbligatoria.'
 
+  let customOtherShare: number | null = null
+  if (splitRule === 'custom') {
+    customOtherShare = parseFloat((rawCustomOtherShare ?? '').replace(',', '.'))
+    if (isNaN(customOtherShare) || customOtherShare <= 0) {
+      fieldErrors.custom_other_share = "Inserisci la quota dell'altra persona."
+    } else if (!isNaN(amount) && customOtherShare >= amount) {
+      fieldErrors.custom_other_share = "La quota dell'altra persona deve essere inferiore all'importo totale."
+    }
+  }
+
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors }
 
   const { error } = await supabase
     .from('expenses')
-    .update({ amount, description, category, split_rule: splitRule, paid_by: paidBy, expense_date: expenseDate })
+    .update({
+      amount,
+      description,
+      category,
+      split_rule: splitRule,
+      paid_by: paidBy,
+      expense_date: expenseDate,
+      custom_other_share: customOtherShare,
+    })
     .eq('id', id)
 
   if (error) return { error: 'Errore durante il salvataggio. Riprova.' }
@@ -101,7 +132,7 @@ export async function updateExpense(
 export async function deleteExpense(id: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('expenses').delete().eq('id', id)
-  if (error) throw new Error('Errore durante l\'eliminazione.')
+  if (error) throw new Error("Errore durante l'eliminazione.")
 
   revalidatePath('/')
   revalidatePath('/spese')

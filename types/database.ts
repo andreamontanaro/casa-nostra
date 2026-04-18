@@ -18,6 +18,7 @@ export type Database = {
           category: Database["public"]["Enums"]["expense_category"]
           created_at: string
           created_by: string
+          custom_other_share: number | null
           description: string
           expense_date: string
           id: string
@@ -31,6 +32,7 @@ export type Database = {
           category: Database["public"]["Enums"]["expense_category"]
           created_at?: string
           created_by: string
+          custom_other_share?: number | null
           description: string
           expense_date?: string
           id?: string
@@ -44,6 +46,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["expense_category"]
           created_at?: string
           created_by?: string
+          custom_other_share?: number | null
           description?: string
           expense_date?: string
           id?: string
@@ -193,7 +196,7 @@ export type Database = {
         | "abbonamento"
         | "manutenzione"
         | "altro"
-      split_rule: "fifty_fifty" | "sixty_forty"
+      split_rule: "fifty_fifty" | "sixty_forty" | "custom"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -311,7 +314,7 @@ export const Constants = {
         "manutenzione",
         "altro",
       ] as const,
-      split_rule: ["fifty_fifty", "sixty_forty"] as const,
+      split_rule: ["fifty_fifty", "sixty_forty", "custom"] as const,
     },
   },
 } as const

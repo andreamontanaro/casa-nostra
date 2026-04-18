@@ -4,7 +4,7 @@ import { useActionState } from 'react'
 import { createExpense, type ExpenseFormState } from '@/app/actions/expenses'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { CATEGORY_LABELS, SPLIT_LABELS, todayISO } from '@/lib/fmt'
+import { CATEGORY_LABELS, SPLIT_LABELS, formatEur, todayISO } from '@/lib/fmt'
 import { Tables, Constants } from '@/types/database'
 import { useState } from 'react'
 
@@ -35,11 +35,22 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
   const [category, setCategory] = useState<Category>('altro')
   const [splitRule, setSplitRule] = useState<SplitRule>('sixty_forty')
   const [paidBy, setPaidBy] = useState(currentUserId)
+  const [rawAmount, setRawAmount] = useState('')
+  const [customOtherShare, setCustomOtherShare] = useState('')
 
   function handleCategoryChange(cat: Category) {
     setCategory(cat)
     setSplitRule(DEFAULT_SPLIT[cat])
   }
+
+  const otherProfile = profiles.find(p => p.id !== paidBy)
+  const parsedAmount = parseFloat(rawAmount.replace(',', '.'))
+  const parsedCustomShare = parseFloat(customOtherShare.replace(',', '.'))
+  const showCustomPreview =
+    splitRule === 'custom' &&
+    !isNaN(parsedAmount) && parsedAmount > 0 &&
+    !isNaN(parsedCustomShare) && parsedCustomShare > 0 &&
+    parsedCustomShare < parsedAmount
 
   return (
     <form action={action} className="flex flex-col gap-5 px-4 pt-4 pb-6">
@@ -53,6 +64,8 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
           placeholder="0,00"
           required
           disabled={pending}
+          value={rawAmount}
+          onChange={e => setRawAmount(e.target.value)}
           className="h-14 w-full rounded-xl border border-border bg-surface px-4 text-2xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
         />
         {state.fieldErrors?.amount && (
@@ -117,6 +130,36 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
         </div>
         <input type="hidden" name="split_rule" value={splitRule} />
       </div>
+
+      {/* Quota personalizzata */}
+      {splitRule === 'custom' && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-foreground">
+            Quota di {otherProfile?.display_name ?? 'altra persona'} (€)
+          </label>
+          <input
+            name="custom_other_share"
+            type="text"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={customOtherShare}
+            onChange={e => setCustomOtherShare(e.target.value)}
+            disabled={pending}
+            className="h-12 w-full rounded-xl border border-border bg-surface px-4 text-xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
+          />
+          {showCustomPreview && (
+            <p className="text-xs text-muted">
+              La tua quota: {formatEur(parsedAmount - parsedCustomShare)}
+            </p>
+          )}
+          {state.fieldErrors?.custom_other_share && (
+            <p className="text-xs text-destructive">{state.fieldErrors.custom_other_share}</p>
+          )}
+        </div>
+      )}
+      {splitRule !== 'custom' && (
+        <input type="hidden" name="custom_other_share" value="" />
+      )}
 
       {/* Pagato da */}
       <div className="flex flex-col gap-2">

@@ -23,7 +23,8 @@ CREATE TYPE expense_category AS ENUM (
 
 CREATE TYPE split_rule AS ENUM (
   'fifty_fifty',   -- 50/50: usata per l'affitto
-  'sixty_forty'    -- 60/40: il profilo con higher_income=true paga il 60%
+  'sixty_forty',   -- 60/40: il profilo con higher_income=true paga il 60%
+  'custom'         -- importo fisso: custom_other_share indica la quota dell'altra persona
 );
 
 
@@ -82,7 +83,14 @@ CREATE TABLE public.expenses (
   amount         numeric(10,2) NOT NULL CHECK (amount > 0),
   description    text NOT NULL CHECK (length(trim(description)) > 0),
   category       expense_category NOT NULL,
-  split_rule     split_rule NOT NULL,
+  split_rule          split_rule NOT NULL,
+  custom_other_share  numeric(10,2)
+    CONSTRAINT expenses_custom_other_share_positive
+      CHECK (custom_other_share IS NULL OR custom_other_share > 0),
+  CONSTRAINT expenses_custom_share_consistency CHECK (
+    (split_rule = 'custom' AND custom_other_share IS NOT NULL) OR
+    (split_rule <> 'custom' AND custom_other_share IS NULL)
+  ),
   paid_by        uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
   expense_date   date NOT NULL DEFAULT current_date,
   settlement_id  uuid REFERENCES public.settlements(id) ON DELETE RESTRICT,
@@ -143,6 +151,8 @@ SELECT
     WHEN e.split_rule = 'fifty_fifty' THEN e.amount * 0.5
     WHEN e.split_rule = 'sixty_forty' AND p.higher_income THEN e.amount * 0.6
     WHEN e.split_rule = 'sixty_forty' AND NOT p.higher_income THEN e.amount * 0.4
+    WHEN e.split_rule = 'custom' AND p.id <> e.paid_by        THEN e.custom_other_share
+    WHEN e.split_rule = 'custom' AND p.id  = e.paid_by        THEN e.amount - e.custom_other_share
   END::numeric(10,2) AS user_share
 FROM public.expenses e
 CROSS JOIN public.profiles p;

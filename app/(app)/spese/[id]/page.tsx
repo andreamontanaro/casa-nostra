@@ -6,6 +6,13 @@ import { EditExpenseForm } from './EditExpenseForm'
 import { Badge } from '@/components/ui/Badge'
 import { formatDate, formatEur, CATEGORY_LABELS, SPLIT_LABELS } from '@/lib/fmt'
 
+function splitLabel(expense: { split_rule: string; custom_other_share: number | null }) {
+  if (expense.split_rule === 'custom' && expense.custom_other_share != null) {
+    return `${SPLIT_LABELS['custom']} (${formatEur(expense.custom_other_share)})`
+  }
+  return SPLIT_LABELS[expense.split_rule]
+}
+
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -46,7 +53,7 @@ export default async function SpesaDetailPage({ params }: Props) {
         <Stat label="Importo" value={formatEur(expense.amount)} />
         <Stat label="Pagato da" value={paidByProfile?.display_name ?? '—'} />
         <Stat label="Categoria" value={CATEGORY_LABELS[expense.category]} />
-        <Stat label="Divisione" value={SPLIT_LABELS[expense.split_rule]} />
+        <Stat label="Divisione" value={splitLabel(expense)} />
       </div>
 
       <hr className="border-border" />

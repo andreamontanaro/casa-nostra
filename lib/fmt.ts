@@ -36,4 +36,5 @@ export const CATEGORY_LABELS: Record<string, string> = {
 export const SPLIT_LABELS: Record<string, string> = {
   fifty_fifty: '50 / 50',
   sixty_forty: '60 / 40',
+  custom: 'Personalizzato',
 }

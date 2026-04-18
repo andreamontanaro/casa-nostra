@@ -6,7 +6,7 @@ import { updateExpense, deleteExpense, type ExpenseFormState } from '@/app/actio
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
-import { CATEGORY_LABELS, SPLIT_LABELS } from '@/lib/fmt'
+import { CATEGORY_LABELS, SPLIT_LABELS, formatEur } from '@/lib/fmt'
 import { Tables, Constants } from '@/types/database'
 import { toast } from '@/lib/toast'
 
@@ -39,8 +39,20 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
   const [category, setCategory] = useState<Category>(expense.category)
   const [splitRule, setSplitRule] = useState<SplitRule>(expense.split_rule)
   const [paidBy, setPaidBy] = useState(expense.paid_by)
+  const [rawAmount, setRawAmount] = useState(String(expense.amount))
+  const [customOtherShare, setCustomOtherShare] = useState(
+    expense.custom_other_share != null ? String(expense.custom_other_share) : ''
+  )
 
   const isSettled = expense.settlement_id !== null
+  const otherProfile = profiles.find(p => p.id !== paidBy)
+  const parsedAmount = parseFloat(rawAmount.replace(',', '.'))
+  const parsedCustomShare = parseFloat(customOtherShare.replace(',', '.'))
+  const showCustomPreview =
+    splitRule === 'custom' &&
+    !isNaN(parsedAmount) && parsedAmount > 0 &&
+    !isNaN(parsedCustomShare) && parsedCustomShare > 0 &&
+    parsedCustomShare < parsedAmount
 
   async function handleDelete() {
     setDeleting(true)
@@ -48,7 +60,7 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
       await deleteExpense(expense.id)
     } catch (e) {
       if (isRedirectError(e)) throw e
-      toast.error('Errore durante l\'eliminazione.')
+      toast.error("Errore durante l'eliminazione.")
       setDeleting(false)
       setDeleteOpen(false)
     }
@@ -74,9 +86,10 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
             name="amount"
             type="text"
             inputMode="decimal"
-            defaultValue={String(expense.amount)}
             required
             disabled={pending || isSettled}
+            value={rawAmount}
+            onChange={e => setRawAmount(e.target.value)}
             className="h-14 w-full rounded-xl border border-border bg-surface px-4 text-2xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
           />
           {state.fieldErrors?.amount && (
@@ -138,6 +151,36 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
           </div>
           <input type="hidden" name="split_rule" value={splitRule} />
         </div>
+
+        {/* Quota personalizzata */}
+        {splitRule === 'custom' && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-foreground">
+              Quota di {otherProfile?.display_name ?? 'altra persona'} (€)
+            </label>
+            <input
+              name="custom_other_share"
+              type="text"
+              inputMode="decimal"
+              placeholder="0,00"
+              value={customOtherShare}
+              onChange={e => setCustomOtherShare(e.target.value)}
+              disabled={pending || isSettled}
+              className="h-12 w-full rounded-xl border border-border bg-surface px-4 text-xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
+            />
+            {showCustomPreview && (
+              <p className="text-xs text-muted">
+                La tua quota: {formatEur(parsedAmount - parsedCustomShare)}
+              </p>
+            )}
+            {state.fieldErrors?.custom_other_share && (
+              <p className="text-xs text-destructive">{state.fieldErrors.custom_other_share}</p>
+            )}
+          </div>
+        )}
+        {splitRule !== 'custom' && (
+          <input type="hidden" name="custom_other_share" value="" />
+        )}
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-foreground">Pagato da</span>
