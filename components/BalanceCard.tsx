@@ -45,7 +45,7 @@ export function BalanceCard({ rows, currentUserId }: BalanceCardProps) {
           <p className="mt-0.5 font-semibold">{formatEur(me.total_anticipated ?? 0)}</p>
         </div>
         <div className="flex-1">
-          <p className="opacity-70">Quota dovuta</p>
+          <p className="opacity-70">Quota personale</p>
           <p className="mt-0.5 font-semibold">{formatEur(me.total_owed ?? 0)}</p>
         </div>
         <div className="flex-1">
