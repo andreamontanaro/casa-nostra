@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { registerSettlement } from '@/app/actions/settlement'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
@@ -19,6 +20,7 @@ export function ConguaglioClient({ hasBalance }: ConguaglioClientProps) {
       try {
         await registerSettlement()
       } catch (e) {
+        if (isRedirectError(e)) throw e
         toast.error('Errore durante il conguaglio. Riprova.')
         setDialogOpen(false)
       }

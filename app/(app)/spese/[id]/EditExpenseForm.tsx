@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { updateExpense, deleteExpense, type ExpenseFormState } from '@/app/actions/expenses'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -45,7 +46,8 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
     setDeleting(true)
     try {
       await deleteExpense(expense.id)
-    } catch {
+    } catch (e) {
+      if (isRedirectError(e)) throw e
       toast.error('Errore durante l\'eliminazione.')
       setDeleting(false)
       setDeleteOpen(false)
