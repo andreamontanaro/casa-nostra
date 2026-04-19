@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { formatEur, CATEGORY_LABELS } from '@/lib/fmt'
+import { formatEur, CATEGORY_LABELS, CATEGORY_ICON, CATEGORY_COLOR } from '@/lib/fmt'
 import { Badge } from '@/components/ui/Badge'
 import { Tables } from '@/types/database'
 
@@ -13,12 +13,17 @@ interface ExpenseRowProps {
 
 export function ExpenseRow({ expense }: ExpenseRowProps) {
   const isSettled = expense.settlement_id !== null
+  const icon = CATEGORY_ICON[expense.category] ?? '📦'
+  const color = CATEGORY_COLOR[expense.category] ?? 'bg-zinc-100 dark:bg-zinc-800'
 
   return (
     <Link
       href={`/spese/${expense.id}`}
       className="flex items-center gap-3 px-4 py-3 hover:bg-surface-raised active:bg-border transition-colors"
     >
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg ${color}`}>
+        {icon}
+      </span>
       <div className="flex-1 min-w-0">
         <p className="truncate text-sm font-medium text-foreground">
           {expense.description}

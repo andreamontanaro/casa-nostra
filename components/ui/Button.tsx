@@ -37,7 +37,7 @@ export function Button({
       ref={ref}
       disabled={disabled || loading}
       className={[
-        'inline-flex items-center justify-center gap-2 font-medium transition-opacity',
+        'relative inline-flex items-center justify-center gap-2 font-medium transition-opacity',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         variants[variant],
@@ -46,8 +46,12 @@ export function Button({
       ].join(' ')}
       {...props}
     >
-      {loading && <Spinner size="sm" />}
-      {children}
+      <span className={loading ? 'invisible' : ''}>{children}</span>
+      {loading && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Spinner size="sm" />
+        </span>
+      )}
     </button>
   )
 }

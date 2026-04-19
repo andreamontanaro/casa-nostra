@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import NextTopLoader from 'nextjs-toploader'
 import { Toaster } from '@/lib/toast'
 import './globals.css'
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="it" className="h-full">
       <body className="min-h-full bg-background text-foreground antialiased">
+        <NextTopLoader color="#10b981" showSpinner={false} height={2} />
         {children}
         <Toaster />
       </body>
