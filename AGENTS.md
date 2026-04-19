@@ -117,6 +117,17 @@ Giusto una manciata per tenere le cose consistenti. File e cartelle in `kebab-ca
 
 Dai requisiti, in ordine di importanza: inserire una spesa in meno di 30 secondi, saldo sempre coerente e aggiornato in tempo reale, conguaglio completo in meno di un minuto, storico fluido con decine di voci, e — il più importante — i due utenti la usano davvero nella vita di tutti i giorni. L'ultimo non dipende dal codice; i primi quattro sì, quindi tienili a mente mentre implementi.
 
+## Workflow di fine sessione
+
+Quando ti viene chiesto di chiudere una sessione, pushare su GitHub e/o pubblicare in produzione su Vercel, segui **sempre** questo ordine:
+
+1. **Scrivi il dev log del giorno** in `docs/dev-log-YYYY-MM-DD.md` seguendo il formato dei log esistenti (sezioni con titolo, motivazione, soluzione tecnica dove rilevante). Guarda i file già presenti in `docs/` come riferimento stilistico.
+2. **Committa tutto** — incluso il dev log appena creato.
+3. **Pusha su GitHub** (se richiesto).
+4. **Deploy su Vercel** (se richiesto), con i preflight check di rito.
+
+Non saltare o invertire i passi: il dev log deve essere nel commit di chiusura sessione, non in uno separato dopo.
+
 ---
 
 Se trovi ambiguità tra questo file, i requisiti e lo schema SQL, fermati e chiedi prima di inventare. In caso di conflitto la fonte autoritativa sono i due file originali (requisiti e SQL), non questo AGENTS.md.
