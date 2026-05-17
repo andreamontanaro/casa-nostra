@@ -1,62 +1,84 @@
-'use client'
+"use client";
 
-import { useActionState } from 'react'
-import { createExpense, type ExpenseFormState } from '@/app/actions/expenses'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { CATEGORY_LABELS, SPLIT_LABELS, formatEur, todayISO } from '@/lib/fmt'
-import { Tables, Constants } from '@/types/database'
-import { useState } from 'react'
+import { useActionState, useEffect, useRef } from "react";
+import { createExpense, type ExpenseFormState } from "@/app/actions/expenses";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { CATEGORY_LABELS, SPLIT_LABELS, formatEur, todayISO } from "@/lib/fmt";
+import { Tables, Constants } from "@/types/database";
+import { useState } from "react";
 
-type Profile = Tables<'profiles'>
-type Category = typeof Constants.public.Enums.expense_category[number]
-type SplitRule = typeof Constants.public.Enums.split_rule[number]
+type Profile = Tables<"profiles">;
+type Category = (typeof Constants.public.Enums.expense_category)[number];
+type SplitRule = (typeof Constants.public.Enums.split_rule)[number];
 
 const DEFAULT_SPLIT: Record<Category, SplitRule> = {
-  affitto: 'fifty_fifty',
-  bolletta: 'sixty_forty',
-  spesa_alimentare: 'sixty_forty',
-  abbonamento: 'sixty_forty',
-  manutenzione: 'sixty_forty',
-  altro: 'sixty_forty',
-}
+  affitto: "fifty_fifty",
+  bolletta: "sixty_forty",
+  spesa_alimentare: "sixty_forty",
+  abbonamento: "sixty_forty",
+  manutenzione: "sixty_forty",
+  altro: "sixty_forty",
+};
 
 interface ExpenseFormProps {
-  profiles: Profile[]
-  currentUserId: string
+  profiles: Profile[];
+  currentUserId: string;
 }
 
 export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
   const [state, action, pending] = useActionState<ExpenseFormState, FormData>(
     createExpense,
-    {}
-  )
+    {},
+  );
 
-  const [category, setCategory] = useState<Category>('spesa_alimentare')
-  const [splitRule, setSplitRule] = useState<SplitRule>('sixty_forty')
-  const [paidBy, setPaidBy] = useState(currentUserId)
-  const [rawAmount, setRawAmount] = useState('')
-  const [customOtherShare, setCustomOtherShare] = useState('')
+  const [category, setCategory] = useState<Category>("spesa_alimentare");
+  const [splitRule, setSplitRule] = useState<SplitRule>("sixty_forty");
+  const [paidBy, setPaidBy] = useState(currentUserId);
+  const [rawAmount, setRawAmount] = useState("");
+  const [customOtherShare, setCustomOtherShare] = useState("");
+
+  const descriptionInputRef = useRef<HTMLInputElement | null>(null);
 
   function handleCategoryChange(cat: Category) {
-    setCategory(cat)
-    setSplitRule(DEFAULT_SPLIT[cat])
+    setCategory(cat);
+    setSplitRule(DEFAULT_SPLIT[cat]);
   }
 
-  const otherProfile = profiles.find(p => p.id !== paidBy)
-  const parsedAmount = parseFloat(rawAmount.replace(',', '.'))
-  const parsedCustomShare = parseFloat(customOtherShare.replace(',', '.'))
+  const otherProfile = profiles.find((p) => p.id !== paidBy);
+  const parsedAmount = parseFloat(rawAmount.replace(",", "."));
+  const parsedCustomShare = parseFloat(customOtherShare.replace(",", "."));
   const showCustomPreview =
-    splitRule === 'custom' &&
-    !isNaN(parsedAmount) && parsedAmount > 0 &&
-    !isNaN(parsedCustomShare) && parsedCustomShare > 0 &&
-    parsedCustomShare < parsedAmount
+    splitRule === "custom" &&
+    !isNaN(parsedAmount) &&
+    parsedAmount > 0 &&
+    !isNaN(parsedCustomShare) &&
+    parsedCustomShare > 0 &&
+    parsedCustomShare < parsedAmount;
+
+  // Aggiorna descrizione e importo quando cambia la categoria; se "Affitto", imposta importo a 530,00 e descrizione con mese e anno correnti
+  useEffect(() => {
+    let description = CATEGORY_LABELS[category] as string;
+    if (category === "affitto") {
+      setRawAmount("530,00");
+      const today = new Date();
+      description = `Affitto ${today.toLocaleString("it-IT", { month: "long", year: "numeric" })}`;
+    } else {
+      setRawAmount("");
+    }
+
+    if (descriptionInputRef.current) {
+      descriptionInputRef.current.value = description;
+    }
+  }, [category]);
 
   return (
     <form action={action} className="flex flex-col gap-5 px-4 pt-4 pb-6">
       {/* Importo */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-foreground">Importo (€)</label>
+        <label className="text-sm font-medium text-foreground">
+          Importo (€)
+        </label>
         <input
           name="amount"
           type="text"
@@ -65,7 +87,7 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
           required
           disabled={pending}
           value={rawAmount}
-          onChange={e => setRawAmount(e.target.value)}
+          onChange={(e) => setRawAmount(e.target.value)}
           className="h-14 w-full rounded-xl border border-border bg-surface px-4 text-2xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
         />
         {state.fieldErrors?.amount && (
@@ -75,6 +97,7 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
 
       {/* Descrizione */}
       <Input
+        ref={descriptionInputRef}
         label="Descrizione"
         name="description"
         placeholder="es. Coop settimana"
@@ -94,11 +117,11 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
               onClick={() => handleCategoryChange(cat)}
               disabled={pending}
               className={[
-                'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
                 category === cat
-                  ? 'border-accent bg-accent-muted text-accent'
-                  : 'border-border bg-surface text-muted hover:border-accent/50',
-              ].join(' ')}
+                  ? "border-accent bg-accent-muted text-accent"
+                  : "border-border bg-surface text-muted hover:border-accent/50",
+              ].join(" ")}
             >
               {CATEGORY_LABELS[cat]}
             </button>
@@ -118,11 +141,11 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
               onClick={() => setSplitRule(rule)}
               disabled={pending}
               className={[
-                'flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors',
+                "flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors",
                 splitRule === rule
-                  ? 'border-accent bg-accent-muted text-accent'
-                  : 'border-border bg-surface text-muted hover:border-accent/50',
-              ].join(' ')}
+                  ? "border-accent bg-accent-muted text-accent"
+                  : "border-border bg-surface text-muted hover:border-accent/50",
+              ].join(" ")}
             >
               {SPLIT_LABELS[rule]}
             </button>
@@ -132,10 +155,10 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
       </div>
 
       {/* Quota personalizzata */}
-      {splitRule === 'custom' && (
+      {splitRule === "custom" && (
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-foreground">
-            Quota di {otherProfile?.display_name ?? 'altra persona'} (€)
+            Quota di {otherProfile?.display_name ?? "altra persona"} (€)
           </label>
           <input
             name="custom_other_share"
@@ -143,7 +166,7 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
             inputMode="decimal"
             placeholder="0,00"
             value={customOtherShare}
-            onChange={e => setCustomOtherShare(e.target.value)}
+            onChange={(e) => setCustomOtherShare(e.target.value)}
             disabled={pending}
             className="h-12 w-full rounded-xl border border-border bg-surface px-4 text-xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
           />
@@ -153,11 +176,13 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
             </p>
           )}
           {state.fieldErrors?.custom_other_share && (
-            <p className="text-xs text-destructive">{state.fieldErrors.custom_other_share}</p>
+            <p className="text-xs text-destructive">
+              {state.fieldErrors.custom_other_share}
+            </p>
           )}
         </div>
       )}
-      {splitRule !== 'custom' && (
+      {splitRule !== "custom" && (
         <input type="hidden" name="custom_other_share" value="" />
       )}
 
@@ -172,13 +197,13 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
               onClick={() => setPaidBy(p.id)}
               disabled={pending}
               className={[
-                'flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors',
+                "flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors",
                 paidBy === p.id
-                  ? 'border-accent bg-accent-muted text-accent'
-                  : 'border-border bg-surface text-muted hover:border-accent/50',
-              ].join(' ')}
+                  ? "border-accent bg-accent-muted text-accent"
+                  : "border-border bg-surface text-muted hover:border-accent/50",
+              ].join(" ")}
             >
-              {p.id === currentUserId ? 'Io' : p.display_name}
+              {p.id === currentUserId ? "Io" : p.display_name}
             </button>
           ))}
         </div>
@@ -196,12 +221,14 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
       />
 
       {state.error && (
-        <p role="alert" className="text-sm text-destructive">{state.error}</p>
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
       )}
 
       <Button type="submit" size="lg" loading={pending} className="mt-1 w-full">
         Salva spesa
       </Button>
     </form>
-  )
+  );
 }
