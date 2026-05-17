@@ -32,7 +32,7 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
     {}
   )
 
-  const [category, setCategory] = useState<Category>('altro')
+  const [category, setCategory] = useState<Category>('spesa_alimentare')
   const [splitRule, setSplitRule] = useState<SplitRule>('sixty_forty')
   const [paidBy, setPaidBy] = useState(currentUserId)
   const [rawAmount, setRawAmount] = useState('')
