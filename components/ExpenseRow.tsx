@@ -9,9 +9,10 @@ type Expense = Tables<'expenses'> & {
 
 interface ExpenseRowProps {
   expense: Expense
+  dateLabel?: string
 }
 
-export function ExpenseRow({ expense }: ExpenseRowProps) {
+export function ExpenseRow({ expense, dateLabel }: ExpenseRowProps) {
   const isSettled = expense.settlement_id !== null
   const icon = CATEGORY_ICON[expense.category] ?? '📦'
   const color = CATEGORY_COLOR[expense.category] ?? 'bg-zinc-100 dark:bg-zinc-800'
@@ -33,10 +34,13 @@ export function ExpenseRow({ expense }: ExpenseRowProps) {
           {CATEGORY_LABELS[expense.category]}
         </p>
       </div>
-      <div className="flex flex-col items-end gap-1 shrink-0">
+      <div className="flex flex-col items-end gap-0.5 shrink-0">
         <span className="text-sm font-semibold text-foreground">
           {formatEur(expense.amount)}
         </span>
+        {dateLabel && (
+          <span className="text-xs text-muted">{dateLabel}</span>
+        )}
         {isSettled && (
           <Badge variant="muted">saldata</Badge>
         )}

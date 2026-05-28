@@ -30,6 +30,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   spesa_alimentare: 'Spesa',
   abbonamento: 'Abbonamento',
   manutenzione: 'Manutenzione',
+  viaggi: 'Viaggi',
   altro: 'Altro',
 }
 
@@ -39,6 +40,7 @@ export const CATEGORY_ICON: Record<string, string> = {
   spesa_alimentare: '🛒',
   abbonamento: '📺',
   manutenzione: '🔧',
+  viaggi: '✈️',
   altro: '📦',
 }
 
@@ -48,6 +50,7 @@ export const CATEGORY_COLOR: Record<string, string> = {
   spesa_alimentare: 'bg-green-100 dark:bg-green-950',
   abbonamento: 'bg-purple-100 dark:bg-purple-950',
   manutenzione: 'bg-orange-100 dark:bg-orange-950',
+  viaggi: 'bg-sky-100 dark:bg-sky-950',
   altro: 'bg-zinc-100 dark:bg-zinc-800',
 }
 

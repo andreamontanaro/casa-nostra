@@ -25,6 +25,7 @@ const DEFAULT_SPLIT: Record<Category, SplitRule> = {
   spesa_alimentare: "sixty_forty",
   abbonamento: "sixty_forty",
   manutenzione: "sixty_forty",
+  viaggi: "fifty_fifty",
   altro: "sixty_forty",
 };
 

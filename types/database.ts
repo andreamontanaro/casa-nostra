@@ -195,6 +195,7 @@ export type Database = {
         | "spesa_alimentare"
         | "abbonamento"
         | "manutenzione"
+        | "viaggi"
         | "altro"
       split_rule: "fifty_fifty" | "sixty_forty" | "custom"
     }
@@ -312,6 +313,7 @@ export const Constants = {
         "spesa_alimentare",
         "abbonamento",
         "manutenzione",
+        "viaggi",
         "altro",
       ] as const,
       split_rule: ["fifty_fifty", "sixty_forty", "custom"] as const,

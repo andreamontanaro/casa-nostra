@@ -18,6 +18,7 @@ CREATE TYPE expense_category AS ENUM (
   'spesa_alimentare',
   'abbonamento',
   'manutenzione',
+  'viaggi',
   'altro'
 );
 

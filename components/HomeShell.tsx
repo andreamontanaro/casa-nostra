@@ -89,10 +89,10 @@ export function HomeShell({
                     transition={{ duration: 0.2 }}
                     className="relative"
                   >
-                    <span className="absolute right-16 top-3 text-xs text-muted">
-                      {formatDateShort(expense.expense_date)}
-                    </span>
-                    <ExpenseRow expense={expense} />
+                    <ExpenseRow
+                      expense={expense}
+                      dateLabel={formatDateShort(expense.expense_date)}
+                    />
                     {isOpt && (
                       <span
                         className={cn(
