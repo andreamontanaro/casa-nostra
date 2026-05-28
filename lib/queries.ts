@@ -101,6 +101,19 @@ export async function getOpenExpensesWithContribution(userId: string) {
   })
 }
 
+export async function getAllSettlements() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('settlements')
+    .select(
+      '*, from_user:profiles!settlements_from_user_id_fkey(display_name), to_user:profiles!settlements_to_user_id_fkey(display_name)',
+    )
+    .order('settled_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
 export async function getFrequentDescriptions(limit = 5): Promise<string[]> {
   const supabase = await createClient()
   // Tira ~200 descrizioni recenti e raggruppa lato client: stabile, niente RPC nuova.
