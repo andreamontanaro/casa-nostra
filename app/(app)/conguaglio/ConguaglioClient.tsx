@@ -191,7 +191,16 @@ export function ConguaglioClient({
         </section>
       )}
 
-      <div className="flex flex-col gap-3 px-4">
+      <div
+        className={cn(
+          'sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4',
+          'border-t border-border',
+          'bg-surface/85 backdrop-blur-xl backdrop-saturate-150',
+          'supports-[backdrop-filter]:bg-surface/75',
+          'px-4 pt-3 pb-3',
+          'flex flex-col gap-2',
+        )}
+      >
         <Button
           size="lg"
           className="w-full"

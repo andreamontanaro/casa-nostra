@@ -19,8 +19,26 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
     // Solo su touch device
     if (!window.matchMedia('(pointer: coarse)').matches) return
 
+    function isInsideHorizontalScroller(target: EventTarget | null): boolean {
+      let el = target as HTMLElement | null
+      while (el && el !== document.body) {
+        if (el.scrollWidth > el.clientWidth) {
+          const overflowX = getComputedStyle(el).overflowX
+          if (overflowX === 'auto' || overflowX === 'scroll') return true
+        }
+        el = el.parentElement
+      }
+      return false
+    }
+
     function onTouchStart(e: TouchEvent) {
       if (window.scrollY > 0) {
+        startY.current = null
+        return
+      }
+      // Se il tocco parte dentro uno scroller orizzontale (es. chip filtri),
+      // non intercettare: lasciamo che il browser gestisca lo scroll laterale.
+      if (isInsideHorizontalScroller(e.target)) {
         startY.current = null
         return
       }

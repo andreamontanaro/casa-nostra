@@ -126,7 +126,7 @@ export async function updateExpense(
   revalidatePath('/')
   revalidatePath('/spese')
   revalidatePath(`/spese/${id}`)
-  redirect(`/spese/${id}?ok=expense-updated`)
+  redirect('/spese?ok=expense-updated')
 }
 
 export async function deleteExpense(id: string) {

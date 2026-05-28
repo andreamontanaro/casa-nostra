@@ -141,7 +141,10 @@ export function SpeseFiltri({ expenses }: SpeseFiltriProps) {
       />
 
       {/* Categoria (chip scroll orizzontale) */}
-      <div className="-mx-4 overflow-x-auto no-scrollbar">
+      <div
+        className="-mx-4 overflow-x-auto no-scrollbar"
+        style={{ touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}
+      >
         <div className="flex gap-2 px-4">
           <Chip
             active={category === 'tutte'}
