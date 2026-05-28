@@ -244,8 +244,17 @@ CREATE POLICY "settlements_all_authorized"
 -- ============================================================
 
 -- Calcola il saldo netto corrente, crea una riga in settlements
--- e marca come saldate tutte le spese aperte, in un'unica transazione.
-CREATE OR REPLACE FUNCTION public.register_settlement(p_notes text DEFAULT NULL)
+-- e marca come saldate le spese aperte, in un'unica transazione.
+--   p_notes        : nota opzionale del conguaglio.
+--   p_expense_ids  : se NULL, conguaglia tutte le spese aperte (comportamento
+--                    storico). Se array, conguaglia solo quel subset.
+-- La firma vecchia (solo p_notes) viene rimossa per evitare overload ambigui.
+DROP FUNCTION IF EXISTS public.register_settlement(text);
+
+CREATE OR REPLACE FUNCTION public.register_settlement(
+  p_notes text DEFAULT NULL,
+  p_expense_ids uuid[] DEFAULT NULL
+)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -258,6 +267,7 @@ DECLARE
   v_from           uuid;
   v_to             uuid;
   v_settlement_id  uuid;
+  v_open_count     int;
 BEGIN
   IF NOT public.is_authorized_user() THEN
     RAISE EXCEPTION 'Utente non autorizzato';
@@ -272,9 +282,31 @@ BEGIN
     RAISE EXCEPTION 'Secondo profilo non trovato';
   END IF;
 
-  SELECT net_position INTO v_net
-  FROM public.v_user_open_balance
-  WHERE user_id = v_user_id;
+  IF p_expense_ids IS NOT NULL THEN
+    IF array_length(p_expense_ids, 1) IS NULL THEN
+      RAISE EXCEPTION 'Selezione vuota';
+    END IF;
+
+    SELECT count(*) INTO v_open_count
+    FROM public.expenses
+    WHERE id = ANY(p_expense_ids)
+      AND settlement_id IS NULL;
+
+    IF v_open_count <> array_length(p_expense_ids, 1) THEN
+      RAISE EXCEPTION 'Alcune spese selezionate non sono piu'' aperte';
+    END IF;
+
+    SELECT COALESCE(SUM(CASE WHEN s.paid_by = v_user_id THEN s.expense_amount ELSE 0 END), 0)
+         - COALESCE(SUM(s.user_share), 0)
+    INTO v_net
+    FROM public.v_expense_shares s
+    WHERE s.expense_id = ANY(p_expense_ids)
+      AND s.user_id = v_user_id;
+  ELSE
+    SELECT net_position INTO v_net
+    FROM public.v_user_open_balance
+    WHERE user_id = v_user_id;
+  END IF;
 
   IF v_net IS NULL OR v_net = 0 THEN
     RAISE EXCEPTION 'Nessun saldo da conguagliare';
@@ -294,17 +326,24 @@ BEGIN
   VALUES (abs(v_net), v_from, v_to, p_notes, v_user_id)
   RETURNING id INTO v_settlement_id;
 
-  UPDATE public.expenses
-  SET settlement_id = v_settlement_id
-  WHERE settlement_id IS NULL;
+  IF p_expense_ids IS NOT NULL THEN
+    UPDATE public.expenses
+    SET settlement_id = v_settlement_id
+    WHERE id = ANY(p_expense_ids)
+      AND settlement_id IS NULL;
+  ELSE
+    UPDATE public.expenses
+    SET settlement_id = v_settlement_id
+    WHERE settlement_id IS NULL;
+  END IF;
 
   RETURN v_settlement_id;
 END;
 $$;
 
 -- Permetti la chiamata dal client agli utenti autenticati.
-REVOKE ALL ON FUNCTION public.register_settlement(text) FROM public;
-GRANT EXECUTE ON FUNCTION public.register_settlement(text) TO authenticated;
+REVOKE ALL ON FUNCTION public.register_settlement(text, uuid[]) FROM public;
+GRANT EXECUTE ON FUNCTION public.register_settlement(text, uuid[]) TO authenticated;
 
 
 -- ============================================================

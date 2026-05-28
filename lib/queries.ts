@@ -63,6 +63,44 @@ export async function getProfiles() {
   return data
 }
 
+export type OpenExpenseWithContribution = Awaited<
+  ReturnType<typeof getOpenExpensesWithContribution>
+>[number]
+
+export async function getOpenExpensesWithContribution(userId: string) {
+  const supabase = await createClient()
+
+  const [profileRes, expensesRes] = await Promise.all([
+    supabase.from('profiles').select('higher_income').eq('id', userId).single(),
+    supabase
+      .from('expenses')
+      .select('*, paid_by_profile:profiles!expenses_paid_by_fkey(display_name)')
+      .is('settlement_id', null)
+      .order('expense_date', { ascending: false })
+      .order('created_at', { ascending: false }),
+  ])
+
+  if (profileRes.error) throw profileRes.error
+  if (expensesRes.error) throw expensesRes.error
+
+  const higherIncome = profileRes.data.higher_income
+
+  return (expensesRes.data ?? []).map((e) => {
+    let myShare: number
+    if (e.split_rule === 'fifty_fifty') {
+      myShare = e.amount * 0.5
+    } else if (e.split_rule === 'sixty_forty') {
+      myShare = e.amount * (higherIncome ? 0.6 : 0.4)
+    } else {
+      const otherShare = e.custom_other_share ?? 0
+      myShare = e.paid_by === userId ? e.amount - otherShare : otherShare
+    }
+    const anticipated = e.paid_by === userId ? e.amount : 0
+    const myContribution = Math.round((anticipated - myShare) * 100) / 100
+    return { ...e, my_contribution: myContribution }
+  })
+}
+
 export async function getFrequentDescriptions(limit = 5): Promise<string[]> {
   const supabase = await createClient()
   // Tira ~200 descrizioni recenti e raggruppa lato client: stabile, niente RPC nuova.

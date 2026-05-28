@@ -186,7 +186,10 @@ export type Database = {
     }
     Functions: {
       is_authorized_user: { Args: never; Returns: boolean }
-      register_settlement: { Args: { p_notes?: string }; Returns: string }
+      register_settlement: {
+        Args: { p_notes?: string; p_expense_ids?: string[] | null }
+        Returns: string
+      }
     }
     Enums: {
       expense_category:
