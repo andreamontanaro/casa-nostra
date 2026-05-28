@@ -40,8 +40,10 @@
   --shadow-dialog: 0 1px 3px rgb(15 23 42 / 0.08), 0 24px 48px -12px rgb(15 23 42 / 0.18);
 }
 
+/* Tokens dark mode: applicati quando il sistema è in dark e non c'è override,
+   oppure quando l'utente forza esplicitamente data-theme="dark". */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #07090d;
     --foreground: #f1f5f9;
     --surface: #11141a;
@@ -70,6 +72,36 @@
     --shadow-fab: 0 4px 12px rgb(45 212 191 / 0.4), 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-dialog: 0 1px 3px rgb(0 0 0 / 0.5), 0 24px 48px -12px rgb(0 0 0 / 0.6);
   }
+}
+
+:root[data-theme="dark"] {
+  --background: #07090d;
+  --foreground: #f1f5f9;
+  --surface: #11141a;
+  --surface-raised: #181c24;
+  --surface-sunken: #0c0f14;
+
+  --accent: #2dd4bf;
+  --accent-foreground: #042f2e;
+  --accent-muted: #134e4a;
+  --accent-soft: #5eead4;
+
+  --muted: #94a3b8;
+
+  --border: #1f2530;
+  --border-strong: #2a3140;
+
+  --destructive: #f87171;
+  --destructive-foreground: #450a0a;
+
+  --glass-bg: rgb(17 20 26 / 0.7);
+  --glass-border: rgb(255 255 255 / 0.08);
+  --glass-blur: 24px;
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -8px rgb(0 0 0 / 0.5);
+  --shadow-fab: 0 4px 12px rgb(45 212 191 / 0.4), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-dialog: 0 1px 3px rgb(0 0 0 / 0.5), 0 24px 48px -12px rgb(0 0 0 / 0.6);
 }
 
 /* ─── Tailwind v4 token registration ────────────────────────── */

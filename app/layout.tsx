@@ -24,9 +24,14 @@ export const viewport: Viewport = {
   ],
 }
 
+const themeInitScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="it" className="h-full">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full bg-background text-foreground antialiased">
         <NextTopLoader color="#0ea5a4" showSpinner={false} height={2} />
         {children}

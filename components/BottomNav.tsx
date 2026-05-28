@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
-import { Home, List, ArrowLeftRight, BarChart3 } from 'lucide-react'
+import { Home, List, ArrowLeftRight, BarChart3, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/spese', label: 'Storico', icon: List },
   { href: '/conguaglio', label: 'Conguaglio', icon: ArrowLeftRight },
   { href: '/statistiche', label: 'Statistiche', icon: BarChart3 },
+  { href: '/impostazioni', label: 'Impostazioni', icon: Settings },
 ]
 
 export function BottomNav() {

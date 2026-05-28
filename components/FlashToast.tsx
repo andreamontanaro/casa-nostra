@@ -9,6 +9,8 @@ const MESSAGES: Record<string, { type: 'success' | 'error' | 'info'; text: strin
   'expense-updated': { type: 'success', text: 'Modifiche salvate.' },
   'expense-deleted': { type: 'success', text: 'Spesa eliminata.' },
   'settlement-registered': { type: 'success', text: 'Conguaglio registrato.' },
+  'profile-updated': { type: 'success', text: 'Profilo aggiornato.' },
+  'password-updated': { type: 'success', text: 'Password aggiornata.' },
 }
 
 export function FlashToast() {
