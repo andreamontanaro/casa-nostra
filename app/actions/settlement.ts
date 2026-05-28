@@ -16,5 +16,5 @@ export async function registerSettlement(notes?: string) {
   revalidatePath('/')
   revalidatePath('/spese')
   revalidatePath('/conguaglio')
-  redirect('/')
+  redirect('/?ok=settlement-registered')
 }

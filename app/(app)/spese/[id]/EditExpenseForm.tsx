@@ -1,19 +1,30 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
-import { updateExpense, deleteExpense, type ExpenseFormState } from '@/app/actions/expenses'
+import {
+  updateExpense,
+  deleteExpense,
+  type ExpenseFormState,
+} from '@/app/actions/expenses'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
-import { CATEGORY_LABELS, SPLIT_LABELS, formatEur } from '@/lib/fmt'
+import {
+  CATEGORY_LABELS,
+  CATEGORY_ICON,
+  SPLIT_LABELS,
+  formatEur,
+} from '@/lib/fmt'
 import { Tables, Constants } from '@/types/database'
 import { toast } from '@/lib/toast'
+import { cn } from '@/lib/utils'
 
 type Profile = Tables<'profiles'>
 type Expense = Tables<'expenses'>
-type Category = typeof Constants.public.Enums.expense_category[number]
-type SplitRule = typeof Constants.public.Enums.split_rule[number]
+type Category = (typeof Constants.public.Enums.expense_category)[number]
+type SplitRule = (typeof Constants.public.Enums.split_rule)[number]
 
 const DEFAULT_SPLIT: Record<Category, SplitRule> = {
   affitto: 'fifty_fifty',
@@ -30,9 +41,16 @@ interface EditExpenseFormProps {
   currentUserId: string
 }
 
-export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpenseFormProps) {
+export function EditExpenseForm({
+  expense,
+  profiles,
+  currentUserId,
+}: EditExpenseFormProps) {
   const boundUpdate = updateExpense.bind(null, expense.id)
-  const [state, action, pending] = useActionState<ExpenseFormState, FormData>(boundUpdate, {})
+  const [state, action, pending] = useActionState<ExpenseFormState, FormData>(
+    boundUpdate,
+    {},
+  )
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -41,17 +59,19 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
   const [paidBy, setPaidBy] = useState(expense.paid_by)
   const [rawAmount, setRawAmount] = useState(String(expense.amount))
   const [customOtherShare, setCustomOtherShare] = useState(
-    expense.custom_other_share != null ? String(expense.custom_other_share) : ''
+    expense.custom_other_share != null ? String(expense.custom_other_share) : '',
   )
 
   const isSettled = expense.settlement_id !== null
-  const otherProfile = profiles.find(p => p.id !== paidBy)
+  const otherProfile = profiles.find((p) => p.id !== paidBy)
   const parsedAmount = parseFloat(rawAmount.replace(',', '.'))
   const parsedCustomShare = parseFloat(customOtherShare.replace(',', '.'))
   const showCustomPreview =
     splitRule === 'custom' &&
-    !isNaN(parsedAmount) && parsedAmount > 0 &&
-    !isNaN(parsedCustomShare) && parsedCustomShare > 0 &&
+    !isNaN(parsedAmount) &&
+    parsedAmount > 0 &&
+    !isNaN(parsedCustomShare) &&
+    parsedCustomShare > 0 &&
     parsedCustomShare < parsedAmount
 
   async function handleDelete() {
@@ -75,13 +95,15 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
     <>
       <form action={action} className="flex flex-col gap-5 px-4 pt-2 pb-6">
         {isSettled && (
-          <div className="rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm text-muted">
+          <div className="rounded-2xl border border-border bg-surface-raised px-4 py-3 text-sm text-muted">
             Questa spesa è già saldata e non può essere modificata.
           </div>
         )}
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">Importo (€)</label>
+          <label className="text-sm font-medium text-foreground">
+            Importo (€)
+          </label>
           <input
             name="amount"
             type="text"
@@ -89,8 +111,14 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
             required
             disabled={pending || isSettled}
             value={rawAmount}
-            onChange={e => setRawAmount(e.target.value)}
-            className="h-14 w-full rounded-xl border border-border bg-surface px-4 text-2xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
+            onChange={(e) => setRawAmount(e.target.value)}
+            className={cn(
+              'h-16 w-full rounded-2xl border border-border bg-surface px-4',
+              'text-3xl font-bold tracking-tight text-foreground tabular-nums',
+              'placeholder:text-muted/60 shadow-soft',
+              'focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent',
+              'disabled:opacity-50',
+            )}
           />
           {state.fieldErrors?.amount && (
             <p className="text-xs text-destructive">{state.fieldErrors.amount}</p>
@@ -108,23 +136,31 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-foreground">Categoria</span>
-          <div className="flex flex-wrap gap-2">
-            {Constants.public.Enums.expense_category.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => handleCategoryChange(cat)}
-                disabled={pending || isSettled}
-                className={[
-                  'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                  category === cat
-                    ? 'border-accent bg-accent-muted text-accent'
-                    : 'border-border bg-surface text-muted hover:border-accent/50',
-                ].join(' ')}
-              >
-                {CATEGORY_LABELS[cat]}
-              </button>
-            ))}
+          <div className="grid grid-cols-3 gap-2">
+            {Constants.public.Enums.expense_category.map((cat) => {
+              const isActive = category === cat
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => handleCategoryChange(cat)}
+                  disabled={pending || isSettled}
+                  className={cn(
+                    'flex items-center justify-center gap-1.5 rounded-2xl border px-2 py-2.5',
+                    'text-sm font-medium transition-[border-color,background-color,color,transform] duration-150',
+                    'active:scale-[0.97]',
+                    isActive
+                      ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                      : 'border-border bg-surface text-muted hover:border-accent/40',
+                  )}
+                >
+                  <span className="text-base leading-none">
+                    {CATEGORY_ICON[cat]}
+                  </span>
+                  <span className="truncate">{CATEGORY_LABELS[cat]}</span>
+                </button>
+              )
+            })}
           </div>
           <input type="hidden" name="category" value={category} />
         </div>
@@ -138,12 +174,13 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
                 type="button"
                 onClick={() => setSplitRule(rule)}
                 disabled={pending || isSettled}
-                className={[
-                  'flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors',
+                className={cn(
+                  'flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150',
+                  'active:scale-[0.97]',
                   splitRule === rule
-                    ? 'border-accent bg-accent-muted text-accent'
-                    : 'border-border bg-surface text-muted hover:border-accent/50',
-                ].join(' ')}
+                    ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                    : 'border-border bg-surface text-muted hover:border-accent/40',
+                )}
               >
                 {SPLIT_LABELS[rule]}
               </button>
@@ -152,32 +189,50 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
           <input type="hidden" name="split_rule" value={splitRule} />
         </div>
 
-        {/* Quota personalizzata */}
-        {splitRule === 'custom' && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">
-              Quota di {otherProfile?.display_name ?? 'altra persona'} (€)
-            </label>
-            <input
-              name="custom_other_share"
-              type="text"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={customOtherShare}
-              onChange={e => setCustomOtherShare(e.target.value)}
-              disabled={pending || isSettled}
-              className="h-12 w-full rounded-xl border border-border bg-surface px-4 text-xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
-            />
-            {showCustomPreview && (
-              <p className="text-xs text-muted">
-                La tua quota: {formatEur(parsedAmount - parsedCustomShare)}
-              </p>
-            )}
-            {state.fieldErrors?.custom_other_share && (
-              <p className="text-xs text-destructive">{state.fieldErrors.custom_other_share}</p>
-            )}
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {splitRule === 'custom' && (
+            <motion.div
+              key="custom-share"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">
+                  Quota di {otherProfile?.display_name ?? 'altra persona'} (€)
+                </label>
+                <input
+                  name="custom_other_share"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={customOtherShare}
+                  onChange={(e) => setCustomOtherShare(e.target.value)}
+                  disabled={pending || isSettled}
+                  className={cn(
+                    'h-12 w-full rounded-2xl border border-border bg-surface px-4',
+                    'text-xl font-semibold text-foreground tabular-nums shadow-soft',
+                    'placeholder:text-muted',
+                    'focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent',
+                    'disabled:opacity-50',
+                  )}
+                />
+                {showCustomPreview && (
+                  <p className="text-xs text-muted tabular-nums">
+                    La tua quota: {formatEur(parsedAmount - parsedCustomShare)}
+                  </p>
+                )}
+                {state.fieldErrors?.custom_other_share && (
+                  <p className="text-xs text-destructive">
+                    {state.fieldErrors.custom_other_share}
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {splitRule !== 'custom' && (
           <input type="hidden" name="custom_other_share" value="" />
         )}
@@ -191,12 +246,13 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
                 type="button"
                 onClick={() => setPaidBy(p.id)}
                 disabled={pending || isSettled}
-                className={[
-                  'flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors',
+                className={cn(
+                  'flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150',
+                  'active:scale-[0.97]',
                   paidBy === p.id
-                    ? 'border-accent bg-accent-muted text-accent'
-                    : 'border-border bg-surface text-muted hover:border-accent/50',
-                ].join(' ')}
+                    ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                    : 'border-border bg-surface text-muted hover:border-accent/40',
+                )}
               >
                 {p.id === currentUserId ? 'Io' : p.display_name}
               </button>
@@ -215,11 +271,13 @@ export function EditExpenseForm({ expense, profiles, currentUserId }: EditExpens
         />
 
         {state.error && (
-          <p role="alert" className="text-sm text-destructive">{state.error}</p>
+          <p role="alert" className="text-sm text-destructive">
+            {state.error}
+          </p>
         )}
 
         {!isSettled && (
-          <div className="flex flex-col gap-3 mt-1">
+          <div className="mt-1 flex flex-col gap-3">
             <Button type="submit" size="lg" loading={pending} className="w-full">
               Salva modifiche
             </Button>

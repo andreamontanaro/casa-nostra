@@ -1,12 +1,19 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { createExpense, type ExpenseFormState } from "@/app/actions/expenses";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { CATEGORY_LABELS, SPLIT_LABELS, formatEur, todayISO } from "@/lib/fmt";
+import {
+  CATEGORY_LABELS,
+  CATEGORY_ICON,
+  SPLIT_LABELS,
+  formatEur,
+  todayISO,
+} from "@/lib/fmt";
 import { Tables, Constants } from "@/types/database";
-import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 type Profile = Tables<"profiles">;
 type Category = (typeof Constants.public.Enums.expense_category)[number];
@@ -21,16 +28,81 @@ const DEFAULT_SPLIT: Record<Category, SplitRule> = {
   altro: "sixty_forty",
 };
 
+export interface OptimisticExpense {
+  id: string;
+  amount: number;
+  description: string;
+  category: Category;
+  split_rule: SplitRule;
+  paid_by: string;
+  expense_date: string;
+  settlement_id: null;
+  created_by: string;
+  custom_other_share: number | null;
+  created_at: string;
+  updated_at: string;
+  paid_by_profile: { display_name: string } | null;
+  __optimistic: true;
+}
+
 interface ExpenseFormProps {
   profiles: Profile[];
   currentUserId: string;
+  suggestions?: string[];
+  onOptimisticInsert?: (e: OptimisticExpense) => void;
 }
 
-export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
+export function ExpenseForm({
+  profiles,
+  currentUserId,
+  suggestions = [],
+  onOptimisticInsert,
+}: ExpenseFormProps) {
   const [state, action, pending] = useActionState<ExpenseFormState, FormData>(
     createExpense,
     {},
   );
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (!onOptimisticInsert) return;
+
+    const amt = parseFloat(rawAmount.replace(",", "."));
+    if (isNaN(amt) || amt <= 0) return;
+    const desc = descriptionInputRef.current?.value.trim() ?? "";
+    if (!desc) return;
+
+    const dateInput = (e.currentTarget.elements.namedItem(
+      "expense_date",
+    ) as HTMLInputElement | null)?.value;
+    if (!dateInput) return;
+
+    const payer = profiles.find((p) => p.id === paidBy);
+    const customShareValue =
+      splitRule === "custom"
+        ? parseFloat(customOtherShare.replace(",", "."))
+        : null;
+
+    const now = new Date().toISOString();
+    onOptimisticInsert({
+      id: `optimistic-${Date.now()}`,
+      amount: amt,
+      description: desc,
+      category,
+      split_rule: splitRule,
+      paid_by: paidBy,
+      expense_date: dateInput,
+      settlement_id: null,
+      created_by: currentUserId,
+      custom_other_share:
+        customShareValue && !isNaN(customShareValue) && customShareValue > 0
+          ? customShareValue
+          : null,
+      created_at: now,
+      updated_at: now,
+      paid_by_profile: payer ? { display_name: payer.display_name } : null,
+      __optimistic: true,
+    });
+  }
 
   const [category, setCategory] = useState<Category>("spesa_alimentare");
   const [splitRule, setSplitRule] = useState<SplitRule>("sixty_forty");
@@ -45,6 +117,13 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
     setSplitRule(DEFAULT_SPLIT[cat]);
   }
 
+  function applySuggestion(s: string) {
+    if (descriptionInputRef.current) {
+      descriptionInputRef.current.value = s;
+      descriptionInputRef.current.focus();
+    }
+  }
+
   const otherProfile = profiles.find((p) => p.id !== paidBy);
   const parsedAmount = parseFloat(rawAmount.replace(",", "."));
   const parsedCustomShare = parseFloat(customOtherShare.replace(",", "."));
@@ -56,7 +135,7 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
     parsedCustomShare > 0 &&
     parsedCustomShare < parsedAmount;
 
-  // Aggiorna descrizione e importo quando cambia la categoria; se "Affitto", imposta importo a 530,00 e descrizione con mese e anno correnti
+  // Default categoria → eventuali pre-fill (affitto: importo + descrizione mese)
   useEffect(() => {
     let description = CATEGORY_LABELS[category] as string;
     if (category === "affitto") {
@@ -73,8 +152,12 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
   }, [category]);
 
   return (
-    <form action={action} className="flex flex-col gap-5 px-4 pt-4 pb-6">
-      {/* Importo */}
+    <form
+      action={action}
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-5 px-4 pt-4 pb-6"
+    >
+      {/* Importo — hero */}
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-foreground">
           Importo (€)
@@ -88,44 +171,83 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
           disabled={pending}
           value={rawAmount}
           onChange={(e) => setRawAmount(e.target.value)}
-          className="h-14 w-full rounded-xl border border-border bg-surface px-4 text-2xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
+          className={cn(
+            "h-16 w-full rounded-2xl border border-border bg-surface px-4",
+            "text-3xl font-bold tracking-tight text-foreground tabular-nums",
+            "placeholder:text-muted/60 placeholder:font-medium",
+            "shadow-soft transition-[border-color,box-shadow] duration-150",
+            "focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent",
+            "disabled:opacity-50",
+          )}
         />
         {state.fieldErrors?.amount && (
           <p className="text-xs text-destructive">{state.fieldErrors.amount}</p>
         )}
       </div>
 
-      {/* Descrizione */}
-      <Input
-        ref={descriptionInputRef}
-        label="Descrizione"
-        name="description"
-        placeholder="es. Coop settimana"
-        required
-        disabled={pending}
-        error={state.fieldErrors?.description}
-      />
+      {/* Descrizione + suggerimenti */}
+      <div className="flex flex-col gap-2">
+        <Input
+          ref={descriptionInputRef}
+          label="Descrizione"
+          name="description"
+          placeholder="es. Coop settimana"
+          required
+          disabled={pending}
+          error={state.fieldErrors?.description}
+        />
+        {suggestions.length > 0 && (
+          <div className="-mx-4 overflow-x-auto no-scrollbar">
+            <div className="flex gap-2 px-4">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => applySuggestion(s)}
+                  disabled={pending}
+                  className={cn(
+                    "shrink-0 rounded-full border border-border bg-surface-raised",
+                    "px-3 py-1 text-xs font-medium text-muted",
+                    "hover:border-accent/50 hover:text-foreground",
+                    "active:scale-95 transition-[transform,border-color,color] duration-150",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* Categoria */}
+      {/* Categoria — chip con emoji+label */}
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-foreground">Categoria</span>
-        <div className="flex flex-wrap gap-2">
-          {Constants.public.Enums.expense_category.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => handleCategoryChange(cat)}
-              disabled={pending}
-              className={[
-                "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-                category === cat
-                  ? "border-accent bg-accent-muted text-accent"
-                  : "border-border bg-surface text-muted hover:border-accent/50",
-              ].join(" ")}
-            >
-              {CATEGORY_LABELS[cat]}
-            </button>
-          ))}
+        <div className="grid grid-cols-3 gap-2">
+          {Constants.public.Enums.expense_category.map((cat) => {
+            const isActive = category === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => handleCategoryChange(cat)}
+                disabled={pending}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-2xl border px-2 py-2.5",
+                  "text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
+                  "active:scale-[0.97]",
+                  isActive
+                    ? "border-accent bg-accent-muted text-accent shadow-soft"
+                    : "border-border bg-surface text-muted hover:border-accent/40",
+                )}
+              >
+                <span className="text-base leading-none">
+                  {CATEGORY_ICON[cat]}
+                </span>
+                <span className="truncate">{CATEGORY_LABELS[cat]}</span>
+              </button>
+            );
+          })}
         </div>
         <input type="hidden" name="category" value={category} />
       </div>
@@ -140,12 +262,13 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
               type="button"
               onClick={() => setSplitRule(rule)}
               disabled={pending}
-              className={[
-                "flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors",
+              className={cn(
+                "flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
+                "active:scale-[0.97]",
                 splitRule === rule
-                  ? "border-accent bg-accent-muted text-accent"
-                  : "border-border bg-surface text-muted hover:border-accent/50",
-              ].join(" ")}
+                  ? "border-accent bg-accent-muted text-accent shadow-soft"
+                  : "border-border bg-surface text-muted hover:border-accent/40",
+              )}
             >
               {SPLIT_LABELS[rule]}
             </button>
@@ -154,34 +277,51 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
         <input type="hidden" name="split_rule" value={splitRule} />
       </div>
 
-      {/* Quota personalizzata */}
-      {splitRule === "custom" && (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">
-            Quota di {otherProfile?.display_name ?? "altra persona"} (€)
-          </label>
-          <input
-            name="custom_other_share"
-            type="text"
-            inputMode="decimal"
-            placeholder="0,00"
-            value={customOtherShare}
-            onChange={(e) => setCustomOtherShare(e.target.value)}
-            disabled={pending}
-            className="h-12 w-full rounded-xl border border-border bg-surface px-4 text-xl font-semibold text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent disabled:opacity-50"
-          />
-          {showCustomPreview && (
-            <p className="text-xs text-muted">
-              La tua quota: {formatEur(parsedAmount - parsedCustomShare)}
-            </p>
-          )}
-          {state.fieldErrors?.custom_other_share && (
-            <p className="text-xs text-destructive">
-              {state.fieldErrors.custom_other_share}
-            </p>
-          )}
-        </div>
-      )}
+      {/* Quota personalizzata — comparsa animata */}
+      <AnimatePresence initial={false}>
+        {splitRule === "custom" && (
+          <motion.div
+            key="custom-share"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Quota di {otherProfile?.display_name ?? "altra persona"} (€)
+              </label>
+              <input
+                name="custom_other_share"
+                type="text"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={customOtherShare}
+                onChange={(e) => setCustomOtherShare(e.target.value)}
+                disabled={pending}
+                className={cn(
+                  "h-12 w-full rounded-2xl border border-border bg-surface px-4",
+                  "text-xl font-semibold text-foreground tabular-nums",
+                  "placeholder:text-muted shadow-soft",
+                  "focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent",
+                  "disabled:opacity-50",
+                )}
+              />
+              {showCustomPreview && (
+                <p className="text-xs text-muted tabular-nums">
+                  La tua quota: {formatEur(parsedAmount - parsedCustomShare)}
+                </p>
+              )}
+              {state.fieldErrors?.custom_other_share && (
+                <p className="text-xs text-destructive">
+                  {state.fieldErrors.custom_other_share}
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {splitRule !== "custom" && (
         <input type="hidden" name="custom_other_share" value="" />
       )}
@@ -196,12 +336,13 @@ export function ExpenseForm({ profiles, currentUserId }: ExpenseFormProps) {
               type="button"
               onClick={() => setPaidBy(p.id)}
               disabled={pending}
-              className={[
-                "flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors",
+              className={cn(
+                "flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
+                "active:scale-[0.97]",
                 paidBy === p.id
-                  ? "border-accent bg-accent-muted text-accent"
-                  : "border-border bg-surface text-muted hover:border-accent/50",
-              ].join(" ")}
+                  ? "border-accent bg-accent-muted text-accent shadow-soft"
+                  : "border-border bg-surface text-muted hover:border-accent/40",
+              )}
             >
               {p.id === currentUserId ? "Io" : p.display_name}
             </button>

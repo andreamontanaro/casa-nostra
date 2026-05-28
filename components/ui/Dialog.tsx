@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { cn } from '@/lib/utils'
 import { Button } from './Button'
 
 interface DialogProps {
@@ -26,44 +27,72 @@ export function Dialog({
   loading = false,
   children,
 }: DialogProps) {
-  const ref = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = ref.current
-    if (!dialog) return
-    if (open) dialog.showModal()
-    else dialog.close()
-  }, [open])
-
   return (
-    <dialog
-      ref={ref}
-      onClose={onClose}
-      className="fixed inset-0 m-auto h-fit w-full max-w-sm rounded-2xl border border-border p-0 shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(o) => {
+        if (!o && !loading) onClose()
+      }}
     >
-      <div className="p-6">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-        {description && (
-          <p className="mt-2 text-sm text-muted">{description}</p>
-        )}
-        {children && <div className="mt-4">{children}</div>}
-      </div>
-      <div className="flex gap-3 border-t border-border px-6 py-4">
-        <Button variant="secondary" size="md" className="flex-1" onClick={onClose} disabled={loading}>
-          Annulla
-        </Button>
-        {onConfirm && (
-          <Button
-            variant={confirmVariant}
-            size="md"
-            className="flex-1"
-            onClick={onConfirm}
-            loading={loading}
-          >
-            {confirmLabel}
-          </Button>
-        )}
-      </div>
-    </dialog>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className={cn(
+            'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
+          )}
+        />
+        <DialogPrimitive.Content
+          onEscapeKeyDown={(e) => {
+            if (loading) e.preventDefault()
+          }}
+          onPointerDownOutside={(e) => {
+            if (loading) e.preventDefault()
+          }}
+          className={cn(
+            'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2',
+            'rounded-3xl border border-border bg-surface shadow-dialog',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
+            'data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95',
+            'duration-200',
+          )}
+        >
+          <div className="p-6">
+            <DialogPrimitive.Title className="text-lg font-semibold text-foreground">
+              {title}
+            </DialogPrimitive.Title>
+            {description && (
+              <DialogPrimitive.Description className="mt-2 text-sm text-muted">
+                {description}
+              </DialogPrimitive.Description>
+            )}
+            {children && <div className="mt-4">{children}</div>}
+          </div>
+          <div className="flex gap-3 border-t border-border px-6 py-4">
+            <Button
+              variant="secondary"
+              size="md"
+              className="flex-1"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Annulla
+            </Button>
+            {onConfirm && (
+              <Button
+                variant={confirmVariant}
+                size="md"
+                className="flex-1"
+                onClick={onConfirm}
+                loading={loading}
+              >
+                {confirmLabel}
+              </Button>
+            )}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }

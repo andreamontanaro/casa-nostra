@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: 'Casa Nostra',
   description: 'Gestione spese condivise',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Casa Nostra' },
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
 }
 
 export const viewport: Viewport = {
@@ -14,8 +19,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+    { media: '(prefers-color-scheme: light)', color: '#f6f7f9' },
+    { media: '(prefers-color-scheme: dark)', color: '#07090d' },
   ],
 }
 
@@ -23,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="it" className="h-full">
       <body className="min-h-full bg-background text-foreground antialiased">
-        <NextTopLoader color="#10b981" showSpinner={false} height={2} />
+        <NextTopLoader color="#0ea5a4" showSpinner={false} height={2} />
         {children}
         <Toaster />
       </body>

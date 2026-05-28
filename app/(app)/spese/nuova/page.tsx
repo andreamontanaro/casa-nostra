@@ -1,10 +1,18 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { getProfiles, getCurrentUser } from '@/lib/queries'
+import {
+  getProfiles,
+  getCurrentUser,
+  getFrequentDescriptions,
+} from '@/lib/queries'
 import { ExpenseForm } from './ExpenseForm'
 
 export default async function NuovaSpesaPage() {
-  const [user, profiles] = await Promise.all([getCurrentUser(), getProfiles()])
+  const [user, profiles, suggestions] = await Promise.all([
+    getCurrentUser(),
+    getProfiles(),
+    getFrequentDescriptions(5),
+  ])
 
   if (!user) return null
 
@@ -21,7 +29,11 @@ export default async function NuovaSpesaPage() {
         <h1 className="text-lg font-semibold text-foreground">Nuova spesa</h1>
       </header>
 
-      <ExpenseForm profiles={profiles} currentUserId={user.id} />
+      <ExpenseForm
+        profiles={profiles}
+        currentUserId={user.id}
+        suggestions={suggestions}
+      />
     </div>
   )
 }

@@ -1,8 +1,9 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import { getOpenBalance, getCurrentUser, getAllExpenses } from '@/lib/queries'
 import { ConguaglioClient } from './ConguaglioClient'
-import { Card, CardContent } from '@/components/ui/Card'
+import { Card } from '@/components/ui/Card'
 import { formatEur, formatDate, CATEGORY_LABELS } from '@/lib/fmt'
+import { cn } from '@/lib/utils'
 
 export default async function ConguaglioPage() {
   const [user, balanceRows, expenses] = await Promise.all([
@@ -21,8 +22,8 @@ export default async function ConguaglioPage() {
   const hasBalance = netMe !== 0
 
   const isCredit = netMe > 0
-  const payer = isCredit ? other?.display_name : 'Tu'
-  const receiver = isCredit ? 'Te' : other?.display_name
+  const payer = isCredit ? other?.display_name ?? 'Altro' : 'Tu'
+  const receiver = isCredit ? 'Te' : other?.display_name ?? 'Altro'
 
   const openExpenses = expenses.filter((e) => e.settlement_id === null)
 
@@ -31,24 +32,47 @@ export default async function ConguaglioPage() {
       <h1 className="text-xl font-semibold text-foreground">Conguaglio</h1>
 
       {/* Card saldo netto */}
-      <Card>
-        <CardContent className="py-5">
-          {!hasBalance ? (
-            <p className="text-center text-base font-medium text-foreground">
-              Siete pari — niente da conguagliare.
-            </p>
-          ) : (
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-3xl font-bold text-foreground">{formatEur(absAmount)}</p>
-              <div className="flex items-center gap-3 text-sm font-medium text-muted">
-                <span className={isCredit ? 'text-foreground' : ''}>{payer}</span>
-                <ArrowRight className="size-4 text-accent" />
-                <span className={!isCredit ? 'text-foreground' : ''}>{receiver}</span>
-              </div>
+      {!hasBalance ? (
+        <Card>
+          <div className="flex flex-col items-center gap-3 px-4 py-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-muted text-accent">
+              <Check className="size-6" strokeWidth={2.5} />
             </div>
+            <div className="text-center">
+              <p className="text-base font-semibold text-foreground">
+                Siete pari
+              </p>
+              <p className="mt-0.5 text-sm text-muted">
+                Niente da conguagliare.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <div
+          className={cn(
+            'relative overflow-hidden rounded-3xl p-6 shadow-card',
+            'text-accent-foreground',
+            'bg-gradient-to-br from-accent via-accent to-accent-soft',
           )}
-        </CardContent>
-      </Card>
+        >
+          <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-b from-accent-foreground/10 via-transparent to-transparent" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent-foreground/10 blur-2xl" />
+          <div className="relative flex flex-col items-center gap-3">
+            <p className="text-xs font-medium uppercase tracking-wider opacity-80">
+              Saldo netto
+            </p>
+            <p className="text-4xl font-bold tracking-tight tabular-nums">
+              {formatEur(absAmount)}
+            </p>
+            <div className="flex items-center gap-3 rounded-full bg-accent-foreground/15 px-3 py-1 text-sm font-medium">
+              <span className={isCredit ? '' : 'opacity-70'}>{payer}</span>
+              <ArrowRight className="size-4" strokeWidth={2.5} />
+              <span className={!isCredit ? '' : 'opacity-70'}>{receiver}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Spese aperte */}
       {openExpenses.length > 0 && (
@@ -58,14 +82,19 @@ export default async function ConguaglioPage() {
           </h2>
           <Card className="divide-y divide-border overflow-hidden p-0">
             {openExpenses.map((e) => (
-              <div key={e.id} className="flex items-center justify-between px-4 py-3">
+              <div
+                key={e.id}
+                className="flex items-center justify-between px-4 py-3"
+              >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{e.description}</p>
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {e.description}
+                  </p>
                   <p className="text-xs text-muted">
                     {formatDate(e.expense_date)} · {CATEGORY_LABELS[e.category]}
                   </p>
                 </div>
-                <span className="ml-3 shrink-0 text-sm font-semibold text-foreground">
+                <span className="ml-3 shrink-0 text-sm font-semibold tabular-nums text-foreground">
                   {formatEur(e.amount)}
                 </span>
               </div>

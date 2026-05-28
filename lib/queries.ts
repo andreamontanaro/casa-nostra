@@ -62,3 +62,27 @@ export async function getProfiles() {
   if (error) throw error
   return data
 }
+
+export async function getFrequentDescriptions(limit = 5): Promise<string[]> {
+  const supabase = await createClient()
+  // Tira ~200 descrizioni recenti e raggruppa lato client: stabile, niente RPC nuova.
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('description')
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  if (error) return []
+
+  const counts = new Map<string, number>()
+  for (const row of data ?? []) {
+    const d = (row.description ?? '').trim()
+    if (!d) continue
+    counts.set(d, (counts.get(d) ?? 0) + 1)
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([d]) => d)
+}
