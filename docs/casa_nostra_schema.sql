@@ -115,6 +115,31 @@ CREATE INDEX idx_expenses_open
 
 
 -- ============================================================
+-- 4b. TABELLA expense_attachments (allegati delle spese)
+-- ============================================================
+-- Scontrini, ricevute e note collegati a una spesa (1-a-molti).
+-- I file risiedono nel bucket privato Storage 'expense-attachments';
+-- storage_path e' la chiave nel bucket (formato: {expense_id}/{uuid}.{ext}).
+
+CREATE TABLE public.expense_attachments (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  expense_id   uuid NOT NULL REFERENCES public.expenses(id) ON DELETE CASCADE,
+  storage_path text NOT NULL UNIQUE,
+  file_name    text NOT NULL,
+  mime_type    text NOT NULL,
+  size_bytes   bigint NOT NULL CHECK (size_bytes > 0),
+  uploaded_by  uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.expense_attachments IS
+  'Allegati (scontrini, ricevute, note) collegati a una spesa. ON DELETE CASCADE rimuove i metadati con la spesa; i file su Storage vanno rimossi a parte dall''applicazione.';
+
+CREATE INDEX idx_expense_attachments_expense_id
+  ON public.expense_attachments (expense_id);
+
+
+-- ============================================================
 -- 5. TRIGGER per aggiornamento di updated_at
 -- ============================================================
 
@@ -237,6 +262,33 @@ CREATE POLICY "settlements_all_authorized"
   TO authenticated
   USING (public.is_authorized_user())
   WITH CHECK (public.is_authorized_user());
+
+-- expense_attachments: accesso completo per i due utenti autorizzati.
+ALTER TABLE public.expense_attachments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "expense_attachments_all_authorized"
+  ON public.expense_attachments FOR ALL
+  TO authenticated
+  USING (public.is_authorized_user())
+  WITH CHECK (public.is_authorized_user());
+
+-- ------------------------------------------------------------
+-- Storage: bucket privato per gli allegati e relative policy.
+-- (Eseguito anche dalla migration; replicato qui per completezza.)
+-- ------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('expense-attachments', 'expense-attachments', false)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "ea_select" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'expense-attachments' AND public.is_authorized_user());
+CREATE POLICY "ea_insert" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'expense-attachments' AND public.is_authorized_user());
+CREATE POLICY "ea_update" ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'expense-attachments' AND public.is_authorized_user())
+  WITH CHECK (bucket_id = 'expense-attachments' AND public.is_authorized_user());
+CREATE POLICY "ea_delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'expense-attachments' AND public.is_authorized_user());
 
 
 -- ============================================================

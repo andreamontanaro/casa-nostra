@@ -1,8 +1,14 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { getExpenseById, getProfiles, getCurrentUser } from '@/lib/queries'
+import {
+  getExpenseById,
+  getProfiles,
+  getCurrentUser,
+  getExpenseAttachments,
+} from '@/lib/queries'
 import { EditExpenseForm } from './EditExpenseForm'
+import { AttachmentList } from '@/components/AttachmentList'
 import { Badge } from '@/components/ui/Badge'
 import { formatDate, formatEur, CATEGORY_LABELS, SPLIT_LABELS } from '@/lib/fmt'
 
@@ -20,15 +26,17 @@ interface Props {
 export default async function SpesaDetailPage({ params }: Props) {
   const { id } = await params
 
-  const [expense, profiles, user] = await Promise.all([
+  const [expense, profiles, user, attachments] = await Promise.all([
     getExpenseById(id).catch(() => null),
     getProfiles(),
     getCurrentUser(),
+    getExpenseAttachments(id).catch(() => []),
   ])
 
   if (!expense || !user) notFound()
 
   const paidByProfile = profiles.find((p) => p.id === expense.paid_by)
+  const isSettled = expense.settlement_id !== null
 
   return (
     <div className="flex flex-col">
@@ -56,9 +64,21 @@ export default async function SpesaDetailPage({ params }: Props) {
         <Stat label="Divisione" value={splitLabel(expense)} />
       </div>
 
+      {attachments.length > 0 && (
+        <div className="flex flex-col gap-2 px-4 pb-4">
+          <span className="text-sm font-medium text-foreground">Allegati</span>
+          <AttachmentList attachments={attachments} readOnly={isSettled} />
+        </div>
+      )}
+
       <hr className="border-border" />
 
-      <EditExpenseForm expense={expense} profiles={profiles} currentUserId={user.id} />
+      <EditExpenseForm
+        expense={expense}
+        profiles={profiles}
+        currentUserId={user.id}
+        attachmentCount={attachments.length}
+      />
     </div>
   )
 }

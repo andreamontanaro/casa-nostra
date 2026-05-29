@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Database } from '@/types/database'
+import { ATTACHMENTS_BUCKET } from '@/lib/attachments'
 
 type ExpenseCategory = Database['public']['Enums']['expense_category']
 type SplitRule = Database['public']['Enums']['split_rule']
@@ -11,6 +12,8 @@ type SplitRule = Database['public']['Enums']['split_rule']
 export type ExpenseFormState = {
   error?: string
   fieldErrors?: Partial<Record<string, string>>
+  ok?: boolean
+  expenseId?: string
 }
 
 export async function createExpense(
@@ -53,21 +56,35 @@ export async function createExpense(
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors }
 
-  const { error } = await supabase.from('expenses').insert({
-    amount,
-    description,
-    category,
-    split_rule: splitRule,
-    paid_by: paidBy,
-    expense_date: expenseDate,
-    created_by: user.id,
-    custom_other_share: customOtherShare,
-  })
+  const hasAttachments = formData.get('has_attachments') === '1'
 
-  if (error) return { error: 'Errore durante il salvataggio. Riprova.' }
+  const { data: inserted, error } = await supabase
+    .from('expenses')
+    .insert({
+      amount,
+      description,
+      category,
+      split_rule: splitRule,
+      paid_by: paidBy,
+      expense_date: expenseDate,
+      created_by: user.id,
+      custom_other_share: customOtherShare,
+    })
+    .select('id')
+    .single()
+
+  if (error || !inserted) {
+    return { error: 'Errore durante il salvataggio. Riprova.' }
+  }
 
   revalidatePath('/')
   revalidatePath('/spese')
+
+  // Con allegati: niente redirect, il client carica i file e poi naviga.
+  if (hasAttachments) {
+    return { ok: true, expenseId: inserted.id }
+  }
+
   redirect('/?ok=expense-created')
 }
 
@@ -131,6 +148,19 @@ export async function updateExpense(
 
 export async function deleteExpense(id: string) {
   const supabase = await createClient()
+
+  // La FK ON DELETE CASCADE rimuove le righe expense_attachments, ma non i
+  // file su Storage: vanno rimossi a mano prima di eliminare la spesa.
+  const { data: attachments } = await supabase
+    .from('expense_attachments')
+    .select('storage_path')
+    .eq('expense_id', id)
+  if (attachments && attachments.length > 0) {
+    await supabase.storage
+      .from(ATTACHMENTS_BUCKET)
+      .remove(attachments.map((a) => a.storage_path))
+  }
+
   const { error } = await supabase.from('expenses').delete().eq('id', id)
   if (error) throw new Error("Errore durante l'eliminazione.")
 

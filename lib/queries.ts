@@ -1,4 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { ATTACHMENTS_BUCKET } from '@/lib/attachments'
+import type { Tables } from '@/types/database'
+
+export type AttachmentWithUrl = Tables<'expense_attachments'> & {
+  signed_url: string | null
+}
 
 export async function getOpenBalance() {
   const supabase = await createClient()
@@ -51,6 +57,37 @@ export async function getExpenseById(id: string) {
 
   if (error) throw error
   return data
+}
+
+export async function getExpenseAttachments(
+  expenseId: string,
+): Promise<AttachmentWithUrl[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('expense_attachments')
+    .select('*')
+    .eq('expense_id', expenseId)
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  const rows = data ?? []
+  if (rows.length === 0) return []
+
+  const { data: signed } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .createSignedUrls(
+      rows.map((r) => r.storage_path),
+      60 * 60, // 1 ora
+    )
+
+  const urlByPath = new Map(
+    (signed ?? []).map((s) => [s.path, s.signedUrl] as const),
+  )
+
+  return rows.map((r) => ({
+    ...r,
+    signed_url: urlByPath.get(r.storage_path) ?? null,
+  }))
 }
 
 export async function getProfiles() {

@@ -8,6 +8,7 @@ import {
   deleteExpense,
   type ExpenseFormState,
 } from '@/app/actions/expenses'
+import { AttachmentUploader } from '@/components/AttachmentUploader'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
@@ -40,12 +41,14 @@ interface EditExpenseFormProps {
   expense: Expense
   profiles: Profile[]
   currentUserId: string
+  attachmentCount: number
 }
 
 export function EditExpenseForm({
   expense,
   profiles,
   currentUserId,
+  attachmentCount,
 }: EditExpenseFormProps) {
   const boundUpdate = updateExpense.bind(null, expense.id)
   const [state, action, pending] = useActionState<ExpenseFormState, FormData>(
@@ -270,6 +273,21 @@ export function EditExpenseForm({
           required
           disabled={pending || isSettled}
         />
+
+        {!isSettled && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-foreground">
+              Aggiungi allegato
+            </span>
+            <AttachmentUploader
+              mode="immediate"
+              expenseId={expense.id}
+              uploadedBy={currentUserId}
+              existingCount={attachmentCount}
+              disabled={pending}
+            />
+          </div>
+        )}
 
         {state.error && (
           <p role="alert" className="text-sm text-destructive">

@@ -24,6 +24,13 @@ export function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
+export function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  const kb = bytes / 1024
+  if (kb < 1024) return `${kb.toFixed(0)} KB`
+  return `${(kb / 1024).toFixed(1)} MB`
+}
+
 export const CATEGORY_LABELS: Record<string, string> = {
   affitto: 'Affitto',
   bolletta: 'Bolletta',

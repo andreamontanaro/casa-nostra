@@ -1,8 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { createExpense, type ExpenseFormState } from "@/app/actions/expenses";
+import { uploadAttachments } from "@/lib/attachments";
+import { AttachmentUploader } from "@/components/AttachmentUploader";
+import { toast } from "@/lib/toast";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import {
@@ -59,10 +63,42 @@ export function ExpenseForm({
   suggestions = [],
   onOptimisticInsert,
 }: ExpenseFormProps) {
+  const router = useRouter();
   const [state, action, pending] = useActionState<ExpenseFormState, FormData>(
     createExpense,
     {},
   );
+  const [attachFiles, setAttachFiles] = useState<File[]>([]);
+  // Quando createExpense torna un expenseId (caso con allegati) entriamo nella
+  // fase di finalizzazione: upload dei file e poi navigazione.
+  const finalizing = Boolean(state.expenseId);
+
+  // Con allegati createExpense non fa redirect ma torna expenseId: carichiamo
+  // i file e poi navighiamo alla home.
+  useEffect(() => {
+    if (!state.expenseId) return;
+    let cancelled = false;
+    (async () => {
+      if (attachFiles.length > 0) {
+        const results = await uploadAttachments(
+          state.expenseId!,
+          attachFiles,
+          currentUserId,
+        );
+        const failCount = results.filter((r) => !r.ok).length;
+        if (failCount > 0) {
+          toast.error("Spesa salvata, alcuni allegati non sono stati caricati.");
+        }
+      }
+      if (cancelled) return;
+      router.push("/?ok=expense-created");
+      router.refresh();
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.expenseId]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (!onOptimisticInsert) return;
@@ -362,13 +398,36 @@ export function ExpenseForm({
         disabled={pending}
       />
 
+      {/* Allegati */}
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium text-foreground">
+          Allegati (facoltativi)
+        </span>
+        <AttachmentUploader
+          mode="deferred"
+          files={attachFiles}
+          onFilesChange={setAttachFiles}
+          disabled={pending || finalizing}
+        />
+      </div>
+      <input
+        type="hidden"
+        name="has_attachments"
+        value={attachFiles.length > 0 ? "1" : "0"}
+      />
+
       {state.error && (
         <p role="alert" className="text-sm text-destructive">
           {state.error}
         </p>
       )}
 
-      <Button type="submit" size="lg" loading={pending} className="mt-1 w-full">
+      <Button
+        type="submit"
+        size="lg"
+        loading={pending || finalizing}
+        className="mt-1 w-full"
+      >
         Salva spesa
       </Button>
     </form>
