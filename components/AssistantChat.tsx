@@ -130,8 +130,11 @@ export function AssistantChat() {
         transition={{ type: 'spring', stiffness: 320, damping: 22, delay: 0.2 }}
         whileTap={{ scale: 0.92 }}
         className={cn(
-          'fixed right-4 z-40',
-          'bottom-[calc(8rem+env(safe-area-inset-bottom))]',
+          // right-5 (1.25rem) allinea il centro di questo bottone (size-12) a
+          // quello del FAB (right-4 + size-14); bottom 10rem lascia ~1rem di gap
+          // sopra il FAB, che termina a 9rem dal fondo.
+          'fixed right-5 z-40',
+          'bottom-[calc(10rem+env(safe-area-inset-bottom))]',
           'flex size-12 items-center justify-center rounded-full',
           'bg-surface text-accent border border-border shadow-card',
         )}

@@ -99,7 +99,8 @@ export function SpeseFiltri({ expenses }: SpeseFiltriProps) {
           placeholder="Cerca per descrizione…"
           className={cn(
             'h-11 w-full rounded-2xl border border-border bg-surface',
-            'pl-10 pr-10 text-sm text-foreground placeholder:text-muted',
+            // text-base (16px): sotto i 16px iOS Safari fa zoom sulla UI al focus.
+            'pl-10 pr-10 text-base text-foreground placeholder:text-muted',
             'shadow-soft',
             'focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent',
           )}

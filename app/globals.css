@@ -173,15 +173,28 @@ body {
   scrollbar-width: none;
 }
 
-/* iOS Safari: i campi <input type="date"> hanno una min-width intrinseca
-   che fa straboccare il box rispetto al container. */
+/* iOS Safari: i campi <input type="date"> mantengono l'aspetto nativo e una
+   min-width intrinseca, quindi ignorano width:100% ed escono fuori dal box a
+   destra. Disattiviamo l'appearance nativa così il campo rispetta la larghezza
+   del container, e azzeriamo le min-width residue. */
 input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
   min-width: 0;
+  max-width: 100%;
   -webkit-min-logical-width: 0;
+  box-sizing: border-box;
 }
 
 input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
+  min-width: 0;
+}
+
+/* L'editor interno della data non deve aggiungere larghezza propria. */
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+  min-width: 0;
 }
 
 /* Dialog reset (per i pochi <dialog> nativi residui) */
