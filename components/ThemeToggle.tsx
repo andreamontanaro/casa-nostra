@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -36,19 +36,22 @@ function applyTheme(theme: Theme) {
       localStorage.setItem(STORAGE_KEY, theme)
     } catch {}
   }
+  window.dispatchEvent(new Event('casa-nostra-theme-change'))
+}
+
+function subscribeTheme(callback: () => void) {
+  window.addEventListener('storage', callback)
+  window.addEventListener('casa-nostra-theme-change', callback)
+  return () => {
+    window.removeEventListener('storage', callback)
+    window.removeEventListener('casa-nostra-theme-change', callback)
+  }
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('system')
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setTheme(readTheme())
-    setMounted(true)
-  }, [])
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => 'system')
 
   function handleChange(next: Theme) {
-    setTheme(next)
     applyTheme(next)
   }
 
@@ -59,7 +62,7 @@ export function ThemeToggle() {
       className="flex w-full rounded-2xl border border-border bg-surface-sunken p-1"
     >
       {options.map(({ value, label, icon: Icon }) => {
-        const active = mounted && theme === value
+        const active = theme === value
         return (
           <button
             key={value}
