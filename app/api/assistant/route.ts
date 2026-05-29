@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type, type Content, type Part, type FunctionCall } from '@google/genai'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
   getCurrentUser,
@@ -15,6 +16,8 @@ import {
   CATEGORY_LABELS,
   SPLIT_LABELS,
 } from '@/lib/fmt'
+import { Constants } from '@/types/database'
+import type { Database } from '@/types/database'
 
 // Serve il runtime Node: scarichiamo i byte degli allegati e usiamo l'SDK Gemini.
 export const runtime = 'nodejs'
@@ -23,7 +26,18 @@ export const maxDuration = 60
 const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest'
 const MAX_TURNS = 5
 
+// Marcatore non visibile inviato nello stream quando viene creata una spesa: il
+// client lo intercetta per rinfrescare la pagina sottostante. Il NUL non è
+// producibile dal modello in testo normale, quindi non rischia collisioni.
+const NUL = String.fromCharCode(0)
+const REFRESH_SENTINEL = `${NUL}REFRESH${NUL}`
+
 type IncomingMessage = { role: 'user' | 'model'; text: string }
+type ExpenseCategory = Database['public']['Enums']['expense_category']
+type SplitRule = Database['public']['Enums']['split_rule']
+
+const VALID_CATEGORIES = Constants.public.Enums.expense_category
+const VALID_SPLITS = Constants.public.Enums.split_rule
 
 // Dichiarazione del tool: il modello la invoca quando vuole "vedere" uno scontrino.
 const getAttachmentsTool = {
@@ -42,6 +56,57 @@ const getAttachmentsTool = {
       },
     },
     required: ['expense_id'],
+  },
+}
+
+// Dichiarazione del tool con cui il modello registra una nuova spesa condivisa.
+// Da invocare SOLO dopo aver riepilogato la spesa e ottenuto conferma dall'utente.
+const createExpenseTool = {
+  name: 'create_expense',
+  description:
+    'Registra una NUOVA spesa condivisa nel database. Usalo solo quando l\'utente ha confermato ' +
+    'esplicitamente di voler aggiungere la spesa e hai tutte le informazioni obbligatorie ' +
+    '(importo, descrizione, categoria, chi ha pagato). Se manca qualcosa, chiedila prima; ' +
+    'prima di chiamare il tool riepiloga la spesa e attendi un "sì" dell\'utente. ' +
+    'category deve essere una tra: affitto, bolletta, spesa_alimentare, abbonamento, manutenzione, viaggi, altro. ' +
+    'split_rule (facoltativo) tra: fifty_fifty, sixty_forty, custom; se non lo specifichi viene scelto in automatico ' +
+    '(affitto = 50/50, tutto il resto = 60/40). expense_date facoltativo in formato YYYY-MM-DD (default: oggi). ' +
+    'paid_by deve essere l\'UUID esatto di una delle persone elencate in PERSONE.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      amount: {
+        type: Type.NUMBER,
+        description: 'Importo totale della spesa in euro, maggiore di zero.',
+      },
+      description: {
+        type: Type.STRING,
+        description: 'Breve descrizione della spesa (es. "Spesa al Lidl").',
+      },
+      category: {
+        type: Type.STRING,
+        description:
+          'Categoria: affitto | bolletta | spesa_alimentare | abbonamento | manutenzione | viaggi | altro.',
+      },
+      paid_by: {
+        type: Type.STRING,
+        description: 'UUID esatto della persona che ha pagato (vedi elenco PERSONE).',
+      },
+      split_rule: {
+        type: Type.STRING,
+        description: 'Facoltativo: fifty_fifty | sixty_forty | custom.',
+      },
+      expense_date: {
+        type: Type.STRING,
+        description: 'Facoltativo: data in formato YYYY-MM-DD. Default: oggi.',
+      },
+      custom_other_share: {
+        type: Type.NUMBER,
+        description:
+          'Obbligatorio solo se split_rule = "custom": quota in euro a carico dell\'altra persona (deve essere minore dell\'importo totale).',
+      },
+    },
+    required: ['amount', 'description', 'category', 'paid_by'],
   },
 }
 
@@ -92,7 +157,7 @@ export async function POST(request: Request) {
 
   const config = {
     systemInstruction,
-    tools: [{ functionDeclarations: [getAttachmentsTool] }],
+    tools: [{ functionDeclarations: [getAttachmentsTool, createExpenseTool] }],
     temperature: 0.4,
   }
 
@@ -156,6 +221,24 @@ export async function POST(request: Request) {
                 },
               })
               responseParts.push(...media)
+            } else if (call.name === 'create_expense') {
+              const result = await createExpenseFromTool(
+                call.args as Record<string, unknown> | undefined,
+                user.id,
+              )
+              responseParts.push({
+                functionResponse: {
+                  id: call.id,
+                  name: 'create_expense',
+                  response: result.ok
+                    ? { result: result.summary, expense_id: result.expenseId }
+                    : { error: result.error },
+                },
+              })
+              // Spesa creata: segnala al client di rinfrescare la pagina sottostante.
+              if (result.ok) {
+                controller.enqueue(encoder.encode(REFRESH_SENTINEL))
+              }
             } else {
               responseParts.push({
                 functionResponse: {
@@ -207,7 +290,7 @@ async function buildSystemInstruction(currentUserId: string): Promise<string> {
   const profileLines = profiles
     .map(
       (p) =>
-        `- ${p.display_name}${p.id === currentUserId ? ' (è chi ti sta scrivendo, "io"/"tu")' : ''}` +
+        `- ${p.display_name} (id: ${p.id})${p.id === currentUserId ? ' — è chi ti sta scrivendo ("io"/"tu")' : ''}` +
         `${p.higher_income ? ' — reddito maggiore, paga il 60% nelle spese 60/40' : ''}`,
     )
     .join('\n')
@@ -261,6 +344,16 @@ async function buildSystemInstruction(currentUserId: string): Promise<string> {
     '- Quando l\'utente chiede di vedere/leggere uno scontrino, o un dettaglio che richiede la ricevuta, chiama get_attachments con l\'id della spesa pertinente.',
     '- Se una spesa non ha 📎scontrino, dillo chiaramente invece di inventare.',
     '- Sii utile per riepiloghi, confronti, considerazioni e consigli sull\'uso dei soldi, restando basato sui dati reali.',
+    '',
+    'AGGIUNGERE UNA SPESA (tool create_expense):',
+    '- Usalo quando l\'utente chiede di aggiungere/registrare/segnare una spesa.',
+    '- Servono sempre: importo, descrizione, categoria e chi ha pagato (paid_by = l\'id esatto della persona dall\'elenco PERSONE). "io"/"ho pagato io" = l\'id di chi ti sta scrivendo.',
+    '- Se manca un\'informazione obbligatoria, CHIEDILA; non inventare importi, pagante o categoria.',
+    '- PRIMA di chiamare il tool, RIEPILOGA la spesa (importo, descrizione, categoria, chi ha pagato, divisione, data) e chiedi una conferma esplicita. Chiama create_expense SOLO dopo che l\'utente ha confermato (es. "sì", "ok", "conferma").',
+    '- Categoria: scegli la più adatta tra le 7 disponibili; in dubbio usa "altro".',
+    '- Divisione: NON passare split_rule a meno che l\'utente non lo chieda esplicitamente — il default è automatico (affitto = 50/50, tutto il resto = 60/40). Per una divisione personalizzata usa split_rule="custom" con custom_other_share.',
+    '- Data: default oggi; converti "ieri"/"l\'altro ieri"/"il primo del mese" in formato YYYY-MM-DD usando la DATA DI OGGI.',
+    '- Dopo la creazione, conferma in modo naturale cosa hai registrato e includi SEMPRE un link markdown per aprirla/modificarla, nella forma [Apri la spesa](/spese/ID), usando l\'expense_id che il tool ti restituisce.',
   ].join('\n')
 }
 
@@ -322,4 +415,103 @@ async function loadAttachmentParts(
     summary: `Allegati caricati e visibili nel messaggio (${loaded.length}): ${loaded.join(', ')}.`,
     media,
   }
+}
+
+type CreateExpenseResult =
+  | { ok: true; expenseId: string; summary: string }
+  | { ok: false; error: string }
+
+/**
+ * Valida gli argomenti del tool create_expense e inserisce la spesa su Supabase.
+ * Replica la logica di app/actions/expenses.ts (non riusabile qui perché legata a
+ * FormData/redirect) e rispetta i check constraint dello schema.
+ */
+async function createExpenseFromTool(
+  args: Record<string, unknown> | undefined,
+  currentUserId: string,
+): Promise<CreateExpenseResult> {
+  const a = args ?? {}
+
+  // Importo: numero (o stringa con virgola) maggiore di zero.
+  const amount =
+    typeof a.amount === 'number'
+      ? a.amount
+      : parseFloat(String(a.amount ?? '').replace(',', '.'))
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, error: 'Importo non valido: deve essere un numero maggiore di zero.' }
+  }
+
+  const description = String(a.description ?? '').trim()
+  if (!description) return { ok: false, error: 'La descrizione è obbligatoria.' }
+
+  const category = String(a.category ?? '') as ExpenseCategory
+  if (!VALID_CATEGORIES.includes(category as never)) {
+    return { ok: false, error: `Categoria non valida: "${category}".` }
+  }
+
+  // paid_by deve corrispondere all'id di uno dei due profili reali.
+  const profiles = await getProfiles()
+  const payer = profiles.find((p) => p.id === String(a.paid_by ?? ''))
+  if (!payer) {
+    return { ok: false, error: 'Non riconosco chi ha pagato (paid_by non valido).' }
+  }
+
+  // Regola di divisione: usa quella passata se valida, altrimenti il default per categoria.
+  let splitRule = String(a.split_rule ?? '') as SplitRule
+  if (!VALID_SPLITS.includes(splitRule as never)) {
+    splitRule = category === 'affitto' ? 'fifty_fifty' : 'sixty_forty'
+  }
+
+  // custom_other_share: coerente col check expenses_custom_share_consistency.
+  let customOtherShare: number | null = null
+  if (splitRule === 'custom') {
+    const cv =
+      typeof a.custom_other_share === 'number'
+        ? a.custom_other_share
+        : parseFloat(String(a.custom_other_share ?? '').replace(',', '.'))
+    if (!Number.isFinite(cv) || cv <= 0 || cv >= amount) {
+      return {
+        ok: false,
+        error:
+          "Per la divisione personalizzata serve la quota dell'altra persona, positiva e inferiore al totale.",
+      }
+    }
+    customOtherShare = Math.round(cv * 100) / 100
+  }
+
+  // Data: accetta solo YYYY-MM-DD, altrimenti oggi.
+  const rawDate = String(a.expense_date ?? '').trim()
+  const expenseDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayISO()
+
+  const supabase = await createClient()
+  const { data: inserted, error } = await supabase
+    .from('expenses')
+    .insert({
+      amount: Math.round(amount * 100) / 100,
+      description,
+      category,
+      split_rule: splitRule,
+      paid_by: payer.id,
+      expense_date: expenseDate,
+      created_by: currentUserId,
+      custom_other_share: customOtherShare,
+    })
+    .select('id')
+    .single()
+
+  if (error || !inserted) {
+    return { ok: false, error: 'Errore durante il salvataggio della spesa nel database.' }
+  }
+
+  // Invalida la cache delle pagine che mostrano le spese (il refresh visivo lo guida il client).
+  revalidatePath('/')
+  revalidatePath('/spese')
+
+  const catLabel = CATEGORY_LABELS[category] ?? category
+  const splitLabel = SPLIT_LABELS[splitRule] ?? splitRule
+  const summary =
+    `Spesa creata: ${formatEur(amount)} — "${description}" (${catLabel}), ` +
+    `divisione ${splitLabel}, pagata da ${payer.display_name}, data ${expenseDate}.`
+
+  return { ok: true, expenseId: inserted.id, summary }
 }

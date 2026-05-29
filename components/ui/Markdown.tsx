@@ -1,8 +1,16 @@
+'use client'
+
+import { useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 // Mappatura degli elementi Markdown allo stile della chat (Tailwind, niente plugin prose).
-const components: Components = {
+function buildComponents(
+  router: ReturnType<typeof useRouter>,
+  onNavigate?: () => void,
+): Components {
+  return {
   p: ({ children }) => <p className="my-1.5 first:mt-0 last:mb-0 leading-relaxed">{children}</p>,
   ul: ({ children }) => (
     <ul className="my-1.5 list-disc space-y-1 pl-5 first:mt-0 last:mb-0">{children}</ul>
@@ -13,16 +21,36 @@ const components: Components = {
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
-  a: ({ children, href }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="font-medium text-accent underline underline-offset-2"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ children, href }) => {
+    // I link interni (es. /spese/<id>) navigano in-app col router e chiudono la chat;
+    // quelli esterni si aprono in una nuova scheda come prima.
+    const isInternal = !!href && href.startsWith('/')
+    if (isInternal) {
+      return (
+        <a
+          href={href}
+          onClick={(e) => {
+            e.preventDefault()
+            onNavigate?.()
+            router.push(href)
+          }}
+          className="font-medium text-accent underline underline-offset-2"
+        >
+          {children}
+        </a>
+      )
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-accent underline underline-offset-2"
+      >
+        {children}
+      </a>
+    )
+  },
   h1: ({ children }) => <h1 className="my-2 text-base font-semibold first:mt-0">{children}</h1>,
   h2: ({ children }) => <h2 className="my-2 text-base font-semibold first:mt-0">{children}</h2>,
   h3: ({ children }) => <h3 className="my-2 text-sm font-semibold first:mt-0">{children}</h3>,
@@ -49,9 +77,18 @@ const components: Components = {
     <th className="border border-border px-2 py-1 font-semibold">{children}</th>
   ),
   td: ({ children }) => <td className="border border-border px-2 py-1">{children}</td>,
+  }
 }
 
-export function Markdown({ children }: { children: string }) {
+export function Markdown({
+  children,
+  onNavigate,
+}: {
+  children: string
+  onNavigate?: () => void
+}) {
+  const router = useRouter()
+  const components = useMemo(() => buildComponents(router, onNavigate), [router, onNavigate])
   return (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
       {children}

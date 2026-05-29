@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'motion/react'
 import { Sparkles, X, Send } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
@@ -9,6 +10,11 @@ import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string }
+
+// Stesso marcatore emesso dal route /api/assistant quando crea una spesa: lo
+// rimuoviamo dal testo e lo usiamo per rinfrescare la pagina sottostante.
+const NUL = String.fromCharCode(0)
+const REFRESH_SENTINEL = `${NUL}REFRESH${NUL}`
 
 const SUGGESTIONS = [
   'Cosa ho comprato ieri?',
@@ -22,6 +28,7 @@ const GREETING =
   'chiedimi un riepilogo, cosa avete comprato, chi deve quanto, o di guardare uno scontrino.'
 
 export function AssistantChat() {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -74,10 +81,16 @@ export function AssistantChat() {
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let started = false
+      let needsRefresh = false
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value, { stream: true })
+        let chunk = decoder.decode(value, { stream: true })
+        // Il marcatore di refresh non deve finire nella bolla: lo togliamo dal testo.
+        if (chunk.includes(REFRESH_SENTINEL)) {
+          needsRefresh = true
+          chunk = chunk.split(REFRESH_SENTINEL).join('')
+        }
         if (!chunk) continue
         if (!started) {
           // Al primo testo che arriva togliamo lo spinner e creiamo la bolla.
@@ -97,6 +110,8 @@ export function AssistantChat() {
       }
       // Se lo stream si chiude senza testo, evitiamo di lasciare lo spinner acceso.
       setLoading(false)
+      // Una spesa è stata creata: aggiorna i Server Component della pagina sottostante.
+      if (needsRefresh) router.refresh()
     } catch {
       toast.error('Errore di rete con l\'assistente.')
       setLoading(false)
@@ -203,7 +218,7 @@ export function AssistantChat() {
                     >
                       {m.role === 'assistant' ? (
                         m.text ? (
-                          <Markdown>{m.text}</Markdown>
+                          <Markdown onNavigate={() => setOpen(false)}>{m.text}</Markdown>
                         ) : (
                           <span className="text-muted">…</span>
                         )
