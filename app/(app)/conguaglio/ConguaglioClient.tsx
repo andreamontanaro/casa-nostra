@@ -85,48 +85,42 @@ export function ConguaglioClient({
     <>
       {/* Card saldo netto */}
       {!hasBalance ? (
-        <Card>
-          <div className="flex flex-col items-center gap-3 px-4 py-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-muted text-accent">
-              <Check className="size-6" strokeWidth={2.5} />
-            </div>
-            <div className="text-center">
-              <p className="text-base font-semibold text-foreground">
-                {totalCount === 0 || selectedCount === 0
-                  ? 'Siete pari'
-                  : 'Nessun saldo sulla selezione'}
-              </p>
-              <p className="mt-0.5 text-sm text-muted">
-                {totalCount === 0
-                  ? 'Niente da conguagliare.'
-                  : selectedCount === 0
-                    ? 'Seleziona almeno una spesa.'
-                    : 'Le spese selezionate si compensano.'}
-              </p>
-            </div>
+        <div className="flex flex-col items-center gap-3 px-1 py-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-muted text-accent-soft">
+            <Check className="size-6" strokeWidth={2.5} />
           </div>
-        </Card>
+          <div className="text-center">
+            <p className="text-base font-semibold text-foreground">
+              {totalCount === 0 || selectedCount === 0
+                ? 'Siete pari'
+                : 'Nessun saldo sulla selezione'}
+            </p>
+            <p className="mt-0.5 text-sm text-muted">
+              {totalCount === 0
+                ? 'Niente da conguagliare.'
+                : selectedCount === 0
+                  ? 'Seleziona almeno una spesa.'
+                  : 'Le spese selezionate si compensano.'}
+            </p>
+          </div>
+        </div>
       ) : (
-        <div
-          className={cn(
-            'relative overflow-hidden rounded-3xl p-6 shadow-card',
-            'text-accent-foreground',
-            'bg-gradient-to-br from-accent via-accent to-accent-soft',
-          )}
-        >
-          <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-b from-accent-foreground/10 via-transparent to-transparent" />
-          <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent-foreground/10 blur-2xl" />
+        <div className="relative px-1 py-2 text-foreground">
           <div className="relative flex flex-col items-center gap-3">
-            <p className="text-xs font-medium uppercase tracking-wider opacity-80">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted">
               Saldo netto
             </p>
             <p className="text-4xl font-bold tracking-tight tabular-nums">
               {formatEur(absAmount)}
             </p>
-            <div className="flex items-center gap-3 rounded-full bg-accent-foreground/15 px-3 py-1 text-sm font-medium">
-              <span className={isCredit ? '' : 'opacity-70'}>{payer}</span>
+            <div className="flex items-center gap-3 rounded-full bg-accent-muted px-3 py-1 text-sm font-medium text-accent-soft">
+              <span className={isCredit ? 'text-foreground' : ''}>
+                {payer}
+              </span>
               <ArrowRight className="size-4" strokeWidth={2.5} />
-              <span className={!isCredit ? '' : 'opacity-70'}>{receiver}</span>
+              <span className={!isCredit ? 'text-foreground' : ''}>
+                {receiver}
+              </span>
             </div>
           </div>
         </div>
@@ -147,7 +141,7 @@ export function ConguaglioClient({
               {allSelected ? 'Deseleziona tutte' : 'Seleziona tutte'}
             </button>
           </div>
-          <Card className="divide-y divide-border overflow-hidden p-0">
+          <Card className="divide-y divide-border overflow-hidden bg-surface/86 p-0 backdrop-blur">
             {expenses.map((e) => {
               const checked = selectedIds.has(e.id)
               return (

@@ -34,8 +34,8 @@ function Avatar({
       className={cn(
         'flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold',
         highlighted
-          ? 'border-accent-foreground/40 bg-accent-foreground/25'
-          : 'border-accent-foreground/20 bg-accent-foreground/10 opacity-80',
+          ? 'border-accent/30 bg-accent text-accent-foreground'
+          : 'border-border bg-surface/70 text-muted',
         className,
       )}
     >
@@ -63,25 +63,16 @@ export function BalanceCard({ rows, currentUserId }: BalanceCardProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-      className={cn(
-        'relative overflow-hidden rounded-3xl p-5 shadow-card',
-        'text-accent-foreground',
-        'bg-gradient-to-br from-accent via-accent to-accent-soft',
-      )}
+      className="relative px-1 py-2 text-foreground"
     >
-      {/* Highlight interno */}
-      <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-b from-accent-foreground/10 via-transparent to-transparent" />
-      {/* Blob decorativo */}
-      <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-accent-foreground/10 blur-2xl" />
-
       <div className="relative">
-        <p className="text-xs font-medium uppercase tracking-wider opacity-80">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted">
           Saldo corrente
         </p>
 
         {isZero ? (
           <div className="mt-2 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-foreground/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-muted text-accent-soft">
               <Check className="size-5" strokeWidth={2.5} />
             </div>
             <div>
@@ -111,7 +102,7 @@ export function BalanceCard({ rows, currentUserId }: BalanceCardProps) {
                 initial={{ x: -6, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.15, duration: 0.3 }}
-                className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-foreground/15"
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-muted text-accent-soft"
               >
                 <ArrowRight className="size-3.5" strokeWidth={2.5} />
               </motion.div>
@@ -120,17 +111,21 @@ export function BalanceCard({ rows, currentUserId }: BalanceCardProps) {
                 highlighted={isCredit}
                 className="ring-1 ring-accent-foreground/10"
               />
-              <p className="ml-1 text-sm leading-tight opacity-90">
+              <p className="ml-1 text-sm leading-tight text-muted">
                 {isCredit ? (
                   <>
-                    <span className="font-medium">{payer.display_name}</span>
+                    <span className="font-medium text-foreground">
+                      {payer.display_name}
+                    </span>
                     <br />
                     ti deve questi soldi
                   </>
                 ) : (
                   <>
                     Devi a{' '}
-                    <span className="font-medium">{receiver.display_name}</span>
+                    <span className="font-medium text-foreground">
+                      {receiver.display_name}
+                    </span>
                   </>
                 )}
               </p>
@@ -138,21 +133,21 @@ export function BalanceCard({ rows, currentUserId }: BalanceCardProps) {
           </>
         )}
 
-        <div className="mt-5 grid grid-cols-3 gap-3 border-t border-accent-foreground/20 pt-3 text-xs">
+        <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border pt-3 text-xs">
           <div>
-            <p className="opacity-70">Hai anticipato</p>
+            <p className="text-muted">Hai anticipato</p>
             <p className="mt-0.5 font-semibold tabular-nums">
               {formatEur(me.total_anticipated ?? 0)}
             </p>
           </div>
-          <div className="border-x border-accent-foreground/15 px-3">
-            <p className="opacity-70">Quota personale</p>
+          <div className="border-x border-border px-3">
+            <p className="text-muted">Quota personale</p>
             <p className="mt-0.5 font-semibold tabular-nums">
               {formatEur(me.total_owed ?? 0)}
             </p>
           </div>
           <div>
-            <p className="truncate opacity-70">
+            <p className="truncate text-muted">
               {other.display_name?.split(' ')[0]} ha messo
             </p>
             <p className="mt-0.5 font-semibold tabular-nums">
