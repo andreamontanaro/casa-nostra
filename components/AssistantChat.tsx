@@ -15,6 +15,13 @@ type ChatMessage = { role: 'user' | 'assistant'; text: string }
 // rimuoviamo dal testo e lo usiamo per rinfrescare la pagina sottostante.
 const NUL = String.fromCharCode(0)
 const REFRESH_SENTINEL = `${NUL}REFRESH${NUL}`
+// Marcatori che racchiudono il testo dell'azione in corso (vedi /api/assistant):
+// fra ACTION_OPEN e ACTION_CLOSE c'è la frase da mostrare al posto di "Sto pensando…".
+const ACTION_OPEN = `${NUL}ACTION${NUL}`
+const ACTION_CLOSE = `${NUL}/ACTION${NUL}`
+// Marcatori "di controllo" che possono comparire nello stream: se il buffer termina
+// con un loro prefisso parziale, aspettiamo altri dati prima di interpretarlo.
+const CONTROL_MARKERS = [REFRESH_SENTINEL, ACTION_OPEN]
 
 const SUGGESTIONS = [
   'Cosa ho comprato ieri?',
@@ -33,12 +40,14 @@ export function AssistantChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  // Frase "in tempo reale" mostrata mentre l'assistente usa uno strumento; null = nessuna.
+  const [action, setAction] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, loading])
+  }, [messages, loading, action])
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 250)
@@ -52,6 +61,7 @@ export function AssistantChat() {
     setMessages(history)
     setInput('')
     setLoading(true)
+    setAction(null)
 
     try {
       const res = await fetch('/api/assistant', {
@@ -82,39 +92,83 @@ export function AssistantChat() {
       const decoder = new TextDecoder()
       let started = false
       let needsRefresh = false
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        let chunk = decoder.decode(value, { stream: true })
-        // Il marcatore di refresh non deve finire nella bolla: lo togliamo dal testo.
-        if (chunk.includes(REFRESH_SENTINEL)) {
-          needsRefresh = true
-          chunk = chunk.split(REFRESH_SENTINEL).join('')
-        }
-        if (!chunk) continue
+
+      // Appende testo "vero" alla bolla dell'assistente: al primo pezzo crea la bolla,
+      // spegne lo spinner e azzera l'azione in corso.
+      const appendText = (text: string) => {
+        if (!text) return
         if (!started) {
-          // Al primo testo che arriva togliamo lo spinner e creiamo la bolla.
           started = true
           setLoading(false)
-          setMessages((prev) => [...prev, { role: 'assistant', text: chunk }])
-          continue
+          setAction(null)
+          setMessages((prev) => [...prev, { role: 'assistant', text }])
+          return
         }
         setMessages((prev) => {
           const next = [...prev]
           const last = next[next.length - 1]
           if (last?.role === 'assistant') {
-            next[next.length - 1] = { ...last, text: last.text + chunk }
+            next[next.length - 1] = { ...last, text: last.text + text }
           }
           return next
         })
       }
+
+      // I marcatori di controllo (refresh, azioni) possono essere spezzati tra due
+      // chunk: accumuliamo in un buffer ed estraiamo testo ed eventi un pezzo alla volta.
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        let keepParsing = true
+        while (keepParsing) {
+          keepParsing = false
+          const nul = buffer.indexOf(NUL)
+          // Nessun marcatore in vista: tutto il buffer è testo.
+          if (nul === -1) {
+            appendText(buffer)
+            buffer = ''
+            break
+          }
+          // Emetti il testo che precede il marcatore.
+          if (nul > 0) {
+            appendText(buffer.slice(0, nul))
+            buffer = buffer.slice(nul)
+          }
+          // Ora il buffer inizia con un NUL: prova a riconoscere un marcatore completo.
+          if (buffer.startsWith(REFRESH_SENTINEL)) {
+            needsRefresh = true
+            buffer = buffer.slice(REFRESH_SENTINEL.length)
+            keepParsing = true
+          } else if (buffer.startsWith(ACTION_OPEN)) {
+            const closeAt = buffer.indexOf(ACTION_CLOSE, ACTION_OPEN.length)
+            if (closeAt === -1) break // frase non ancora completa: aspetta altri dati
+            setAction(buffer.slice(ACTION_OPEN.length, closeAt))
+            buffer = buffer.slice(closeAt + ACTION_CLOSE.length)
+            keepParsing = true
+          } else if (CONTROL_MARKERS.some((m) => m.startsWith(buffer))) {
+            break // marcatore incompleto a fine buffer: aspetta altri dati
+          } else {
+            // NUL isolato non riconducibile a un marcatore: trattalo come testo.
+            appendText(buffer[0])
+            buffer = buffer.slice(1)
+            keepParsing = true
+          }
+        }
+      }
+      // Flush di eventuale testo residuo (non un marcatore incompleto rimasto appeso).
+      if (buffer && !buffer.startsWith(NUL)) appendText(buffer)
       // Se lo stream si chiude senza testo, evitiamo di lasciare lo spinner acceso.
       setLoading(false)
+      setAction(null)
       // Una spesa è stata creata: aggiorna i Server Component della pagina sottostante.
       if (needsRefresh) router.refresh()
     } catch {
       toast.error('Errore di rete con l\'assistente.')
       setLoading(false)
+      setAction(null)
     }
   }
 
@@ -236,7 +290,18 @@ export function AssistantChat() {
                   <div className="flex justify-start">
                     <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-surface-raised px-4 py-3 text-muted">
                       <Spinner size="sm" />
-                      <span className="text-xs">Sto pensando…</span>
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.span
+                          key={action ?? '__thinking__'}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.18 }}
+                          className="text-xs"
+                        >
+                          {action ?? 'Sto pensando…'}
+                        </motion.span>
+                      </AnimatePresence>
                     </div>
                   </div>
                 )}

@@ -32,6 +32,23 @@ const MAX_TURNS = 5
 const NUL = String.fromCharCode(0)
 const REFRESH_SENTINEL = `${NUL}REFRESH${NUL}`
 
+// Marcatori che racchiudono il testo dell'azione in corso (es. "Sto visionando lo
+// scontrino…"): il client li intercetta e mostra la frase al posto di "Sto pensando…".
+// Anche qui il NUL evita collisioni con il testo prodotto dal modello.
+const ACTION_OPEN = `${NUL}ACTION${NUL}`
+const ACTION_CLOSE = `${NUL}/ACTION${NUL}`
+
+// Descrizione condivisa del parametro "action" presente su ogni tool: una frase in
+// prima persona mostrata in tempo reale all'utente mentre lo strumento lavora.
+const actionParam = {
+  type: Type.STRING,
+  description:
+    'Breve frase in prima persona, in italiano, che descrive in tempo reale all\'utente ' +
+    'cosa stai facendo mentre usi questo strumento (es. "Sto visionando lo scontrino della ' +
+    'spesa di ieri…" oppure "Sto aggiungendo la bolletta della luce…"). Viene mostrata come ' +
+    'stato di caricamento, quindi scrivila sempre, concisa e con i puntini di sospensione finali.',
+}
+
 type IncomingMessage = { role: 'user' | 'model'; text: string }
 type ExpenseCategory = Database['public']['Enums']['expense_category']
 type SplitRule = Database['public']['Enums']['split_rule']
@@ -54,6 +71,7 @@ const getAttachmentsTool = {
         type: Type.STRING,
         description: 'L\'id (UUID) della spesa di cui caricare gli allegati.',
       },
+      action: actionParam,
     },
     required: ['expense_id'],
   },
@@ -105,6 +123,7 @@ const createExpenseTool = {
         description:
           'Obbligatorio solo se split_rule = "custom": quota in euro a carico dell\'altra persona (deve essere minore dell\'importo totale).',
       },
+      action: actionParam,
     },
     required: ['amount', 'description', 'category', 'paid_by'],
   },
@@ -208,6 +227,15 @@ export async function POST(request: Request) {
 
           const responseParts: Part[] = []
           for (const call of turnCalls) {
+            // Mostra all'utente cosa sta facendo l'assistente PRIMA di eseguire il
+            // tool (così la frase compare mentre lo strumento lavora).
+            const action = String(
+              (call.args as Record<string, unknown> | undefined)?.action ?? '',
+            ).trim()
+            if (action) {
+              controller.enqueue(encoder.encode(ACTION_OPEN + action + ACTION_CLOSE))
+            }
+
             if (call.name === 'get_attachments') {
               const expenseId = String(
                 (call.args as Record<string, unknown> | undefined)?.expense_id ?? '',
@@ -344,6 +372,7 @@ async function buildSystemInstruction(currentUserId: string): Promise<string> {
     '- Quando l\'utente chiede di vedere/leggere uno scontrino, o un dettaglio che richiede la ricevuta, chiama get_attachments con l\'id della spesa pertinente.',
     '- Se una spesa non ha 📎scontrino, dillo chiaramente invece di inventare.',
     '- Sii utile per riepiloghi, confronti, considerazioni e consigli sull\'uso dei soldi, restando basato sui dati reali.',
+    '- Ogni volta che usi uno strumento (get_attachments, create_expense) compila SEMPRE il parametro "action": una breve frase in prima persona che descrive cosa stai facendo (es. "Sto visionando lo scontrino della spesa di ieri…"). Viene mostrata all\'utente come stato di caricamento mentre lo strumento lavora.',
     '',
     'AGGIUNGERE UNA SPESA (tool create_expense):',
     '- Usalo quando l\'utente chiede di aggiungere/registrare/segnare una spesa.',
