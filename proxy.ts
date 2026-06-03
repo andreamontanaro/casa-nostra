@@ -25,15 +25,19 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isLoginPage = request.nextUrl.pathname === '/login'
+  // Route raggiungibili senza autenticazione: la vetrina pubblica e il login.
+  const PUBLIC_PATHS = ['/landing', '/login']
+  const isPublic = PUBLIC_PATHS.includes(request.nextUrl.pathname)
 
-  if (!user && !isLoginPage) {
+  // Visitatore non autenticato su una route privata → mandalo alla vetrina.
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/landing'
     return NextResponse.redirect(url)
   }
 
-  if (user && isLoginPage) {
+  // Utente già autenticato che apre vetrina o login → portalo in home.
+  if (user && isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
