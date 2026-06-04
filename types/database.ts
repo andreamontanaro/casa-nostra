@@ -7,11 +7,74 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
+      cars: {
+        Row: {
+          created_at: string
+          fuel_type: Database["public"]["Enums"]["fuel_type"]
+          id: string
+          initial_km: number
+          model: string
+          owner_id: string
+          photo_path: string | null
+          tank_capacity: number | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          fuel_type: Database["public"]["Enums"]["fuel_type"]
+          id?: string
+          initial_km?: number
+          model: string
+          owner_id: string
+          photo_path?: string | null
+          tank_capacity?: number | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          fuel_type?: Database["public"]["Enums"]["fuel_type"]
+          id?: string
+          initial_km?: number
+          model?: string
+          owner_id?: string
+          photo_path?: string | null
+          tank_capacity?: number | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cars_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cars_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       expense_attachments: {
         Row: {
           created_at: string
@@ -52,11 +115,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expense_attachments_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["expense_id"]
+          },
+          {
             foreignKeyName: "expense_attachments_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "expense_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -112,6 +196,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "expenses_paid_by_fkey"
             columns: ["paid_by"]
             isOneToOne: false
@@ -119,11 +217,158 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expenses_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "expenses_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "expenses_settlement_id_fkey"
             columns: ["settlement_id"]
             isOneToOne: false
             referencedRelation: "settlements"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      fuel_entries: {
+        Row: {
+          car_id: string
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          full_tank: boolean
+          id: string
+          liters: number
+          notes: string | null
+          odometer_km: number | null
+          price_per_liter: number
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          full_tank?: boolean
+          id?: string
+          liters: number
+          notes?: string | null
+          odometer_km?: number | null
+          price_per_liter: number
+          total_cost: number
+          updated_at?: string
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          full_tank?: boolean
+          id?: string
+          liters?: number
+          notes?: string | null
+          odometer_km?: number | null
+          price_per_liter?: number
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fuel_entries_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fuel_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      odometer_readings: {
+        Row: {
+          car_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          km: number
+          reading_date: string
+          updated_at: string
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          km: number
+          reading_date?: string
+          updated_at?: string
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          km?: number
+          reading_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "odometer_readings_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "odometer_readings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "odometer_readings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "odometer_readings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -191,8 +436,43 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "settlements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "settlements_from_user_id_fkey"
             columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_to_user_id_fkey"
+            columns: ["to_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -201,8 +481,15 @@ export type Database = {
             foreignKeyName: "settlements_to_user_id_fkey"
             columns: ["to_user_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -218,7 +505,36 @@ export type Database = {
           user_id: string | null
           user_share: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expenses_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "expenses_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "expenses_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "settlements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_user_open_balance: {
         Row: {
@@ -235,7 +551,7 @@ export type Database = {
     Functions: {
       is_authorized_user: { Args: never; Returns: boolean }
       register_settlement: {
-        Args: { p_notes?: string; p_expense_ids?: string[] | null }
+        Args: { p_expense_ids?: string[]; p_notes?: string }
         Returns: string
       }
     }
@@ -248,6 +564,13 @@ export type Database = {
         | "manutenzione"
         | "viaggi"
         | "altro"
+      fuel_type:
+        | "benzina"
+        | "diesel"
+        | "gpl"
+        | "metano"
+        | "elettrico"
+        | "ibrido"
       split_rule: "fifty_fifty" | "sixty_forty" | "custom"
     }
     CompositeTypes: {
@@ -257,6 +580,7 @@ export type Database = {
 }
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
@@ -355,6 +679,23 @@ export type Enums<
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
 export const Constants = {
   public: {
     Enums: {
@@ -366,8 +707,9 @@ export const Constants = {
         "manutenzione",
         "viaggi",
         "altro",
-      ] as const,
-      split_rule: ["fifty_fifty", "sixty_forty", "custom"] as const,
+      ],
+      fuel_type: ["benzina", "diesel", "gpl", "metano", "elettrico", "ibrido"],
+      split_rule: ["fifty_fifty", "sixty_forty", "custom"],
     },
   },
 } as const

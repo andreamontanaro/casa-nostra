@@ -12,7 +12,7 @@ export async function registerSettlement(
 
   const { error } = await supabase.rpc('register_settlement', {
     p_notes: notes,
-    p_expense_ids: expenseIds ?? null,
+    p_expense_ids: expenseIds,
   })
 
   if (error) throw new Error(error.message)

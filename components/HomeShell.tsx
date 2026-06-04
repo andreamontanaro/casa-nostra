@@ -68,8 +68,6 @@ export function HomeShell({
           className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-b from-transparent to-background"
         />
 
-        <h1 className="text-xl font-semibold text-foreground">Casa Nostra</h1>
-
         <BalanceCard rows={balanceRows} currentUserId={userId} />
 
         <section>

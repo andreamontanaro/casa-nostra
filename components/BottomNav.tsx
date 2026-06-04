@@ -3,19 +3,41 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
-import { Home, List, ArrowLeftRight, BarChart3, Settings } from 'lucide-react'
+import {
+  Home,
+  List,
+  ArrowLeftRight,
+  BarChart3,
+  Car,
+  Fuel,
+  LineChart,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const navItems = [
+const casaItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/spese', label: 'Storico', icon: List },
   { href: '/conguaglio', label: 'Conguaglio', icon: ArrowLeftRight },
   { href: '/statistiche', label: 'Statistiche', icon: BarChart3 },
-  { href: '/impostazioni', label: 'Impostazioni', icon: Settings },
+]
+
+const autoItems = [
+  { href: '/auto', label: 'Garage', icon: Car },
+  { href: '/auto/rifornimenti', label: 'Rifornimenti', icon: Fuel },
+  { href: '/auto/consumi', label: 'Consumi', icon: LineChart },
 ]
 
 export function BottomNav() {
   const pathname = usePathname()
+  const isAuto = pathname.startsWith('/auto')
+  const navItems = isAuto ? autoItems : casaItems
+
+  // Tab attivo: l'href più lungo che è prefisso del pathname corrente.
+  const activeHref = [...navItems]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find(
+      (it) => pathname === it.href || pathname.startsWith(`${it.href}/`),
+    )?.href
 
   return (
     <nav
@@ -27,9 +49,12 @@ export function BottomNav() {
         'shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.08)]',
       )}
     >
-      <ul className="mx-auto flex h-16 w-full max-w-lg px-2">
+      <ul
+        key={isAuto ? 'auto' : 'casa'}
+        className="mx-auto flex h-16 w-full max-w-lg px-2"
+      >
         {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href
+          const active = href === activeHref
           return (
             <li key={href} className="relative flex-1">
               <Link
@@ -52,10 +77,7 @@ export function BottomNav() {
                   animate={{ scale: active ? 1.05 : 1 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 24 }}
                 >
-                  <Icon
-                    className="size-5"
-                    strokeWidth={active ? 2.4 : 1.8}
-                  />
+                  <Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />
                 </motion.span>
                 {label}
               </Link>
