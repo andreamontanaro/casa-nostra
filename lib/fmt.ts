@@ -66,3 +66,50 @@ export const SPLIT_LABELS: Record<string, string> = {
   sixty_forty: '60 / 40',
   custom: 'Personalizzato',
 }
+
+// ---- Modulo "Le mie auto" ----
+
+export const FUEL_LABELS: Record<string, string> = {
+  benzina: 'Benzina',
+  diesel: 'Diesel',
+  gpl: 'GPL',
+  metano: 'Metano',
+  elettrico: 'Elettrico',
+  ibrido: 'Ibrido',
+}
+
+export const FUEL_ICON: Record<string, string> = {
+  benzina: '⛽',
+  diesel: '⛽',
+  gpl: '🟢',
+  metano: '🔵',
+  elettrico: '🔌',
+  ibrido: '♻️',
+}
+
+export function formatLiters(liters: number) {
+  return `${new Intl.NumberFormat('it-IT', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(liters)} L`
+}
+
+export function formatKm(km: number) {
+  return `${new Intl.NumberFormat('it-IT', { maximumFractionDigits: 0 }).format(km)} km`
+}
+
+export function formatPricePerLiter(price: number) {
+  return `${new Intl.NumberFormat('it-IT', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  }).format(price)}/L`
+}
+
+export function formatConsumption(lPer100km: number) {
+  return `${new Intl.NumberFormat('it-IT', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(lPer100km)} L/100km`
+}

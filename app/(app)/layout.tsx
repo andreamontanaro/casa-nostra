@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
-import { AssistantChat } from '@/components/AssistantChat'
+import { AppHeader } from '@/components/AppHeader'
+import { AssistantChatGate } from '@/components/AssistantChatGate'
 import { BottomNav } from '@/components/BottomNav'
 import { FlashToast } from '@/components/FlashToast'
 import { PageTransition } from '@/components/PageTransition'
@@ -8,13 +9,14 @@ import { PullToRefresh } from '@/components/PullToRefresh'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <main className="mx-auto w-full max-w-lg pb-[calc(4rem+env(safe-area-inset-bottom))]">
+      <AppHeader />
+      <main className="mx-auto w-full max-w-lg pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
         <PullToRefresh>
           <PageTransition>{children}</PageTransition>
         </PullToRefresh>
       </main>
       <BottomNav />
-      <AssistantChat />
+      <AssistantChatGate />
       <Suspense fallback={null}>
         <FlashToast />
       </Suspense>
