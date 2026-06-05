@@ -8,7 +8,5 @@ import { AssistantChat } from './AssistantChat'
  * "Le mie auto" per non dare contesto fuorviante.
  */
 export function AssistantChatGate() {
-  const pathname = usePathname()
-  if (pathname.startsWith('/auto')) return null
   return <AssistantChat />
 }

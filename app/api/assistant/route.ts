@@ -8,6 +8,7 @@ import {
   getAllExpenses,
   getExpenseAttachments,
 } from '@/lib/queries'
+import { getCar, getGarage, getFuelEntries } from '@/lib/queries-cars'
 import { ACCEPTED_MIME } from '@/lib/attachments'
 import {
   formatEur,
@@ -129,6 +130,80 @@ const createExpenseTool = {
   },
 }
 
+const createFuelEntryTool = {
+  name: 'create_fuel_entry',
+  description:
+    'Registra un NUOVO rifornimento di carburante per un\'auto nel database. Usalo solo quando l\'utente ha confermato ' +
+    'esplicitamente di voler registrare il rifornimento e hai tutte le informazioni necessarie. ' +
+    'Devi specificare almeno due tra liters, price_per_liter, total_cost; il valore mancante verrà calcolato. ' +
+    'odometer_km (km percorsi/odometro) è opzionale ma consigliato.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      car_id: {
+        type: Type.STRING,
+        description: 'L\'UUID dell\'auto a cui fa riferimento il rifornimento. Vedi elenco GARAGE.',
+      },
+      liters: {
+        type: Type.NUMBER,
+        description: 'Litri di carburante inseriti (es. 32.5).',
+      },
+      price_per_liter: {
+        type: Type.NUMBER,
+        description: 'Prezzo del carburante al litro (es. 1.789).',
+      },
+      total_cost: {
+        type: Type.NUMBER,
+        description: 'Costo totale del rifornimento in euro (es. 58.14).',
+      },
+      odometer_km: {
+        type: Type.INTEGER,
+        description: 'Chilometraggio indicato sul contachilometri al momento del rifornimento.',
+      },
+      full_tank: {
+        type: Type.BOOLEAN,
+        description: 'Indica se è stato effettuato un pieno (default: true).',
+      },
+      entry_date: {
+        type: Type.STRING,
+        description: 'Data del rifornimento in formato YYYY-MM-DD (default: oggi).',
+      },
+      notes: {
+        type: Type.STRING,
+        description: 'Note opzionali sul rifornimento.',
+      },
+      action: actionParam,
+    },
+    required: ['car_id'],
+  },
+}
+
+const updateOdometerTool = {
+  name: 'update_odometer',
+  description:
+    'Registra una lettura del contachilometri (km percorsi) per un\'auto nel database per aggiornarne i chilometri attuali. ' +
+    'Usalo solo quando l\'utente ha confermato esplicitamente di voler aggiornare i chilometri e hai tutte le informazioni necessarie.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      car_id: {
+        type: Type.STRING,
+        description: 'L\'UUID dell\'auto a cui fa riferimento la lettura. Vedi elenco GARAGE.',
+      },
+      km: {
+        type: Type.INTEGER,
+        description: 'Nuovo chilometraggio attuale dell\'auto.',
+      },
+      reading_date: {
+        type: Type.STRING,
+        description: 'Data della lettura in formato YYYY-MM-DD (default: oggi).',
+      },
+      action: actionParam,
+    },
+    required: ['car_id', 'km'],
+  },
+}
+
 export async function POST(request: Request) {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
@@ -144,9 +219,11 @@ export async function POST(request: Request) {
   }
 
   let messages: IncomingMessage[]
+  let context = 'expenses'
   try {
     const body = await request.json()
     messages = Array.isArray(body?.messages) ? body.messages : []
+    context = body?.context === 'auto' ? 'auto' : 'expenses'
   } catch {
     return Response.json({ error: 'Richiesta non valida.' }, { status: 400 })
   }
@@ -157,10 +234,14 @@ export async function POST(request: Request) {
 
   let systemInstruction: string
   try {
-    systemInstruction = await buildSystemInstruction(user.id)
+    if (context === 'auto') {
+      systemInstruction = await buildCarSystemInstruction(user.id)
+    } else {
+      systemInstruction = await buildSystemInstruction(user.id)
+    }
   } catch {
     return Response.json(
-      { error: 'Impossibile leggere i dati delle spese.' },
+      { error: 'Impossibile leggere i dati delle spese o delle auto.' },
       { status: 500 },
     )
   }
@@ -176,7 +257,14 @@ export async function POST(request: Request) {
 
   const config = {
     systemInstruction,
-    tools: [{ functionDeclarations: [getAttachmentsTool, createExpenseTool] }],
+    tools: [
+      {
+        functionDeclarations:
+          context === 'auto'
+            ? [createFuelEntryTool, updateOdometerTool]
+            : [getAttachmentsTool, createExpenseTool],
+      },
+    ],
     temperature: 0.4,
   }
 
@@ -264,6 +352,40 @@ export async function POST(request: Request) {
                 },
               })
               // Spesa creata: segnala al client di rinfrescare la pagina sottostante.
+              if (result.ok) {
+                controller.enqueue(encoder.encode(REFRESH_SENTINEL))
+              }
+            } else if (call.name === 'create_fuel_entry') {
+              const result = await createFuelEntryFromTool(
+                call.args as Record<string, unknown> | undefined,
+                user.id,
+              )
+              responseParts.push({
+                functionResponse: {
+                  id: call.id,
+                  name: 'create_fuel_entry',
+                  response: result.ok
+                    ? { result: result.summary }
+                    : { error: result.error },
+                },
+              })
+              if (result.ok) {
+                controller.enqueue(encoder.encode(REFRESH_SENTINEL))
+              }
+            } else if (call.name === 'update_odometer') {
+              const result = await createOdometerReadingFromTool(
+                call.args as Record<string, unknown> | undefined,
+                user.id,
+              )
+              responseParts.push({
+                functionResponse: {
+                  id: call.id,
+                  name: 'update_odometer',
+                  response: result.ok
+                    ? { result: result.summary }
+                    : { error: result.error },
+                },
+              })
               if (result.ok) {
                 controller.enqueue(encoder.encode(REFRESH_SENTINEL))
               }
@@ -543,4 +665,183 @@ async function createExpenseFromTool(
     `divisione ${splitLabel}, pagata da ${payer.display_name}, data ${expenseDate}.`
 
   return { ok: true, expenseId: inserted.id, summary }
+}
+
+async function buildCarSystemInstruction(currentUserId: string): Promise<string> {
+  const [garage, fuelEntries] = await Promise.all([
+    getGarage(),
+    getFuelEntries(),
+  ])
+
+  const carLines = garage.length
+    ? garage
+        .map(
+          (c) =>
+            `- [ID: ${c.car.id}] ${c.car.model} (${c.car.year ?? 'anno N/D'}, ${c.car.fuel_type}) | ` +
+            `Km attuali: ${c.currentKm.toLocaleString('it-IT')} km | ` +
+            `Consumo medio: ${c.avgLPer100km != null ? `${c.avgLPer100km} L/100km` : 'N/D'}`,
+        )
+        .join('\n')
+    : '(nessuna auto registrata nel garage)'
+
+  const fuelLines = fuelEntries.length
+    ? fuelEntries
+        .slice(0, 10)
+        .map(
+          (f) =>
+            `- [${f.entry_date}] ${f.car?.model ?? 'Auto Sconosciuta'}: ${f.liters}L a ${f.price_per_liter} €/L ` +
+            `(Totale: ${formatEur(f.total_cost)}) | Odo: ${
+              f.odometer_km != null ? `${f.odometer_km.toLocaleString('it-IT')} km` : 'N/D'
+            }${f.full_tank ? ' (Pieno)' : ''}${f.notes ? ` | Note: "${f.notes}"` : ''}`,
+        )
+        .join('\n')
+    : '(nessun rifornimento registrato)'
+
+  return [
+    'Sei l\'assistente IA di "Casa Nostra", sezione "Le mie auto". Aiuti l\'utente a gestire le sue auto personali.',
+    'Rispondi sempre in italiano, in tono amichevole e conciso.',
+    '',
+    'GARAGE AUTO DELL\'UTENTE:',
+    carLines,
+    '',
+    'ULTIMI 10 RIFORNIMENTI REGISTRATI (più recenti in alto):',
+    fuelLines,
+    '',
+    `DATA DI OGGI: ${todayISO()} (${formatDate(todayISO())}). Usala per interpretare "ieri", "l\'altro ieri", "questa settimana", ecc.`,
+    '',
+    'ISTRUZIONI:',
+    '- Chilometraggi ed importi sempre formattati chiaramente (es. 12.300 km, 50,00 €); date in formato italiano.',
+    '- Sii utile per riepiloghi sui consumi, statistiche, confronti e consigli di manutenzione basati sui dati reali.',
+    '- Quando l\'utente ti chiede di registrare un rifornimento o di aggiornare i km, usa gli strumenti appositi.',
+    '- Prima di invocare un tool, riepiloga le informazioni all\'utente e attendi conferma esplicita (es. "sì", "procedi").',
+    '- Se l\'utente ha più auto nel garage, chiedi sempre a quale auto si riferisce prima di procedere.',
+    '- Se l\'utente ha una sola auto, proponila come default ma riepilogala chiaramente.',
+    '- Ogni volta che usi uno strumento (create_fuel_entry, update_odometer) compila SEMPRE il parametro "action": una breve frase in prima persona che descrive cosa stai facendo (es. "Sto registrando il rifornimento della Ford Fiesta..."). Viene mostrata all\'utente come stato di caricamento mentre lo strumento lavora.',
+    '',
+    'REGISTRARE UN RIFORNIMENTO (tool create_fuel_entry):',
+    '- Richiede: car_id, liters (litri), price_per_liter (prezzo al litro), total_cost (totale speso).',
+    '- Se l\'utente fornisce solo due di questi tre valori numerici, calcola il terzo matematicamente prima di confermare.',
+    '- Parametri facoltativi: odometer_km (chilometraggio attuale), full_tank (se ha fatto il pieno, default true), entry_date (data, default oggi), notes (note).',
+    '- Dopo il salvataggio positivo, conferma all\'utente la registrazione avvenuta con i dettagli.',
+    '',
+    'AGGIORNARE I CHILOMETRI (tool update_odometer):',
+    '- Richiede: car_id, km (chilometraggio attuale), reading_date (data della lettura, default oggi).',
+    '- Dopo il salvataggio positivo, conferma all\'utente l\'aggiornamento avvenuto.',
+  ].join('\n')
+}
+
+async function createFuelEntryFromTool(
+  args: Record<string, unknown> | undefined,
+  currentUserId: string,
+): Promise<{ ok: boolean; summary?: string; error?: string }> {
+  const a = args ?? {}
+  const carId = String(a.car_id ?? '').trim()
+  if (!carId) return { ok: false, error: 'Id auto mancante.' }
+
+  const car = await getCar(carId)
+  if (!car) return { ok: false, error: 'Auto non trovata o non autorizzata.' }
+
+  let liters = typeof a.liters === 'number' ? a.liters : parseFloat(String(a.liters ?? '').replace(',', '.'))
+  let pricePerLiter = typeof a.price_per_liter === 'number' ? a.price_per_liter : parseFloat(String(a.price_per_liter ?? '').replace(',', '.'))
+  let totalCost = typeof a.total_cost === 'number' ? a.total_cost : parseFloat(String(a.total_cost ?? '').replace(',', '.'))
+
+  const hasLiters = Number.isFinite(liters) && liters > 0
+  const hasPrice = Number.isFinite(pricePerLiter) && pricePerLiter > 0
+  const hasTotal = Number.isFinite(totalCost) && totalCost > 0
+
+  const count = [hasLiters, hasPrice, hasTotal].filter(Boolean).length
+  if (count < 2) {
+    return { ok: false, error: 'Specificare almeno due tra litri, prezzo al litro e costo totale.' }
+  }
+
+  if (!hasTotal && hasLiters && hasPrice) {
+    totalCost = Math.round(liters * pricePerLiter * 100) / 100
+  } else if (!hasLiters && hasTotal && hasPrice) {
+    liters = Math.round((totalCost / pricePerLiter) * 1000) / 1000
+  } else if (!hasPrice && hasTotal && hasLiters) {
+    pricePerLiter = Math.round((totalCost / liters) * 1000) / 1000
+  }
+
+  if (!Number.isFinite(liters) || liters <= 0) return { ok: false, error: 'Litri non validi.' }
+  if (!Number.isFinite(pricePerLiter) || pricePerLiter <= 0) return { ok: false, error: 'Prezzo al litro non valido.' }
+  if (!Number.isFinite(totalCost) || totalCost <= 0) return { ok: false, error: 'Costo totale non valido.' }
+
+  const odometerKm = a.odometer_km != null ? parseInt(String(a.odometer_km).replace(/\./g, ''), 10) : null
+  if (odometerKm != null && (isNaN(odometerKm) || odometerKm < 0)) {
+    return { ok: false, error: 'I chilometri non possono essere negativi.' }
+  }
+
+  const fullTank = a.full_tank !== false
+  const notes = String(a.notes ?? '').trim() || null
+  const rawDate = String(a.entry_date ?? '').trim()
+  const entryDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayISO()
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('fuel_entries').insert({
+    car_id: carId,
+    entry_date: entryDate,
+    liters: Math.round(liters * 1000) / 1000,
+    price_per_liter: Math.round(pricePerLiter * 1000) / 1000,
+    total_cost: Math.round(totalCost * 100) / 100,
+    odometer_km: odometerKm,
+    full_tank: fullTank,
+    notes,
+    created_by: currentUserId,
+  })
+
+  if (error) {
+    return { ok: false, error: 'Errore durante il salvataggio del rifornimento.' }
+  }
+
+  revalidatePath('/auto')
+  revalidatePath('/auto/rifornimenti')
+  revalidatePath('/auto/consumi')
+  revalidatePath(`/auto/${carId}`)
+
+  return {
+    ok: true,
+    summary: `Rifornimento registrato per ${car.model}: ${liters.toFixed(2)}L a ${pricePerLiter.toFixed(3)} €/L, Totale: ${totalCost.toFixed(2)} €.`
+  }
+}
+
+async function createOdometerReadingFromTool(
+  args: Record<string, unknown> | undefined,
+  currentUserId: string,
+): Promise<{ ok: boolean; summary?: string; error?: string }> {
+  const a = args ?? {}
+  const carId = String(a.car_id ?? '').trim()
+  if (!carId) return { ok: false, error: 'Id auto mancante.' }
+
+  const car = await getCar(carId)
+  if (!car) return { ok: false, error: 'Auto non trovata o non autorizzata.' }
+
+  const km = a.km != null ? parseInt(String(a.km).replace(/\./g, ''), 10) : null
+  if (km == null || isNaN(km) || km < 0) {
+    return { ok: false, error: 'Chilometraggio non valido. Deve essere un intero non negativo.' }
+  }
+
+  const rawDate = String(a.reading_date ?? '').trim()
+  const readingDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayISO()
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('odometer_readings').insert({
+    car_id: carId,
+    reading_date: readingDate,
+    km,
+    created_by: currentUserId,
+  })
+
+  if (error) {
+    return { ok: false, error: 'Errore durante il salvataggio della lettura contachilometri.' }
+  }
+
+  revalidatePath('/auto')
+  revalidatePath('/auto/rifornimenti')
+  revalidatePath('/auto/consumi')
+  revalidatePath(`/auto/${carId}`)
+
+  return {
+    ok: true,
+    summary: `Lettura contachilometri aggiornata per ${car.model}: ${km.toLocaleString('it-IT')} km il ${readingDate}.`
+  }
 }

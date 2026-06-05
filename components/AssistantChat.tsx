@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'motion/react'
 import { Sparkles, X, Send } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
@@ -23,19 +23,36 @@ const ACTION_CLOSE = `${NUL}/ACTION${NUL}`
 // con un loro prefisso parziale, aspettiamo altri dati prima di interpretarlo.
 const CONTROL_MARKERS = [REFRESH_SENTINEL, ACTION_OPEN]
 
-const SUGGESTIONS = [
+const EXPENSE_SUGGESTIONS = [
   'Cosa ho comprato ieri?',
   'Riepilogo delle spese di questo mese',
   'Chi deve quanto, in questo momento?',
   'Su cosa stiamo spendendo di più?',
 ]
 
-const GREETING =
+const EXPENSE_GREETING =
   'Ciao! Sono l\'assistente di Casa Nostra. Posso aiutarti con le vostre spese: ' +
   'chiedimi un riepilogo, cosa avete comprato, chi deve quanto, o di guardare uno scontrino.'
 
+const AUTO_SUGGESTIONS = [
+  'Quali auto ho nel garage?',
+  'Registra un rifornimento',
+  'Aggiorna i km percorsi',
+  'Quali sono i consumi medi?',
+]
+
+const AUTO_GREETING =
+  'Ciao! Sono l\'assistente di Casa Nostra per le auto. Posso aiutarti a gestire i tuoi veicoli: ' +
+  'chiedimi di registrare un rifornimento, aggiornare i chilometri o mostrarti i consumi.'
+
 export function AssistantChat() {
   const router = useRouter()
+  const pathname = usePathname()
+  const isAuto = pathname.startsWith('/auto')
+
+  const greeting = isAuto ? AUTO_GREETING : EXPENSE_GREETING
+  const suggestions = isAuto ? AUTO_SUGGESTIONS : EXPENSE_SUGGESTIONS
+
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -72,6 +89,7 @@ export function AssistantChat() {
             role: m.role === 'assistant' ? 'model' : 'user',
             text: m.text,
           })),
+          context: isAuto ? 'auto' : 'expenses',
         }),
       })
 
@@ -241,13 +259,13 @@ export function AssistantChat() {
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
                 <div className="flex justify-start">
                   <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-surface-raised px-4 py-2.5 text-sm text-foreground">
-                    {GREETING}
+                    {greeting}
                   </div>
                 </div>
 
                 {messages.length === 0 && (
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {SUGGESTIONS.map((s) => (
+                    {suggestions.map((s) => (
                       <button
                         key={s}
                         type="button"
