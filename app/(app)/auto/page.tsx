@@ -87,7 +87,7 @@ export default async function GaragePage() {
       <Link
         href="/auto/nuova"
         aria-label="Aggiungi auto"
-        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 flex size-14 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg active:opacity-80 transition-opacity"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 flex size-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground shadow-fab active:scale-95 transition-transform"
       >
         <Plus className="size-6" strokeWidth={2.5} />
       </Link>

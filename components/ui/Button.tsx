@@ -15,20 +15,21 @@ const buttonVariants = cva(
   ].join(' '),
   {
     variants: {
+      // Ruoli M3: primary = filled, secondary = filled tonal, ghost = text, destructive = filled error
       variant: {
         primary:
-          'bg-accent text-accent-foreground shadow-soft hover:opacity-95 active:opacity-90',
+          'bg-accent text-accent-foreground hover:opacity-95 active:opacity-90',
         secondary:
-          'bg-surface-raised text-foreground border border-border hover:bg-border/60',
+          'bg-accent-muted text-accent-soft hover:opacity-90 active:opacity-80',
         ghost:
           'text-foreground hover:bg-surface-raised active:bg-border',
         destructive:
-          'bg-destructive text-destructive-foreground shadow-soft hover:opacity-95 active:opacity-90',
+          'bg-destructive text-destructive-foreground hover:opacity-95 active:opacity-90',
       },
       size: {
-        sm: 'h-9 px-3 text-sm rounded-lg',
-        md: 'h-11 px-4 text-base rounded-xl',
-        lg: 'h-12 px-6 text-base font-semibold rounded-2xl',
+        sm: 'h-9 px-4 text-sm rounded-full',
+        md: 'h-11 px-5 text-base rounded-full',
+        lg: 'h-12 px-6 text-base font-semibold rounded-full',
       },
     },
     defaultVariants: {

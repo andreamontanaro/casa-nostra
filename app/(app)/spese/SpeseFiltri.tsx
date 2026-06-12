@@ -275,12 +275,13 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        'shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium',
+        // Filter chip M3: 8dp, selezionato = container tonale senza outline
+        'shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium',
         'transition-[border-color,background-color,color,transform] duration-150',
         'active:scale-[0.97]',
         active
-          ? 'border-accent bg-accent-muted text-accent'
-          : 'border-border bg-surface text-muted hover:border-accent/40',
+          ? 'border-transparent bg-accent-muted text-accent-soft'
+          : 'border-border-strong bg-transparent text-muted hover:border-accent/40',
       )}
     >
       {children}

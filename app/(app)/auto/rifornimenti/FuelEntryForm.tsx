@@ -128,7 +128,7 @@ export function FuelEntryForm({ cars, entry, defaultCarId }: FuelEntryFormProps)
                     'shrink-0 rounded-2xl border px-4 py-2.5 text-sm font-medium',
                     'transition-[border-color,background-color,color,transform] duration-150 active:scale-[0.97]',
                     carId === c.id
-                      ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                      ? 'border-transparent bg-accent-muted text-accent-soft shadow-soft'
                       : 'border-border bg-surface text-muted hover:border-accent/40',
                   )}
                 >
@@ -145,7 +145,7 @@ export function FuelEntryForm({ cars, entry, defaultCarId }: FuelEntryFormProps)
       )}
 
       {/* Tre valori */}
-      <div className="flex flex-col gap-3 rounded-3xl border border-border bg-surface-raised p-4">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-raised p-4">
         <p className="text-xs text-muted">
           Inserisci due valori qualsiasi: il terzo viene calcolato in automatico.
         </p>
@@ -214,7 +214,7 @@ export function FuelEntryForm({ cars, entry, defaultCarId }: FuelEntryFormProps)
                 'flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150',
                 'active:scale-[0.97]',
                 fullTank === opt.value
-                  ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                  ? 'border-transparent bg-accent-muted text-accent-soft shadow-soft'
                   : 'border-border bg-surface text-muted hover:border-accent/40',
               )}
             >

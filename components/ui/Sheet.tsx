@@ -34,7 +34,7 @@ export function Sheet({
         <DialogPrimitive.Content
           className={cn(
             'fixed inset-x-0 bottom-0 z-50 max-h-[92svh] overflow-y-auto',
-            'rounded-t-3xl border-t border-border bg-surface shadow-dialog',
+            'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
             'pb-[env(safe-area-inset-bottom)]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom',

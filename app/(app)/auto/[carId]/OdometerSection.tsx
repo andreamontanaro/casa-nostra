@@ -121,7 +121,7 @@ export function OdometerSection({
                   type="button"
                   aria-label="Elimina lettura"
                   onClick={() => setDeleteTarget(r)}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-raised hover:text-destructive transition-colors"
+                  className="-my-1.5 flex size-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-raised hover:text-destructive transition-colors"
                 >
                   <Trash2 className="size-4" />
                 </button>

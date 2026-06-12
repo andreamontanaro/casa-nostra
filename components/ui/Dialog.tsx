@@ -51,7 +51,7 @@ export function Dialog({
           }}
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2',
-            'rounded-3xl border border-border bg-surface shadow-dialog',
+            'rounded-[28px] border border-border/60 bg-surface shadow-dialog',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
             'data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95',

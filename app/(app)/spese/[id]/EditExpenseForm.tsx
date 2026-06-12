@@ -154,7 +154,7 @@ export function EditExpenseForm({
                     'text-sm font-medium transition-[border-color,background-color,color,transform] duration-150',
                     'active:scale-[0.97]',
                     isActive
-                      ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                      ? 'border-transparent bg-accent-muted text-accent-soft shadow-soft'
                       : 'border-border bg-surface text-muted hover:border-accent/40',
                   )}
                 >
@@ -182,7 +182,7 @@ export function EditExpenseForm({
                   'flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150',
                   'active:scale-[0.97]',
                   splitRule === rule
-                    ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                    ? 'border-transparent bg-accent-muted text-accent-soft shadow-soft'
                     : 'border-border bg-surface text-muted hover:border-accent/40',
                 )}
               >
@@ -254,7 +254,7 @@ export function EditExpenseForm({
                   'flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150',
                   'active:scale-[0.97]',
                   paidBy === p.id
-                    ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                    ? 'border-transparent bg-accent-muted text-accent-soft shadow-soft'
                     : 'border-border bg-surface text-muted hover:border-accent/40',
                 )}
               >

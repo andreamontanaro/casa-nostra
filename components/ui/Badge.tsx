@@ -1,8 +1,8 @@
 const variants = {
   default: 'bg-surface-raised text-foreground border border-border',
-  accent: 'bg-accent-muted text-accent',
-  success: 'bg-accent-muted text-accent',
-  destructive: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400',
+  accent: 'bg-accent-muted text-accent-soft',
+  success: 'bg-accent-muted text-accent-soft',
+  destructive: 'bg-destructive/12 text-destructive',
   muted: 'bg-surface-raised text-muted',
 } as const
 

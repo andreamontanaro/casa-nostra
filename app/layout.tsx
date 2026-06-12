@@ -19,8 +19,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f6f7f9' },
-    { media: '(prefers-color-scheme: dark)', color: '#07090d' },
+    { media: '(prefers-color-scheme: light)', color: '#f4faf8' },
+    { media: '(prefers-color-scheme: dark)', color: '#0e1514' },
   ],
 }
 
@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full bg-background text-foreground antialiased">
-        <NextTopLoader color="#0ea5a4" showSpinner={false} height={2} />
+        <NextTopLoader color="#00756d" showSpinner={false} height={2} />
         {children}
         <Toaster />
       </body>

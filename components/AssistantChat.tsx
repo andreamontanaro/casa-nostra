@@ -233,12 +233,12 @@ export function AssistantChat() {
               transition={{ type: 'spring', stiffness: 320, damping: 34 }}
               className={cn(
                 'fixed inset-x-0 bottom-0 z-50 flex h-[88svh] flex-col',
-                'rounded-t-3xl border-t border-border bg-surface shadow-dialog',
+                'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
               )}
             >
               {/* Header */}
               <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-                <span className="flex size-9 items-center justify-center rounded-full bg-accent-muted text-accent">
+                <span className="flex size-9 items-center justify-center rounded-full bg-accent-muted text-accent-soft">
                   <Sparkles className="size-5" strokeWidth={2.25} />
                 </span>
                 <div className="flex-1">

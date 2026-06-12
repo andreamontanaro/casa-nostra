@@ -135,7 +135,7 @@ export function CarForm({ currentUserId, car, photoUrl }: CarFormProps) {
             onClick={() => fileInputRef.current?.click()}
             disabled={busy}
             className={cn(
-              'relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-3xl border border-dashed border-border bg-surface-raised',
+              'relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-surface-raised',
               'transition-[border-color] duration-150 hover:border-accent/50 disabled:opacity-50',
             )}
           >
@@ -190,7 +190,7 @@ export function CarForm({ currentUserId, car, photoUrl }: CarFormProps) {
                     'text-sm font-medium transition-[border-color,background-color,color,transform] duration-150',
                     'active:scale-[0.97]',
                     isActive
-                      ? 'border-accent bg-accent-muted text-accent shadow-soft'
+                      ? 'border-transparent bg-accent-muted text-accent-soft shadow-soft'
                       : 'border-border bg-surface text-muted hover:border-accent/40',
                   )}
                 >

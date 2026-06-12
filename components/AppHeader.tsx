@@ -60,7 +60,7 @@ export function AppHeader() {
                   'flex items-center gap-3 rounded-2xl border px-3 py-3',
                   'transition-[border-color,background-color] duration-150',
                   active
-                    ? 'border-accent bg-accent-muted'
+                    ? 'border-transparent bg-accent-muted'
                     : 'border-border bg-surface hover:border-accent/40',
                 )}
               >
@@ -76,7 +76,7 @@ export function AppHeader() {
                   <span
                     className={cn(
                       'block text-sm font-semibold',
-                      active ? 'text-accent' : 'text-foreground',
+                      active ? 'text-accent-soft' : 'text-foreground',
                     )}
                   >
                     {label}

@@ -51,7 +51,7 @@ export function RifornimentiFiltri({ entries, cars }: RifornimentiFiltriProps) {
                   'shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium',
                   'transition-[border-color,background-color,color] duration-150',
                   selected === c.id
-                    ? 'border-accent bg-accent-muted text-accent'
+                    ? 'border-transparent bg-accent-muted text-accent-soft'
                     : 'border-border bg-surface text-muted hover:border-accent/40',
                 )}
               >

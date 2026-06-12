@@ -134,8 +134,8 @@ export function HomeShell({
         transition={{ type: 'spring', stiffness: 320, damping: 22, delay: 0.1 }}
         whileTap={{ scale: 0.92 }}
         className={cn(
-          'fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4',
-          'flex size-14 items-center justify-center rounded-full',
+          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4',
+          'flex size-14 items-center justify-center rounded-2xl',
           'bg-accent text-accent-foreground shadow-fab',
         )}
       >

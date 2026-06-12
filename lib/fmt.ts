@@ -52,13 +52,13 @@ export const CATEGORY_ICON: Record<string, string> = {
 }
 
 export const CATEGORY_COLOR: Record<string, string> = {
-  affitto: 'bg-blue-100 dark:bg-blue-950',
-  bolletta: 'bg-yellow-100 dark:bg-yellow-950',
-  spesa_alimentare: 'bg-green-100 dark:bg-green-950',
-  abbonamento: 'bg-purple-100 dark:bg-purple-950',
-  manutenzione: 'bg-orange-100 dark:bg-orange-950',
-  viaggi: 'bg-sky-100 dark:bg-sky-950',
-  altro: 'bg-zinc-100 dark:bg-zinc-800',
+  affitto: 'bg-blue-100 dark:bg-blue-400/15',
+  bolletta: 'bg-yellow-100 dark:bg-yellow-400/15',
+  spesa_alimentare: 'bg-green-100 dark:bg-green-400/15',
+  abbonamento: 'bg-purple-100 dark:bg-purple-400/15',
+  manutenzione: 'bg-orange-100 dark:bg-orange-400/15',
+  viaggi: 'bg-sky-100 dark:bg-sky-400/15',
+  altro: 'bg-zinc-100 dark:bg-zinc-400/15',
 }
 
 export const SPLIT_LABELS: Record<string, string> = {

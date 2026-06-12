@@ -5,103 +5,109 @@
 /* ─── Design tokens ─────────────────────────────────────────── */
 
 :root {
-  /* Surfaces stratificate */
-  --background: #f6f7f9;
-  --foreground: #0b1220;
+  /* Palette tonale Material 3 (seed teal).
+     Mapping ruoli M3 → alias storici del progetto:
+     surface → --background · surface-container-lowest → --surface
+     surface-container → --surface-raised · surface-container-high → --surface-sunken
+     primary → --accent · on-primary → --accent-foreground
+     primary-container → --accent-muted · on-primary-container → --accent-soft
+     on-surface-variant → --muted · outline-variant → --border · outline → --border-strong */
+  --background: #f4faf8;
+  --foreground: #161d1c;
   --surface: #ffffff;
-  --surface-raised: #f3f5f8;
-  --surface-sunken: #eef0f4;
+  --surface-raised: #e9efed;
+  --surface-sunken: #e0e7e5;
 
-  /* Accent — teal "denaro" */
-  --accent: #0ea5a4;
+  /* Primary — teal "denaro" (tone 40) */
+  --accent: #00756d;
   --accent-foreground: #ffffff;
-  --accent-muted: #ccfbf1;
-  --accent-soft: #0f766e;
+  --accent-muted: #9cf1ec;
+  --accent-soft: #00504b;
 
   /* Testo */
-  --muted: #64748b;
+  --muted: #5c6664;
 
   /* Bordi */
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
+  --border: #dbe4e1;
+  --border-strong: #b7c2bf;
 
-  /* Semantici */
-  --destructive: #ef4444;
+  /* Semantici (error M3) */
+  --destructive: #ba1a1a;
   --destructive-foreground: #ffffff;
 
   /* Glass (vetro/blur) */
-  --glass-bg: rgb(255 255 255 / 0.72);
+  --glass-bg: rgb(244 250 248 / 0.72);
   --glass-border: rgb(255 255 255 / 0.6);
   --glass-blur: 20px;
 
-  /* Elevazioni soft iOS-like (doppio strato) */
-  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -8px rgb(15 23 42 / 0.08);
-  --shadow-fab: 0 4px 12px rgb(14 165 164 / 0.35), 0 1px 2px rgb(15 23 42 / 0.1);
-  --shadow-dialog: 0 1px 3px rgb(15 23 42 / 0.08), 0 24px 48px -12px rgb(15 23 42 / 0.18);
+  /* Elevazioni M3 (tonali + ombre morbide) */
+  --shadow-soft: 0 1px 2px rgb(15 31 29 / 0.05), 0 1px 3px rgb(15 31 29 / 0.07);
+  --shadow-card: 0 1px 2px rgb(15 31 29 / 0.05), 0 8px 24px -8px rgb(15 31 29 / 0.09);
+  --shadow-fab: 0 4px 12px rgb(0 117 109 / 0.32), 0 1px 2px rgb(15 31 29 / 0.1);
+  --shadow-dialog: 0 1px 3px rgb(15 31 29 / 0.08), 0 24px 48px -12px rgb(15 31 29 / 0.18);
 }
 
 /* Tokens dark mode: applicati quando il sistema è in dark e non c'è override,
    oppure quando l'utente forza esplicitamente data-theme="dark". */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #07090d;
-    --foreground: #f1f5f9;
-    --surface: #11141a;
-    --surface-raised: #181c24;
-    --surface-sunken: #0c0f14;
+    --background: #0e1514;
+    --foreground: #dde4e2;
+    --surface: #161d1c;
+    --surface-raised: #1f2625;
+    --surface-sunken: #0a1110;
 
-    --accent: #2dd4bf;
-    --accent-foreground: #042f2e;
-    --accent-muted: #134e4a;
-    --accent-soft: #5eead4;
+    --accent: #4ddbd2;
+    --accent-foreground: #003735;
+    --accent-muted: #00504b;
+    --accent-soft: #9cf1ec;
 
-    --muted: #94a3b8;
+    --muted: #94a09c;
 
-    --border: #1f2530;
-    --border-strong: #2a3140;
+    --border: #283230;
+    --border-strong: #3a4543;
 
-    --destructive: #f87171;
-    --destructive-foreground: #450a0a;
+    --destructive: #ffb4ab;
+    --destructive-foreground: #690005;
 
-    --glass-bg: rgb(17 20 26 / 0.7);
+    --glass-bg: rgb(22 29 28 / 0.7);
     --glass-border: rgb(255 255 255 / 0.08);
     --glass-blur: 24px;
 
     --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -8px rgb(0 0 0 / 0.5);
-    --shadow-fab: 0 4px 12px rgb(45 212 191 / 0.4), 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-fab: 0 4px 12px rgb(77 219 210 / 0.35), 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-dialog: 0 1px 3px rgb(0 0 0 / 0.5), 0 24px 48px -12px rgb(0 0 0 / 0.6);
   }
 }
 
 :root[data-theme="dark"] {
-  --background: #07090d;
-  --foreground: #f1f5f9;
-  --surface: #11141a;
-  --surface-raised: #181c24;
-  --surface-sunken: #0c0f14;
+  --background: #0e1514;
+  --foreground: #dde4e2;
+  --surface: #161d1c;
+  --surface-raised: #1f2625;
+  --surface-sunken: #0a1110;
 
-  --accent: #2dd4bf;
-  --accent-foreground: #042f2e;
-  --accent-muted: #134e4a;
-  --accent-soft: #5eead4;
+  --accent: #4ddbd2;
+  --accent-foreground: #003735;
+  --accent-muted: #00504b;
+  --accent-soft: #9cf1ec;
 
-  --muted: #94a3b8;
+  --muted: #94a09c;
 
-  --border: #1f2530;
-  --border-strong: #2a3140;
+  --border: #283230;
+  --border-strong: #3a4543;
 
-  --destructive: #f87171;
-  --destructive-foreground: #450a0a;
+  --destructive: #ffb4ab;
+  --destructive-foreground: #690005;
 
-  --glass-bg: rgb(17 20 26 / 0.7);
+  --glass-bg: rgb(22 29 28 / 0.7);
   --glass-border: rgb(255 255 255 / 0.08);
   --glass-blur: 24px;
 
   --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -8px rgb(0 0 0 / 0.5);
-  --shadow-fab: 0 4px 12px rgb(45 212 191 / 0.4), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-fab: 0 4px 12px rgb(77 219 210 / 0.35), 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-dialog: 0 1px 3px rgb(0 0 0 / 0.5), 0 24px 48px -12px rgb(0 0 0 / 0.6);
 }
 

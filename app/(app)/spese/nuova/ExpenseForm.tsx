@@ -243,8 +243,8 @@ export function ExpenseForm({
                   onClick={() => applySuggestion(s)}
                   disabled={pending}
                   className={cn(
-                    "shrink-0 rounded-full border border-border bg-surface-raised",
-                    "px-3 py-1 text-xs font-medium text-muted",
+                    "shrink-0 rounded-lg border border-border-strong bg-transparent",
+                    "px-3 py-1.5 text-xs font-medium text-muted",
                     "hover:border-accent/50 hover:text-foreground",
                     "active:scale-95 transition-[transform,border-color,color] duration-150",
                   )}
@@ -274,7 +274,7 @@ export function ExpenseForm({
                   "text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
                   "active:scale-[0.97]",
                   isActive
-                    ? "border-accent bg-accent-muted text-accent shadow-soft"
+                    ? "border-transparent bg-accent-muted text-accent-soft shadow-soft"
                     : "border-border bg-surface text-muted hover:border-accent/40",
                 )}
               >
@@ -303,7 +303,7 @@ export function ExpenseForm({
                 "flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
                 "active:scale-[0.97]",
                 splitRule === rule
-                  ? "border-accent bg-accent-muted text-accent shadow-soft"
+                  ? "border-transparent bg-accent-muted text-accent-soft shadow-soft"
                   : "border-border bg-surface text-muted hover:border-accent/40",
               )}
             >
@@ -377,7 +377,7 @@ export function ExpenseForm({
                 "flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
                 "active:scale-[0.97]",
                 paidBy === p.id
-                  ? "border-accent bg-accent-muted text-accent shadow-soft"
+                  ? "border-transparent bg-accent-muted text-accent-soft shadow-soft"
                   : "border-border bg-surface text-muted hover:border-accent/40",
               )}
             >

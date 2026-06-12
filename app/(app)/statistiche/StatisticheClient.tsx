@@ -377,7 +377,7 @@ function DeltaBadge({ delta }: { delta: number | null }) {
   const tone = isUp
     ? 'bg-destructive/10 text-destructive'
     : isDown
-      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+      ? 'bg-accent-muted text-accent-soft'
       : 'bg-surface-raised text-muted'
   return (
     <span

@@ -61,24 +61,28 @@ export function BottomNav() {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'relative flex h-full flex-col items-center justify-center gap-0.5 text-xs font-medium',
+                  'relative flex h-full flex-col items-center justify-center gap-1 text-xs font-medium',
                   'transition-colors duration-200',
-                  active ? 'text-accent' : 'text-muted',
+                  active ? 'text-foreground' : 'text-muted',
                 )}
               >
-                {active && (
+                {/* Active indicator M3: pillola dietro la sola icona */}
+                <span className="relative flex h-8 w-14 items-center justify-center">
+                  {active && (
+                    <motion.span
+                      layoutId="nav-pill"
+                      transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                      className="absolute inset-0 rounded-full bg-accent-muted"
+                    />
+                  )}
                   <motion.span
-                    layoutId="nav-pill"
-                    transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-                    className="absolute inset-x-3 inset-y-1.5 -z-10 rounded-2xl bg-accent-muted"
-                  />
-                )}
-                <motion.span
-                  animate={{ scale: active ? 1.05 : 1 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 24 }}
-                >
-                  <Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />
-                </motion.span>
+                    animate={{ scale: active ? 1.05 : 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 24 }}
+                    className={cn('relative', active ? 'text-accent-soft' : 'text-muted')}
+                  >
+                    <Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />
+                  </motion.span>
+                </span>
                 {label}
               </Link>
             </li>
