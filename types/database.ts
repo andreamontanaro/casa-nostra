@@ -315,7 +315,9 @@ export type Database = {
       }
       odometer_readings: {
         Row: {
+          avg_consumption: number | null
           car_id: string
+          consumption_unit: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -324,7 +326,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avg_consumption?: number | null
           car_id: string
+          consumption_unit?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -333,7 +337,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avg_consumption?: number | null
           car_id?: string
+          consumption_unit?: string | null
           created_at?: string
           created_by?: string | null
           id?: string

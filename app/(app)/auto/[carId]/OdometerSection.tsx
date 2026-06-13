@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/Input'
 import { toast } from '@/lib/toast'
 import { formatDate, formatKm, todayISO } from '@/lib/fmt'
 import type { Tables } from '@/types/database'
+import { cn } from '@/lib/utils'
 
 type OdometerReading = Tables<'odometer_readings'>
 
@@ -33,11 +34,22 @@ export function OdometerSection({
   const [addOpen, setAddOpen] = useState(false)
   const [date, setDate] = useState(todayISO())
   const [km, setKm] = useState('')
+  const [avgConsumption, setAvgConsumption] = useState('')
+  const [consumptionUnit, setConsumptionUnit] = useState<'km_l' | 'l_100km'>('km_l')
   const [error, setError] = useState<string | undefined>()
   const [pending, startTransition] = useTransition()
 
   const [deleteTarget, setDeleteTarget] = useState<OdometerReading | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  function handleClose() {
+    setAddOpen(false)
+    setKm('')
+    setAvgConsumption('')
+    setConsumptionUnit('km_l')
+    setDate(todayISO())
+    setError(undefined)
+  }
 
   function submit() {
     setError(undefined)
@@ -45,6 +57,8 @@ export function OdometerSection({
     fd.set('car_id', carId)
     fd.set('reading_date', date)
     fd.set('km', km)
+    fd.set('avg_consumption', avgConsumption)
+    fd.set('consumption_unit', consumptionUnit)
     startTransition(async () => {
       const res = await createOdometerReading({}, fd)
       if (res.error) {
@@ -52,13 +66,17 @@ export function OdometerSection({
         return
       }
       if (res.fieldErrors) {
-        setError(res.fieldErrors.km ?? res.fieldErrors.reading_date ?? 'Dati non validi.')
+        setError(
+          res.fieldErrors.km ??
+            res.fieldErrors.reading_date ??
+            res.fieldErrors.avg_consumption ??
+            res.fieldErrors.consumption_unit ??
+            'Dati non validi.'
+        )
         return
       }
       toast.success('Chilometraggio aggiornato.')
-      setAddOpen(false)
-      setKm('')
-      setDate(todayISO())
+      handleClose()
       router.refresh()
     })
   }
@@ -115,6 +133,12 @@ export function OdometerSection({
                   </span>
                   <span className="text-xs text-muted">
                     {formatDate(r.reading_date)}
+                    {r.avg_consumption != null && (
+                      <>
+                        {' · '}
+                        {r.avg_consumption} {r.consumption_unit === 'km_l' ? 'km/L' : 'L/100km'}
+                      </>
+                    )}
                   </span>
                 </div>
                 <button
@@ -133,7 +157,7 @@ export function OdometerSection({
 
       <Dialog
         open={addOpen}
-        onClose={() => setAddOpen(false)}
+        onClose={handleClose}
         title="Aggiorna chilometraggio"
         description="Registra la lettura del contachilometri, anche senza un rifornimento."
         confirmLabel="Salva"
@@ -156,6 +180,39 @@ export function OdometerSection({
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Consumo medio"
+              type="text"
+              inputMode="decimal"
+              placeholder="es. 15,4 (opz.)"
+              value={avgConsumption}
+              onChange={(e) => setAvgConsumption(e.target.value)}
+            />
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-foreground">Unità</span>
+              <div className="flex h-11 gap-1.5">
+                {[
+                  { value: 'km_l', label: 'km/L' },
+                  { value: 'l_100km', label: 'L/100km' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setConsumptionUnit(opt.value as 'km_l' | 'l_100km')}
+                    className={cn(
+                      'flex-1 rounded-2xl border text-xs font-semibold transition-[border-color,background-color,color,transform] duration-150 active:scale-[0.97]',
+                      consumptionUnit === opt.value
+                        ? 'border-transparent bg-accent-muted text-accent-soft shadow-soft'
+                        : 'border-border bg-surface text-muted hover:border-accent/40',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </Dialog>
 

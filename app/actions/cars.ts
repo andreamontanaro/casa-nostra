@@ -301,17 +301,33 @@ export async function createOdometerReading(
   const carId = formData.get('car_id') as string
   const readingDate = formData.get('reading_date') as string
   const km = parseIntOrNull(formData.get('km') as string)
+  const rawAvgConsumption = formData.get('avg_consumption') as string
+  const consumptionUnit = formData.get('consumption_unit') as string | null
 
   const fieldErrors: Record<string, string> = {}
   if (!carId) fieldErrors.car_id = 'Auto mancante.'
   if (!readingDate) fieldErrors.reading_date = 'Inserisci la data.'
   if (km == null || km < 0) fieldErrors.km = 'Inserisci un chilometraggio valido.'
+
+  let avgConsumption: number | null = null
+  if ((rawAvgConsumption ?? '').trim()) {
+    avgConsumption = parseDecimal(rawAvgConsumption)
+    if (isNaN(avgConsumption) || avgConsumption <= 0) {
+      fieldErrors.avg_consumption = 'Consumo non valido.'
+    }
+    if (!consumptionUnit || !['km_l', 'l_100km'].includes(consumptionUnit)) {
+      fieldErrors.consumption_unit = 'Scegli l\'unità di misura.'
+    }
+  }
+
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors }
 
   const { error } = await supabase.from('odometer_readings').insert({
     car_id: carId,
     reading_date: readingDate,
     km: km!,
+    avg_consumption: avgConsumption,
+    consumption_unit: avgConsumption ? consumptionUnit : null,
     created_by: user.id,
   })
 

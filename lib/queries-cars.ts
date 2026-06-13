@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { CAR_PHOTOS_BUCKET } from '@/lib/car-photos'
 import {
   computeConsumption,
+  computeOdometerConsumptionStats,
   currentKm,
   type Car,
   type FuelEntry,
@@ -39,7 +40,7 @@ export async function getGarage(): Promise<GarageCar[]> {
     supabase
       .from('fuel_entries')
       .select('car_id, entry_date, liters, total_cost, odometer_km, full_tank'),
-    supabase.from('odometer_readings').select('car_id, reading_date, km'),
+    supabase.from('odometer_readings').select('car_id, reading_date, km, avg_consumption, consumption_unit'),
   ])
 
   if (carsRes.error) throw carsRes.error
@@ -53,11 +54,12 @@ export async function getGarage(): Promise<GarageCar[]> {
     const carFuel = fuel.filter((f) => f.car_id === car.id)
     const carOdo = odo.filter((o) => o.car_id === car.id)
     const consumption = computeConsumption(carFuel as FuelEntry[])
+    const odoConsumption = computeOdometerConsumptionStats(carOdo as OdometerReading[])
     return {
       car,
       photoUrl: signedUrls[i],
       currentKm: currentKm(car, carFuel, carOdo),
-      avgLPer100km: consumption.avgLPer100km,
+      avgLPer100km: consumption.avgLPer100km ?? odoConsumption.avgLPer100km,
     }
   })
 }

@@ -10,7 +10,7 @@ import {
   Droplet,
 } from 'lucide-react'
 import { getCarDetail } from '@/lib/queries-cars'
-import { computeConsumption, fuelTotals } from '@/lib/cars'
+import { computeConsumption, fuelTotals, computeOdometerConsumptionStats } from '@/lib/cars'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { OdometerSection } from './OdometerSection'
 import {
@@ -33,6 +33,7 @@ export default async function CarDetailPage({
 
   const { car, photoUrl, fuelEntries, odometerReadings, currentKm } = detail
   const consumption = computeConsumption(fuelEntries)
+  const odoConsumption = computeOdometerConsumptionStats(odometerReadings)
   const totals = fuelTotals(fuelEntries)
   const recent = fuelEntries.slice(0, 5)
 
@@ -107,12 +108,7 @@ export default async function CarDetailPage({
           </Link>
         </CardHeader>
         <CardContent>
-          {consumption.avgLPer100km == null ? (
-            <p className="py-2 text-sm text-muted">
-              Servono almeno due rifornimenti &quot;a pieno&quot; con i km per
-              calcolare il consumo.
-            </p>
-          ) : (
+          {consumption.avgLPer100km != null ? (
             <div className="grid grid-cols-3 gap-3 rounded-2xl bg-surface-raised p-3 text-center">
               <Stat
                 label="Medio"
@@ -136,6 +132,35 @@ export default async function CarDetailPage({
                 }
               />
             </div>
+          ) : odoConsumption.avgLPer100km != null ? (
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-3 gap-3 rounded-2xl bg-surface-raised p-3 text-center">
+                <Stat
+                  label="Medio"
+                  value={formatConsumption(odoConsumption.avgLPer100km)}
+                />
+                <Stat
+                  label="km/L"
+                  value={
+                    odoConsumption.avgKmPerL != null
+                      ? odoConsumption.avgKmPerL.toLocaleString('it-IT')
+                      : '—'
+                  }
+                  bordered
+                />
+                <Stat
+                  label="€/km"
+                  value="—"
+                />
+              </div>
+              <p className="text-center text-xs text-muted">
+                Calcolato dalle letture contachilometri (computer di bordo)
+              </p>
+            </div>
+          ) : (
+            <p className="py-2 text-sm text-muted">
+              Servono almeno due rifornimenti &quot;a pieno&quot; o letture contachilometri con consumo registrato per calcolare il consumo.
+            </p>
           )}
         </CardContent>
       </Card>

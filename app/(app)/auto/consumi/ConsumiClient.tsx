@@ -12,12 +12,14 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from 'recharts'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import {
   buildKmTimeline,
   computeConsumption,
   computeDistanceStats,
+  computeOdometerConsumptionStats,
   currentKm,
   fuelTotals,
   type Car,
@@ -58,6 +60,10 @@ export function ConsumiClient({ data }: { data: CarData[] }) {
     () => computeConsumption(selected.fuelEntries),
     [selected],
   )
+  const odoConsumption = useMemo(
+    () => computeOdometerConsumptionStats(selected.odometerReadings),
+    [selected.odometerReadings],
+  )
   const totals = useMemo(() => fuelTotals(selected.fuelEntries), [selected])
   const timeline = useMemo(
     () =>
@@ -82,6 +88,21 @@ export function ConsumiClient({ data }: { data: CarData[] }) {
     [consumption],
   )
 
+  const odoConsumptionSeries = useMemo(() => {
+    return selected.odometerReadings
+      .filter((r) => r.avg_consumption != null && r.consumption_unit != null)
+      .slice()
+      .reverse()
+      .map((r) => {
+        const val = Number(r.avg_consumption)
+        const lPer100km = r.consumption_unit === 'l_100km' ? val : 100 / val
+        return {
+          label: r.reading_date.slice(8, 10) + '/' + r.reading_date.slice(5, 7),
+          value: Math.round(lPer100km * 10) / 10,
+        }
+      })
+  }, [selected.odometerReadings])
+
   return (
     <div className="flex flex-col gap-4">
       {data.length > 1 && (
@@ -99,23 +120,30 @@ export function ConsumiClient({ data }: { data: CarData[] }) {
           <p className="text-sm font-semibold text-foreground">Consumo</p>
         </CardHeader>
         <CardContent>
-          {consumption.avgLPer100km == null ? (
+          {consumption.avgLPer100km == null && odoConsumption.avgLPer100km == null ? (
             <EmptyState>
-              Servono almeno due rifornimenti &quot;a pieno&quot; con i km
-              registrati per calcolare il consumo.
+              Servono almeno due rifornimenti &quot;a pieno&quot; o letture contachilometri con consumo registrato per calcolare il consumo.
             </EmptyState>
           ) : (
             <>
               <div className="grid grid-cols-3 gap-3 rounded-2xl bg-surface-raised p-3 text-center">
                 <Stat
                   label="Medio"
-                  value={formatConsumption(consumption.avgLPer100km)}
+                  value={
+                    consumption.avgLPer100km != null
+                      ? formatConsumption(consumption.avgLPer100km)
+                      : odoConsumption.avgLPer100km != null
+                      ? formatConsumption(odoConsumption.avgLPer100km)
+                      : '—'
+                  }
                 />
                 <Stat
                   label="km/L"
                   value={
                     consumption.avgKmPerL != null
                       ? consumption.avgKmPerL.toLocaleString('it-IT')
+                      : odoConsumption.avgKmPerL != null
+                      ? odoConsumption.avgKmPerL.toLocaleString('it-IT')
                       : '—'
                   }
                   bordered
@@ -130,7 +158,13 @@ export function ConsumiClient({ data }: { data: CarData[] }) {
                 />
               </div>
 
-              {consumptionSeries.length >= 2 && (
+              {consumption.avgLPer100km == null && odoConsumption.avgLPer100km != null && (
+                <p className="mt-2 text-center text-xs text-muted">
+                  Calcolato dalle letture contachilometri (computer di bordo)
+                </p>
+              )}
+
+              {consumption.avgLPer100km != null && consumptionSeries.length >= 2 ? (
                 <div className="-mx-2 mt-4 h-44">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
@@ -161,7 +195,38 @@ export function ConsumiClient({ data }: { data: CarData[] }) {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              )}
+              ) : consumption.avgLPer100km == null && odoConsumptionSeries.length >= 2 ? (
+                <div className="-mx-2 mt-4 h-44">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={odoConsumptionSeries}
+                      margin={{ top: 8, right: 12, left: 8, bottom: 0 }}
+                    >
+                      <CartesianGrid
+                        vertical={false}
+                        stroke="var(--border)"
+                        strokeDasharray="3 3"
+                      />
+                      <XAxis
+                        dataKey="label"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: 'var(--muted)' }}
+                        interval="preserveStartEnd"
+                      />
+                      <Tooltip content={<ConsumptionTooltip />} />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="var(--accent)"
+                        strokeWidth={2.5}
+                        dot={{ r: 3, fill: 'var(--accent)' }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
             </>
           )}
 
@@ -248,6 +313,55 @@ export function ConsumiClient({ data }: { data: CarData[] }) {
           )}
         </CardContent>
       </Card>
+
+      {/* --- Andamento Chilometraggio --- */}
+      <Card>
+        <CardHeader>
+          <p className="text-sm font-semibold text-foreground">Andamento chilometraggio</p>
+        </CardHeader>
+        <CardContent>
+          {timeline.length < 2 ? (
+            <EmptyState>
+              Registra almeno due letture del contachilometri per vedere l&apos;andamento nel tempo.
+            </EmptyState>
+          ) : (
+            <div className="-mx-2 h-44">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={timeline.map((p) => ({
+                    ...p,
+                    label: p.date.slice(8, 10) + '/' + p.date.slice(5, 7),
+                  }))}
+                  margin={{ top: 8, right: 12, left: 8, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    vertical={false}
+                    stroke="var(--border)"
+                    strokeDasharray="3 3"
+                  />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: 'var(--muted)' }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis hide domain={['auto', 'auto']} />
+                  <Tooltip content={<OdometerTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="km"
+                    stroke="var(--accent)"
+                    strokeWidth={2.5}
+                    dot={{ r: 3, fill: 'var(--accent)' }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -319,6 +433,25 @@ function ConsumptionTooltip({
 }
 
 function DistanceTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: TooltipEntry[]
+}) {
+  if (!active || !payload?.length) return null
+  const value = Number(payload[0].value ?? 0)
+  return (
+    <div className="rounded-xl border border-border bg-surface px-3 py-2 text-xs shadow-card">
+      <p className="font-medium text-foreground">{payload[0].payload?.label}</p>
+      <p className="mt-0.5 font-semibold tabular-nums text-accent">
+        {formatKm(value)}
+      </p>
+    </div>
+  )
+}
+
+function OdometerTooltip({
   active,
   payload,
 }: {

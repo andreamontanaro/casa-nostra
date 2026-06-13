@@ -466,6 +466,8 @@ CREATE TABLE public.odometer_readings (
   car_id       uuid NOT NULL REFERENCES public.cars(id) ON DELETE CASCADE,
   reading_date date NOT NULL DEFAULT current_date,
   km           integer NOT NULL CHECK (km >= 0),
+  avg_consumption numeric(5,2) CHECK (avg_consumption IS NULL OR avg_consumption > 0),
+  consumption_unit text CHECK (consumption_unit IS NULL OR consumption_unit IN ('km_l', 'l_100km')),
   created_by   uuid REFERENCES public.profiles(id) ON DELETE RESTRICT,
   created_at   timestamptz NOT NULL DEFAULT now(),
   updated_at   timestamptz NOT NULL DEFAULT now()

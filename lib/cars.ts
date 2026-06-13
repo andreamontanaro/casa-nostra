@@ -137,6 +137,39 @@ export function computeConsumption(entries: FuelEntry[]): ConsumptionStats {
   }
 }
 
+/**
+ * Calcola il consumo medio basandosi sulle letture del contachilometri
+ * che contengono l'indicazione del consumo del computer di bordo.
+ * Restituisce i valori sia in L/100km che in km/L (media semplice).
+ */
+export function computeOdometerConsumptionStats(readings: OdometerReading[]): {
+  avgLPer100km: number | null
+  avgKmPerL: number | null
+} {
+  const valid = readings.filter(
+    (r) => r.avg_consumption != null && r.consumption_unit != null
+  )
+  if (valid.length === 0) {
+    return { avgLPer100km: null, avgKmPerL: null }
+  }
+
+  let sumLPer100km = 0
+  for (const r of valid) {
+    const val = Number(r.avg_consumption)
+    if (r.consumption_unit === 'l_100km') {
+      sumLPer100km += val
+    } else {
+      sumLPer100km += 100 / val
+    }
+  }
+
+  const avgL = sumLPer100km / valid.length
+  return {
+    avgLPer100km: round(avgL, 1),
+    avgKmPerL: round(100 / avgL, 2),
+  }
+}
+
 /** Totali grezzi su tutti i rifornimenti (a prescindere dall'odometro). */
 export function fuelTotals(entries: Pick<FuelEntry, 'liters' | 'total_cost'>[]) {
   let liters = 0
