@@ -6,12 +6,14 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # AGENTS.md — Casa Nostra
 
-Questo file ti serve da briefing prima di scrivere codice. Non è esaustivo: i documenti autoritativi sono altri due, e in caso di conflitto vincono loro.
+Questo file ti serve da briefing prima di scrivere codice. Prima di avviare modifiche, fai sempre riferimento alla **Wiki dello Sviluppatore** in `docs/wiki/00-index.md` per una comprensione completa del sistema senza leggere il codice sorgente.
 
-- `docs\Casa_Nostra_Requisiti_MVP.docx` — requisiti funzionali completi
-- `docs\casa_nostra_schema.sql` — schema Supabase già definito e applicato
+I documenti di riferimento e le guide del progetto sono:
+- `docs/Casa_Nostra_Requisiti_MVP.docx` — requisiti funzionali completi
+- `docs/casa_nostra_schema.sql` — schema Supabase definito e applicato
+- `docs/wiki/00-index.md` — Wiki dello Sviluppatore (Architettura, Modelli, Servizi, API, Accesso Dati, Pattern)
 
-Leggili entrambi prima di iniziare. Questo file riassume le cose più importanti e aggiunge convenzioni tecniche e raccomandazioni pratiche.
+Leggili prima di iniziare. Questo file riassume le cose più importanti e aggiunge convenzioni tecniche e raccomandazioni pratiche.
 
 ## Cosa stiamo costruendo
 
@@ -21,9 +23,13 @@ Casa Nostra è un'app web mobile-first per due persone conviventi che vogliono g
 
 ## Stack tecnico
 
-Il progetto è già inizializzato con l'ultima versione di Next.js (App Router) e Tailwind CSS. Il database è Supabase (Postgres + Auth) e lo schema è già applicato. Assumo TypeScript abilitato, che è il default dei template moderni di Next.
-
-Non ho verificato personalmente le versioni esatte presenti nel `package.json` del progetto, quindi se trovi discrepanze tra queste indicazioni e quanto effettivamente installato, segnalalo invece di forzare.
+Il progetto è inizializzato con lo stack seguente (verificato nel `package.json` → `package.json`):
+- **Next.js** 16.2.4 (App Router, compiler Turbopack)
+- **React** 19.2.4
+- **Tailwind CSS** v4.0.0 (configurazione via CSS in `app/globals.css` tramite `@theme`)
+- **Supabase** (Postgres + Auth + Storage via `@supabase/ssr` 0.10.2 e `@supabase/supabase-js` 2.103.3)
+- **Google Gemini SDK** (`@google/genai` 2.7.0) per l'assistente IA chat
+- **TypeScript** abilitato
 
 ## Regole di dominio (le più importanti)
 
@@ -43,30 +49,21 @@ Le regole di business sono già codificate nel database, ma l'app deve rispettar
 
 Gestita interamente da Supabase Auth. I due utenti sono creati manualmente dal pannello Supabase e i rispettivi record in `public.profiles` sono inseriti a mano (vedi sezione 9 dello schema SQL). Non devi implementare signup né reset password — solo login.
 
-Raccomandazione pratica (non un requisito del documento): usa il pacchetto `@supabase/ssr` per integrare Supabase con l'App Router. Ti dà i tre client separati (browser, server, middleware) di cui hai bisogno. Aggiungi un middleware Next per rinfrescare la sessione a ogni richiesta e redirigere gli utenti non autenticati su `/login`.
+L'integrazione usa il pacchetto `@supabase/ssr`. I client sono in `lib/supabase/` (browser e server). Il middleware di refresh sessione e reindirizzamento degli utenti non autenticati è implementato in `proxy.ts` (Next.js 16 sostituisce `middleware.ts` con `proxy.ts`).
 
-## Architettura suggerita
+## Architettura ed Organizzazione
 
-Questa sezione è un suggerimento di mia inferenza, non un requisito. L'app è piccola e qualsiasi organizzazione sensata funziona.
+L'architettura del progetto è documentata dettagliatamente in `docs/wiki/01-architecture.md`. 
 
-Per il routing, usa l'App Router con questi segment:
-
-- `/login` — pagina pubblica di autenticazione
-- `/` — home con saldo e ultime spese
-- `/spese` — storico completo con filtri
-- `/spese/nuova` — inserimento (o come modale che si apre sopra la home)
-- `/spese/[id]` — dettaglio e modifica di una spesa
-- `/conguaglio` — schermata dedicata al conguaglio
-
-Per le mutations (crea/modifica/elimina spesa, registra conguaglio) preferisci Server Actions rispetto ad API route: meno boilerplate, integrazione naturale con i form e con `useActionState`. Per le query (liste, dettagli, saldo) va bene caricare i dati direttamente in Server Component.
-
-Dove ti serve interattività client-side (chip selezionabili, input importo con formattazione, filtri dinamici dello storico), isola il Client Component il più possibile verso le foglie, mantenendo il resto server-side.
+L'applicazione segue la struttura standard di Next.js App Router:
+- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata), `/auto` (garage privata).
+- **Mutazioni**: Implementate tramite Server Actions in `app/actions/`.
+- **Query**: Caricate nei Server Component tramite funzioni di utility in `lib/queries.ts` e `lib/queries-cars.ts`.
+- **Interattività**: Isolata nei Client Component (es. `HomeShell.tsx`, `ExpenseForm.tsx`).
 
 ## Stile grafico e UI
 
-L'app è mobile-first. Deve essere comoda con una sola mano, e deve risultare a proprio agio sia su Android che su iOS.
-
-Su questo punto c'è una piccola tensione che vale la pena esplicitare: il documento dei requisiti cita Material Design 3 come ispirazione, ma Material su iPhone si nota eccome come "estraneo". La mia raccomandazione (è una mia scelta, non un requisito) è di andare su uno stile "neutro moderno" — think Linear, Vercel, shadcn/ui: pulito, minimale, gerarchia tipografica chiara, card con ombre morbide, angoli arrotondati moderati. Non grida "Android" né "iOS" e si integra bene su entrambi. Se preferisci aderire più strettamente a Material 3 come dice il documento, va bene ugualmente — sappi solo che su iOS sembrerà un po' meno "nativo".
+L'app è mobile-first, comoda con una sola mano, e segue le linee guida di **Material Design 3** con una palette tonale basata su un colore di base verde-azzurro ("denaro"). Per tutti i dettagli su implementazione e costanti grafiche, vedi `docs/wiki/08-patterns.md`.
 
 Alcune linee guida concrete:
 
