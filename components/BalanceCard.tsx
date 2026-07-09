@@ -48,7 +48,21 @@ export function BalanceCard({ rows, currentUserId }: BalanceCardProps) {
   const me = rows.find((r) => r.user_id === currentUserId)
   const other = rows.find((r) => r.user_id !== currentUserId)
 
-  if (!me || !other) return null
+  // Manca uno dei due profili (es. secondo utente non ancora configurato):
+  // mostra uno stato neutro invece di far sparire la card senza spiegazione.
+  if (!me || !other) {
+    return (
+      <div className="relative px-1 py-2 text-foreground">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted">
+          Saldo corrente
+        </p>
+        <p className="mt-2 text-2xl font-bold tracking-tight">Non disponibile</p>
+        <p className="mt-1 text-sm text-muted">
+          Il saldo comparirà quando entrambi i profili saranno configurati.
+        </p>
+      </div>
+    )
+  }
 
   const netMe = me.net_position ?? 0
   const absAmount = Math.abs(netMe)

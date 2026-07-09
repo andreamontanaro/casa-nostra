@@ -57,6 +57,12 @@ export async function createExpense(
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors }
 
   const hasAttachments = formData.get('has_attachments') === '1'
+  // Se impostato (form a schermo intero) la action fa redirect alla pagina
+  // d'origine; se assente (bottom-sheet) resta in pagina e il client gestisce
+  // feedback e chiusura. Consentiamo solo path interni per evitare open redirect.
+  const rawRedirect = (formData.get('redirect_to') as string | null)?.trim() ?? ''
+  const redirectTo =
+    rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : ''
 
   const { data: inserted, error } = await supabase
     .from('expenses')
@@ -85,7 +91,12 @@ export async function createExpense(
     return { ok: true, expenseId: inserted.id }
   }
 
-  redirect('/?ok=expense-created')
+  // Form a schermo intero: redirect alla pagina d'origine. Bottom-sheet: nessun
+  // redirect, il client mostra il toast e chiude il sheet restando in pagina.
+  if (redirectTo) {
+    redirect(`${redirectTo}?ok=expense-created`)
+  }
+  return { ok: true }
 }
 
 export async function updateExpense(

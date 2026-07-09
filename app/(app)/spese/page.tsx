@@ -1,24 +1,31 @@
-import Link from 'next/link'
-import { Plus } from 'lucide-react'
-import { getAllExpenses } from '@/lib/queries'
-import { SpeseFiltri } from './SpeseFiltri'
+import {
+  getAllExpenses,
+  getCurrentUser,
+  getProfiles,
+  getFrequentDescriptions,
+} from '@/lib/queries'
+import { StoricoShell } from './StoricoShell'
 
 export default async function SpesePage() {
-  const expenses = await getAllExpenses()
+  const [expenses, user, profiles, suggestions] = await Promise.all([
+    getAllExpenses(),
+    getCurrentUser(),
+    getProfiles(),
+    getFrequentDescriptions(5),
+  ])
+
+  if (!user) return null
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-6 pb-4">
       <h1 className="text-xl font-semibold text-foreground">Storico spese</h1>
 
-      <SpeseFiltri expenses={expenses} />
-
-      <Link
-        href="/spese/nuova"
-        aria-label="Nuova spesa"
-        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 flex size-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground shadow-fab active:scale-95 transition-transform"
-      >
-        <Plus className="size-6" strokeWidth={2.5} />
-      </Link>
+      <StoricoShell
+        expenses={expenses}
+        profiles={profiles}
+        currentUserId={user.id}
+        suggestions={suggestions}
+      />
     </div>
   )
 }

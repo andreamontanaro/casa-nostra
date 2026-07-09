@@ -13,6 +13,7 @@ import {
   CATEGORY_LABELS,
   CATEGORY_ICON,
   SPLIT_LABELS,
+  DEFAULT_SPLIT,
   formatEur,
   todayISO,
 } from "@/lib/fmt";
@@ -22,16 +23,6 @@ import { cn } from "@/lib/utils";
 type Profile = Tables<"profiles">;
 type Category = (typeof Constants.public.Enums.expense_category)[number];
 type SplitRule = (typeof Constants.public.Enums.split_rule)[number];
-
-const DEFAULT_SPLIT: Record<Category, SplitRule> = {
-  affitto: "fifty_fifty",
-  bolletta: "sixty_forty",
-  spesa_alimentare: "sixty_forty",
-  abbonamento: "sixty_forty",
-  manutenzione: "sixty_forty",
-  viaggi: "fifty_fifty",
-  altro: "sixty_forty",
-};
 
 export interface OptimisticExpense {
   id: string;
@@ -55,6 +46,11 @@ interface ExpenseFormProps {
   currentUserId: string;
   suggestions?: string[];
   onOptimisticInsert?: (e: OptimisticExpense) => void;
+  // Path interno dove tornare dopo il salvataggio: se impostato la Server Action
+  // fa redirect (form a schermo intero); se assente resta in pagina (bottom-sheet).
+  redirectTo?: string;
+  // Callback a salvataggio riuscito nel flusso in-page (es. chiudere il sheet).
+  onSuccess?: () => void;
 }
 
 export function ExpenseForm({
@@ -62,6 +58,8 @@ export function ExpenseForm({
   currentUserId,
   suggestions = [],
   onOptimisticInsert,
+  redirectTo,
+  onSuccess,
 }: ExpenseFormProps) {
   const router = useRouter();
   const [state, action, pending] = useActionState<ExpenseFormState, FormData>(
@@ -69,12 +67,41 @@ export function ExpenseForm({
     {},
   );
   const [attachFiles, setAttachFiles] = useState<File[]>([]);
+  const [category, setCategory] = useState<Category>("spesa_alimentare");
+  const [splitRule, setSplitRule] = useState<SplitRule>("sixty_forty");
+  const [paidBy, setPaidBy] = useState(currentUserId);
+  const [rawAmount, setRawAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [customOtherShare, setCustomOtherShare] = useState("");
+
+  // Ref usata solo per il focus dopo un suggerimento; il valore è controllato.
+  const descriptionInputRef = useRef<HTMLInputElement | null>(null);
+
   // Quando createExpense torna un expenseId (caso con allegati) entriamo nella
   // fase di finalizzazione: upload dei file e poi navigazione.
   const finalizing = Boolean(state.expenseId);
 
+  function resetForm() {
+    setRawAmount("");
+    setDescription("");
+    setCategory("spesa_alimentare");
+    setSplitRule("sixty_forty");
+    setPaidBy(currentUserId);
+    setCustomOtherShare("");
+    setAttachFiles([]);
+  }
+
+  // Salvataggio riuscito nel flusso in-page (bottom-sheet): un solo toast,
+  // reset del form, chiusura del sheet e revalidazione della rotta corrente.
+  function finalizeSuccess() {
+    toast.success("Spesa salvata.");
+    resetForm();
+    onSuccess?.();
+    router.refresh();
+  }
+
   // Con allegati createExpense non fa redirect ma torna expenseId: carichiamo
-  // i file e poi navighiamo alla home.
+  // i file e poi finalizziamo (redirect a schermo intero o feedback in-page).
   useEffect(() => {
     if (!state.expenseId) return;
     let cancelled = false;
@@ -91,8 +118,12 @@ export function ExpenseForm({
         }
       }
       if (cancelled) return;
-      router.push("/?ok=expense-created");
-      router.refresh();
+      if (redirectTo) {
+        router.push(`${redirectTo}?ok=expense-created`);
+        router.refresh();
+      } else {
+        finalizeSuccess();
+      }
     })();
     return () => {
       cancelled = true;
@@ -100,12 +131,21 @@ export function ExpenseForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.expenseId]);
 
+  // Salvataggio senza allegati e senza redirect (flusso nel bottom-sheet): la
+  // Server Action torna { ok: true }; reagiamo al risultato dell'azione per dare
+  // feedback e chiudere il sheet (setState deliberato in risposta all'evento).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (state.ok && !state.expenseId) finalizeSuccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (!onOptimisticInsert) return;
 
     const amt = parseFloat(rawAmount.replace(",", "."));
     if (isNaN(amt) || amt <= 0) return;
-    const desc = descriptionInputRef.current?.value.trim() ?? "";
+    const desc = description.trim();
     if (!desc) return;
 
     const dateInput = (e.currentTarget.elements.namedItem(
@@ -141,24 +181,30 @@ export function ExpenseForm({
     });
   }
 
-  const [category, setCategory] = useState<Category>("spesa_alimentare");
-  const [splitRule, setSplitRule] = useState<SplitRule>("sixty_forty");
-  const [paidBy, setPaidBy] = useState(currentUserId);
-  const [rawAmount, setRawAmount] = useState("");
-  const [customOtherShare, setCustomOtherShare] = useState("");
-
-  const descriptionInputRef = useRef<HTMLInputElement | null>(null);
-
   function handleCategoryChange(cat: Category) {
+    // Adegua la divisione al default della nuova categoria SOLO se l'utente non
+    // l'ha personalizzata (cioè coincide ancora col default di quella precedente),
+    // così una scelta manuale non viene mai sovrascritta.
+    if (splitRule === DEFAULT_SPLIT[category]) {
+      setSplitRule(DEFAULT_SPLIT[cat]);
+    }
     setCategory(cat);
-    setSplitRule(DEFAULT_SPLIT[cat]);
+    // Pre-compilazione affitto: solo se i campi sono ancora vuoti, senza mai
+    // sovrascrivere importo o descrizione già digitati.
+    if (cat === "affitto") {
+      if (rawAmount.trim() === "") setRawAmount("530,00");
+      if (description.trim() === "") {
+        const today = new Date();
+        setDescription(
+          `Affitto ${today.toLocaleString("it-IT", { month: "long", year: "numeric" })}`,
+        );
+      }
+    }
   }
 
   function applySuggestion(s: string) {
-    if (descriptionInputRef.current) {
-      descriptionInputRef.current.value = s;
-      descriptionInputRef.current.focus();
-    }
+    setDescription(s);
+    descriptionInputRef.current?.focus();
   }
 
   const otherProfile = profiles.find((p) => p.id !== paidBy);
@@ -171,22 +217,6 @@ export function ExpenseForm({
     !isNaN(parsedCustomShare) &&
     parsedCustomShare > 0 &&
     parsedCustomShare < parsedAmount;
-
-  // Default categoria → eventuali pre-fill (affitto: importo + descrizione mese)
-  useEffect(() => {
-    let description = CATEGORY_LABELS[category] as string;
-    if (category === "affitto") {
-      setRawAmount("530,00");
-      const today = new Date();
-      description = `Affitto ${today.toLocaleString("it-IT", { month: "long", year: "numeric" })}`;
-    } else {
-      setRawAmount("");
-    }
-
-    if (descriptionInputRef.current) {
-      descriptionInputRef.current.value = description;
-    }
-  }, [category]);
 
   return (
     <form
@@ -231,6 +261,8 @@ export function ExpenseForm({
           placeholder="es. Coop settimana"
           required
           disabled={pending}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           error={state.fieldErrors?.description}
         />
         {suggestions.length > 0 && (
@@ -415,6 +447,7 @@ export function ExpenseForm({
         name="has_attachments"
         value={attachFiles.length > 0 ? "1" : "0"}
       />
+      <input type="hidden" name="redirect_to" value={redirectTo ?? ""} />
 
       {state.error && (
         <p role="alert" className="text-sm text-destructive">

@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
 import { Search, X } from 'lucide-react'
 import { ExpenseRow } from '@/components/ExpenseRow'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { formatDate, formatEur, CATEGORY_LABELS } from '@/lib/fmt'
 import { Tables, Constants } from '@/types/database'
@@ -18,6 +20,8 @@ type RangePreset = 'corrente' | 'scorso' | 'tutti'
 
 interface SpeseFiltriProps {
   expenses: Expense[]
+  // CTA dell'empty state di primo utilizzo (apre il bottom-sheet Nuova spesa).
+  onAddExpense?: () => void
 }
 
 function groupByDate(expenses: Expense[]): Map<string, Expense[]> {
@@ -44,11 +48,47 @@ function previousMonthKey(): string {
   return monthKey(d)
 }
 
-export function SpeseFiltri({ expenses }: SpeseFiltriProps) {
-  const [status, setStatus] = useState<StatusFilter>('tutte')
-  const [category, setCategory] = useState<string>('tutte')
-  const [range, setRange] = useState<RangePreset>('tutti')
-  const [query, setQuery] = useState('')
+export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
+  const searchParams = useSearchParams()
+
+  // I filtri sono inizializzati dall'URL così sopravvivono al tasto "indietro"
+  // (es. dopo aver aperto una spesa e tornato allo storico).
+  const [status, setStatus] = useState<StatusFilter>(() => {
+    const v = searchParams.get('stato')
+    return v === 'aperte' || v === 'saldate' ? v : 'tutte'
+  })
+  const [category, setCategory] = useState<string>(() => {
+    const v = searchParams.get('cat')
+    const valid = (
+      Constants.public.Enums.expense_category as readonly string[]
+    ).includes(v ?? '')
+    return valid ? (v as string) : 'tutte'
+  })
+  const [range, setRange] = useState<RangePreset>(() => {
+    const v = searchParams.get('periodo')
+    return v === 'corrente' || v === 'scorso' ? v : 'tutti'
+  })
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
+
+  // Riflette i filtri nell'URL senza ricaricare la pagina (il filtraggio è
+  // client-side): aggiorna la history così il back li ripristina.
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (status !== 'tutte') params.set('stato', status)
+    if (category !== 'tutte') params.set('cat', category)
+    if (range !== 'tutti') params.set('periodo', range)
+    const q = query.trim()
+    if (q) params.set('q', q)
+    const qs = params.toString()
+    window.history.replaceState(null, '', qs ? `/spese?${qs}` : '/spese')
+  }, [status, category, range, query])
+
+  function resetFilters() {
+    setStatus('tutte')
+    setCategory('tutte')
+    setRange('tutti')
+    setQuery('')
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -191,17 +231,48 @@ export function SpeseFiltri({ expenses }: SpeseFiltriProps) {
 
       {/* Lista */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-raised text-2xl">
-            🗒️
+        expenses.length === 0 ? (
+          // Primo utilizzo: nessuna spesa in assoluto.
+          <div className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-muted text-2xl">
+              💸
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Nessuna spesa registrata
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                Inizia aggiungendo la prima spesa condivisa.
+              </p>
+            </div>
+            {onAddExpense && (
+              <Button size="sm" onClick={onAddExpense} className="mt-1">
+                Aggiungi la prima spesa
+              </Button>
+            )}
           </div>
-          <p className="text-sm font-medium text-foreground">
-            Nessuna spesa trovata
-          </p>
-          <p className="text-xs text-muted">
-            Prova a cambiare i filtri o aggiungine una nuova.
-          </p>
-        </div>
+        ) : (
+          // Ci sono spese, ma i filtri non producono risultati.
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-raised text-2xl">
+              🗒️
+            </div>
+            <p className="text-sm font-medium text-foreground">
+              Nessuna spesa trovata
+            </p>
+            <p className="text-xs text-muted">
+              Nessun risultato con i filtri attuali.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetFilters}
+              className="mt-1"
+            >
+              Azzera filtri
+            </Button>
+          </div>
+        )
       ) : (
         Array.from(grouped.entries()).map(([date, items]) => (
           <div key={date}>

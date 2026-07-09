@@ -33,6 +33,7 @@ export default async function NuovaSpesaPage() {
         profiles={profiles}
         currentUserId={user.id}
         suggestions={suggestions}
+        redirectTo="/"
       />
     </div>
   )

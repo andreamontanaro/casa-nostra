@@ -3,13 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
-import { Plus } from 'lucide-react'
 import { BalanceCard } from '@/components/BalanceCard'
 import { ExpenseRow } from '@/components/ExpenseRow'
+import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
 import { Card } from '@/components/ui/Card'
-import { Sheet } from '@/components/ui/Sheet'
 import { Spinner } from '@/components/ui/Spinner'
-import { ExpenseForm } from '@/app/(app)/spese/nuova/ExpenseForm'
 import type { OptimisticExpense as OptimisticExpenseShape } from '@/app/(app)/spese/nuova/ExpenseForm'
 import { formatDateShort } from '@/lib/fmt'
 import { cn } from '@/lib/utils'
@@ -38,7 +36,6 @@ export function HomeShell({
   profiles,
   suggestions,
 }: HomeShellProps) {
-  const [sheetOpen, setSheetOpen] = useState(false)
   const [optimistic, setOptimistic] = useState<OptimisticExpense[]>([])
   const [optimisticBaseKey, setOptimisticBaseKey] = useState('')
   const recentExpensesKey = recentExpenses.map((expense) => expense.id).join('|')
@@ -48,7 +45,6 @@ export function HomeShell({
   function pushOptimistic(e: OptimisticExpense) {
     setOptimisticBaseKey(recentExpensesKey)
     setOptimistic((prev) => [e, ...prev])
-    setSheetOpen(false)
   }
 
   const combined = [...visibleOptimistic, ...recentExpenses].slice(0, 5)
@@ -124,37 +120,12 @@ export function HomeShell({
         </section>
       </div>
 
-      {/* FAB → Sheet */}
-      <motion.button
-        type="button"
-        onClick={() => setSheetOpen(true)}
-        aria-label="Nuova spesa"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 22, delay: 0.1 }}
-        whileTap={{ scale: 0.92 }}
-        className={cn(
-          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4',
-          'flex size-14 items-center justify-center rounded-2xl',
-          'bg-accent text-accent-foreground shadow-fab',
-        )}
-      >
-        <Plus className="size-6" strokeWidth={2.5} />
-      </motion.button>
-
-      <Sheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        title="Nuova spesa"
-        description="Pre-compila gli ultimi campi più frequenti."
-      >
-        <ExpenseForm
-          profiles={profiles}
-          currentUserId={userId}
-          suggestions={suggestions}
-          onOptimisticInsert={pushOptimistic}
-        />
-      </Sheet>
+      <NuovaSpesaFab
+        profiles={profiles}
+        currentUserId={userId}
+        suggestions={suggestions}
+        onOptimisticInsert={pushOptimistic}
+      />
     </div>
   )
 }

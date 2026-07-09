@@ -16,6 +16,7 @@ import {
   CATEGORY_LABELS,
   CATEGORY_ICON,
   SPLIT_LABELS,
+  DEFAULT_SPLIT,
   formatEur,
 } from '@/lib/fmt'
 import { Tables, Constants } from '@/types/database'
@@ -26,16 +27,6 @@ type Profile = Tables<'profiles'>
 type Expense = Tables<'expenses'>
 type Category = (typeof Constants.public.Enums.expense_category)[number]
 type SplitRule = (typeof Constants.public.Enums.split_rule)[number]
-
-const DEFAULT_SPLIT: Record<Category, SplitRule> = {
-  affitto: 'fifty_fifty',
-  bolletta: 'sixty_forty',
-  spesa_alimentare: 'sixty_forty',
-  abbonamento: 'sixty_forty',
-  manutenzione: 'sixty_forty',
-  viaggi: 'fifty_fifty',
-  altro: 'sixty_forty',
-}
 
 interface EditExpenseFormProps {
   expense: Expense
@@ -62,6 +53,7 @@ export function EditExpenseForm({
   const [splitRule, setSplitRule] = useState<SplitRule>(expense.split_rule)
   const [paidBy, setPaidBy] = useState(expense.paid_by)
   const [rawAmount, setRawAmount] = useState(String(expense.amount))
+  const [description, setDescription] = useState(expense.description)
   const [customOtherShare, setCustomOtherShare] = useState(
     expense.custom_other_share != null ? String(expense.custom_other_share) : '',
   )
@@ -91,8 +83,13 @@ export function EditExpenseForm({
   }
 
   function handleCategoryChange(cat: Category) {
+    // Adegua la divisione al default della nuova categoria SOLO se coincide
+    // ancora col default della precedente: così non sovrascrive una divisione
+    // già salvata o scelta a mano.
+    if (splitRule === DEFAULT_SPLIT[category]) {
+      setSplitRule(DEFAULT_SPLIT[cat])
+    }
     setCategory(cat)
-    setSplitRule(DEFAULT_SPLIT[cat])
   }
 
   return (
@@ -132,7 +129,8 @@ export function EditExpenseForm({
         <Input
           label="Descrizione"
           name="description"
-          defaultValue={expense.description}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           required
           disabled={pending || isSettled}
           error={state.fieldErrors?.description}

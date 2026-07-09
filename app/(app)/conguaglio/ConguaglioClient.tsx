@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { ArrowRight, Check } from 'lucide-react'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { registerSettlement } from '@/app/actions/settlement'
@@ -103,6 +104,14 @@ export function ConguaglioClient({
                   : 'Le spese selezionate si compensano.'}
             </p>
           </div>
+          {totalCount === 0 && (
+            <Link
+              href="/"
+              className="mt-1 text-sm font-medium text-accent hover:underline"
+            >
+              Torna alla home
+            </Link>
+          )}
         </div>
       ) : (
         <div className="relative px-1 py-2 text-foreground">
@@ -185,37 +194,36 @@ export function ConguaglioClient({
         </section>
       )}
 
-      <div
-        className={cn(
-          'sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4',
-          'border-t border-border',
-          'bg-surface/85 backdrop-blur-xl backdrop-saturate-150',
-          'supports-[backdrop-filter]:bg-surface/75',
-          'px-4 pt-3 pb-3',
-          'flex flex-col gap-2',
-        )}
-      >
-        <Button
-          size="lg"
-          className="w-full"
-          disabled={!hasBalance}
-          onClick={() => setDialogOpen(true)}
+      {/* Barra azione: mostrata solo se c'è qualcosa da conguagliare, così non
+          resta un bottone disabilitato "morto" quando non ci sono spese aperte. */}
+      {totalCount > 0 && (
+        <div
+          className={cn(
+            'sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4',
+            'border-t border-border',
+            'bg-surface/85 backdrop-blur-xl backdrop-saturate-150',
+            'supports-[backdrop-filter]:bg-surface/75',
+            'px-4 pt-3 pb-3',
+            'flex flex-col gap-2',
+          )}
         >
-          Registra conguaglio
-        </Button>
-        {!hasBalance && totalCount > 0 && (
-          <p className="text-center text-sm text-muted">
-            {selectedCount === 0
-              ? 'Seleziona almeno una spesa per conguagliare.'
-              : 'Le spese selezionate si compensano, niente da conguagliare.'}
-          </p>
-        )}
-        {totalCount === 0 && (
-          <p className="text-center text-sm text-muted">
-            Il saldo è zero, niente da conguagliare.
-          </p>
-        )}
-      </div>
+          <Button
+            size="lg"
+            className="w-full"
+            disabled={!hasBalance}
+            onClick={() => setDialogOpen(true)}
+          >
+            Registra conguaglio
+          </Button>
+          {!hasBalance && (
+            <p className="text-center text-sm text-muted">
+              {selectedCount === 0
+                ? 'Seleziona almeno una spesa per conguagliare.'
+                : 'Le spese selezionate si compensano, niente da conguagliare.'}
+            </p>
+          )}
+        </div>
+      )}
 
       <Dialog
         open={dialogOpen}

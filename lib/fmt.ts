@@ -1,3 +1,5 @@
+import { Constants } from '@/types/database'
+
 export function formatEur(amount: number) {
   return new Intl.NumberFormat('it-IT', {
     style: 'currency',
@@ -65,6 +67,21 @@ export const SPLIT_LABELS: Record<string, string> = {
   fifty_fifty: '50 / 50',
   sixty_forty: '60 / 40',
   custom: 'Personalizzato',
+}
+
+type Category = (typeof Constants.public.Enums.expense_category)[number]
+type SplitRule = (typeof Constants.public.Enums.split_rule)[number]
+
+// Regola di divisione proposta di default in base alla categoria.
+// Affitto e viaggi 50/50, tutto il resto 60/40 (sempre modificabile dall'utente).
+export const DEFAULT_SPLIT: Record<Category, SplitRule> = {
+  affitto: 'fifty_fifty',
+  bolletta: 'sixty_forty',
+  spesa_alimentare: 'sixty_forty',
+  abbonamento: 'sixty_forty',
+  manutenzione: 'sixty_forty',
+  viaggi: 'fifty_fifty',
+  altro: 'sixty_forty',
 }
 
 // ---- Modulo "Le mie auto" ----
