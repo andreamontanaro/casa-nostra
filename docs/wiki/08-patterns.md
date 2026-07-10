@@ -2,62 +2,96 @@
 
 Questa pagina documenta i pattern architetturali grafici, i principi di design del frontend, l'integrazione di Material Design 3 e i pattern interattivi applicati a **Casa Nostra**.
 
+> **Redesign "teal evoluto" (luglio 2026).** Il flusso spese (home, inserimento, storico, dettaglio, conguaglio) è stato riprogettato in chiave fintech (riferimenti: Revolut, N26, Monzo, Splitwise). La logica dati (vista `v_user_open_balance`, RPC `register_settlement`, Server Actions, flusso ottimistico) è rimasta invariata: sono cambiati solo design system e presentazione. Le sezioni sotto riflettono lo stato aggiornato.
+
 ---
 
-## Integrazione Material Design 3 (M3)
+## Design system
 
-L'interfaccia utente è modellata sulle linee guida di **Material Design 3**, ottimizzata per l'uso mobile-first con una sola mano.
+### 1. Palette di Colori "teal evoluto"
+I colori sono dichiarati come CSS Variables in `app/globals.css`. I valori dark sono definiti una sola volta come `--dk-*` su `:root`; i due blocchi dark (media query `prefers-color-scheme` e override `[data-theme="dark"]`) si limitano a riassegnare gli alias ai `--dk-*`, per evitare duplicazione.
 
-### 1. Palette di Colori Tonale
-I colori dell'applicazione sono dichiarati tramite CSS Variables in `globals.css` → `app/globals.css`. I colori principali e i riempimenti derivano da un colore di base (seed) verde-azzurro ("denaro"):
-* **Light Theme**:
-  * Sfondo (`--background`): `tone 98` (`#f4faf8`) → Superficie chiarissima che riduce l'affaticamento visivo.
-  * Colore Primario (`--accent`): `tone 40` (`#00756d`) → Utilizzato per elementi attivi e d'impatto.
-  * Contenitore Tonal (`--accent-muted`): `tone 90` (`#9cf1ec`) → Sfondo a basso contrasto per pillole ed evidenziatori.
-* **Dark Theme**:
-  * Sfondo (`--background`): `tone 6` (`#161d1c`) → Nero tonale molto scuro.
-  * Colore Primario (`--accent`): `tone 80` (`#4ddbd2`) → Colore d'accento ad alta leggibilità in modalità scura.
-  * Contenitore Tonal (`--accent-muted`): `tone 30` (`#00504b`) → Sfondo scuro tonale.
+* **Light**:
+  * Sfondo (`--background`): `#f6f8f7` — superficie neutra e pulita.
+  * Primario (`--accent`): `#006a60` — teal "denaro" più profondo (AA 6.50:1 su bianco).
+  * Contenitore tonale (`--accent-muted`): `#d3f3ee`.
+  * Positivo (`--positive`): `#047857` — saldo a credito / importi positivi (mai rosso: è un saldo di coppia).
+* **Dark**:
+  * Sfondo (`--background`): `#0b100f` — near-black neutro a tinta teal.
+  * Primario (`--accent`): `#2fd5c8` — accento mint saturo, alta leggibilità.
+  * Positivo (`--positive`): `#34d399`.
 
-### 2. Forme e Raggi di Curvatura (Shapes & Radius)
-L'applicazione rispetta rigorosamente i raggi di curvatura delle superfici di M3:
-* **Pulsanti (Pill Shape)**: Tutti i bottoni usano `rounded-full` → `components/ui/Button.tsx`.
-* **Card (Medium Shape)**: Raggio di curvatura impostato a `16px` (`rounded-2xl`) → `components/ui/Card.tsx`.
-* **FAB (Large Shape)**: I Floating Action Button usano il raggio `rounded-2xl` (16dp) abbinato a un'elevazione personalizzata `shadow-fab` e ad un micro-feedback tattile alla pressione (`active:scale-95`) → `components/HomeShell.tsx`.
-* **Dialog e Bottom Sheet (Extra-Large Shape)**: Raggio impostato a `28px` (`rounded-[28px]`) con bordi tenui → `components/ui/Dialog.tsx`.
+Gli alias storici del progetto (`--surface`, `--accent-muted`, `--muted`, `--border`, ecc.) sono mantenuti: cambiano solo i valori, non i nomi. Nuovi token semantici: `--positive` / `--positive-muted` / `--positive-soft` (utility `text-positive`, `bg-positive-muted`, …). Costanti hex JS (per metadata/status bar Next) in `lib/theme.ts`.
 
-### 3. Indicatori Attivi di Navigazione (BottomNav M3)
-La barra di navigazione in basso applica il pattern M3 active indicator → `components/BottomNav.tsx#L69-L77`:
-* L'elemento attivo non colora l'intera colonna del pulsante.
-* Un elemento di sfondo a forma di pillola (`w-14 h-8 rounded-full bg-accent-muted`) compare dietro all'icona del tab attivo, spostandosi con un'animazione fluida (gestita da `motion.span` con `layoutId="nav-pill"`) al cambio di pagina.
+### 2. Tipografia
+* **Inter** (variable, range 100–900) self-hostato via `next/font/local` da `app/fonts/inter-latin-wght-normal.woff2` → `app/layout.tsx`. Niente fetch build-time da Google Fonts (che su alcuni ambienti Windows fa crashare Node nello store certificati); build riproducibili.
+* Lo stack `--font-sans` antepone Inter al system font stack. `font-feature-settings: "ss01","cv11","tnum"` (feature di Inter) sul body.
+* Scala distintiva per i grandi numeri (in `@theme`): `--text-display` (2.5rem), `--text-display-sm` (2rem), `--text-title` (1.125rem), `--text-label` (0.8125rem). Saldi con peso 750–800, `tracking` stretto e `tabular-nums` via il componente `AmountDisplay`.
+
+### 3. Forme e Raggi (Shapes & Radius)
+* **Pulsanti (pill)**: tutti `rounded-full` → `components/ui/Button.tsx` (size `sm`/`md`/`lg`; `lg` = `h-13`). Hover via `color-mix` (scurisce/tinge il fill) invece dell'opacity. Variant `outline` aggiunta.
+* **Card (medium)**: `16px` (`rounded-2xl`), bordo pieno, **opache** (niente `bg-surface/xx backdrop-blur`), prop `tone` (`default`/`raised`/`sunken`) → `components/ui/Card.tsx`.
+* **FAB**: `rounded-full` con `shadow-fab` e micro-feedback (`whileTap`) → `components/NuovaSpesaFab.tsx`.
+* **Dialog e Bottom Sheet (extra-large)**: `28px` (`rounded-[28px]` / `rounded-t-[28px]`) → `components/ui/Dialog.tsx`, `components/ui/Sheet.tsx`. Lo `Sheet` supporta `size` (`auto`/`full`) e header/footer sticky.
+* Le ombre seguono una scala **più piatta** (fintech = bordi + contrasto di superficie), quasi nulle in dark.
+
+### 4. Primitive condivise
+Componenti riusabili in `components/ui/` e `components/`:
+* `AmountDisplay` — grandi importi (`size`, `tone neutral|positive|negative`).
+* `AmountInput` — hero importo con simbolo € (`size hero|md`); usato dai form spesa.
+* `SegmentedControl` — tab animati con pillola `layoutId` (usato da storico e statistiche).
+* `Chip` — chip filtro/suggerimento (`variant filter|suggestion`).
+* `ListRow` — riga generica leading/title/subtitle/trailing (base di `ExpenseRow`, dettaglio, conguaglio).
+* `CategoryIcon` — avatar categoria tinto (`size sm|md|lg`), tinta da `CATEGORY_VISUAL`.
+* `ExpenseFormFields` (`components/expense/`) — campi condivisi tra creazione e modifica; i due form restano wrapper sottili con le rispettive Server Action e logica ottimistico/allegati.
+
+### 5. Palette categorica (icone + grafici)
+Unica fonte di verità `CATEGORY_VISUAL` in `lib/fmt.ts`: per ogni categoria `{ hex, hexDark, container }`. Validata CVD (protan/deutan). I grafici (`recharts`) scelgono `hex`/`hexDark` in base al tema tramite `categoryHex(cat, isDark)`; le icone usano `container` (tinta ~15%). `CATEGORY_COLOR` resta come alias derivato.
+
+### 6. Motion
+Preset spring condivisi in `lib/motion.ts` (`springSnappy`, `springSoft`, `springLayout`, `durationFast`), usati da BottomNav, SegmentedControl, BalanceCard, FAB.
+
+### 7. Indicatori Attivi di Navigazione (BottomNav M3)
+La barra in basso applica il pattern M3 active indicator → `components/BottomNav.tsx`: una pillola (`bg-accent-muted`) compare dietro l'icona del tab attivo e si sposta con `motion.span` + `layoutId="nav-pill"` (`springLayout`). Ombra tokenizzata (`shadow-nav`).
 
 ---
 
 ## Tailwind CSS v4 e PostCSS
 
-Il design system sfrutta le funzionalità introdotte da **Tailwind CSS v4** → `package.json`:
-* **Configurazione CSS-First**: Non esiste un file `tailwind.config.js`. La configurazione del tema, l'importazione dei font e la dichiarazione delle utility avviene tramite la direttiva `@theme` inserita direttamente all'interno di `app/globals.css` → `app/globals.css`.
-* **Integrazione**: Compilato tramite il plugin PostCSS `@tailwindcss/postcss` → `postcss.config.mjs`.
+* **Configurazione CSS-First**: nessun `tailwind.config.js`. Tema, token e utility via `@theme` in `app/globals.css`. I token colore/ombra sono registrati in `@theme inline`.
+* **Integrazione**: plugin PostCSS `@tailwindcss/postcss` → `postcss.config.mjs`.
+* **Nota**: i token radius NON sovrascrivono le utility `rounded-*` di base (per non rimappare gli usi esistenti in tutto il codebase); i componenti del redesign usano raggi espliciti.
 
 ---
 
 ## Safe Area e Mobile Viewports
 
-Per garantire una UX ottimale su dispositivi iOS e Android moderni (dotati di notch e barre di navigazione gestuali), l'applicazione implementa la gestione delle aree sicure del display:
-* **Viewport Config**: La viewport è configurata con `viewportFit: 'cover'` per estendere lo sfondo a tutto lo schermo → `app/layout.tsx#L20`.
-* **Safe Area Top**: L'intestazione dell'app (`AppHeader`) ed il container principale applicano un padding superiore calcolato sulla safe area per non finire sotto la barra di stato → `app/(app)/layout.tsx#L13`.
-* **Safe Area Bottom**: La barra di navigazione in basso (`BottomNav`) calcola il padding inferiore tramite `pb-[env(safe-area-inset-bottom)]` per distanziare le icone dall'indicatore di sblocco di iOS/Android → `components/BottomNav.tsx#L48`.
+* **Viewport Config**: `viewportFit: 'cover'` + `themeColor` light/dark da `lib/theme.ts` → `app/layout.tsx`.
+* **Safe Area Top**: `AppHeader` e container principale con padding superiore sulla safe area → `app/(app)/layout.tsx`.
+* **Safe Area Bottom**: `BottomNav`, FAB e footer sticky dei form usano `env(safe-area-inset-bottom)`.
+
+---
+
+## Pattern di schermata (redesign)
+
+* **Home** — hero balance (Revolut/Monzo): saldo grande con `AmountDisplay` (verde se a credito), pill direzione avatar→freccia→avatar, CTA inline "Conguaglia", riga di stat-tile. Card opache, clearance FAB (`pb-24`) → `components/HomeShell.tsx`, `components/BalanceCard.tsx`.
+* **Inserimento spesa** — amount-first (Monzo/Splitwise) in `Sheet size="full"` con footer sticky per il Salva → `components/expense/ExpenseFormFields.tsx`.
+* **Storico** — search pill + un'unica riga di chip (chip "Filtri" apre uno `Sheet` filtri esteso); header giorno sticky con totale del giorno (pattern N26) → `app/(app)/spese/SpeseFiltri.tsx`.
+* **Dettaglio** — hero recap (`CategoryIcon` + `AmountDisplay` + badge stato) e transaction detail su `ListRow` → `app/(app)/spese/[id]/page.tsx`.
+* **Conguaglio** — payment-confirm: hero saldo, righe con `Checkbox` + `CategoryIcon` (deselezione via sola opacità), barra azione solida fusa con la BottomNav, conferma in `Sheet` payment-confirm → `app/(app)/conguaglio/ConguaglioClient.tsx`.
 
 ---
 
 ## Pattern di UI Interattiva
 
 ### 1. Interfaccia Ottimistica (Optimistic UI)
-Applicata nell'inserimento delle spese per azzerare i tempi di attesa percepiti dall'utente → `components/HomeShell.tsx#L42-L54`:
-* Quando l'utente compila ed invia il form di una nuova spesa, l'applicazione non attende la risposta del server.
-* Il componente client inserisce immediatamente la spesa in uno stato React temporaneo (`optimistic`) con un ID provvisorio e chiude la modale di inserimento.
-* La lista delle ultime spese unisce le spese ottimistiche a quelle reali della pagina (`combined`).
-* Al termine della Server Action (che esegue `revalidatePath`), Next.js rinfresca i dati dal DB in background; lo stato ottimistico viene ripulito e sostituito silenziosamente dalla riga persistita.
+Applicata nell'inserimento spese per azzerare l'attesa percepita → `components/HomeShell.tsx`:
+* All'invio, la spesa entra subito in uno stato React temporaneo (`optimistic`) con ID provvisorio e il sheet si chiude.
+* La lista unisce spese ottimistiche e reali (`combined`).
+* Al termine della Server Action (`revalidatePath`), Next.js rinfresca i dati; lo stato ottimistico viene ripulito e sostituito silenziosamente dalla riga persistita.
 
 ### 2. Transizioni di Pagina
-Per dare un senso di fluidità tipico delle app native, le transizioni tra le rotte e il caricamento delle modale sono gestite tramite libreria di movimento `motion/react` → `components/PageTransition.tsx` ed animate sull'opacità e sulla traslazione sull'asse Y.
+Transizioni tra rotte e apertura delle modali via `motion/react` → `components/PageTransition.tsx`, animate su opacità e traslazione Y.
+
+### 3. Tema (dark mode)
+Doppio meccanismo: `prefers-color-scheme` + override utente `data-theme` con script anti-FOUC in `app/layout.tsx`. Il selettore è raggiungibile dal `ThemeToggle` nel Sheet "Moduli" dell'header → `components/AppHeader.tsx`.

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import { motion } from 'motion/react'
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus } from 'lucide-react'
 import {
@@ -14,6 +14,7 @@ import {
   XAxis,
 } from 'recharts'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import {
   CATEGORY_ICON,
   CATEGORY_LABELS,
@@ -60,27 +61,30 @@ const PERIOD_LABEL_LONG: Record<Period, string> = {
 }
 
 // Rileva il tema attivo per scegliere i fill dei grafici (light/dark).
+// useSyncExternalStore: niente setState-in-effect, idratazione SSR corretta.
+function subscribeTheme(callback: () => void) {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  mq.addEventListener('change', callback)
+  const obs = new MutationObserver(callback)
+  obs.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  })
+  return () => {
+    mq.removeEventListener('change', callback)
+    obs.disconnect()
+  }
+}
+
+function getThemeSnapshot(): boolean {
+  const attr = document.documentElement.getAttribute('data-theme')
+  if (attr === 'dark') return true
+  if (attr === 'light') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
 function useIsDark() {
-  const [isDark, setIsDark] = useState(false)
-  useEffect(() => {
-    const compute = () => {
-      const attr = document.documentElement.getAttribute('data-theme')
-      if (attr === 'dark') return true
-      if (attr === 'light') return false
-      return window.matchMedia('(prefers-color-scheme: dark)').matches
-    }
-    setIsDark(compute())
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => setIsDark(compute())
-    mq.addEventListener('change', onChange)
-    const obs = new MutationObserver(onChange)
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => {
-      mq.removeEventListener('change', onChange)
-      obs.disconnect()
-    }
-  }, [])
-  return isDark
+  return useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => false)
 }
 
 export function StatisticheClient({
@@ -166,7 +170,7 @@ export function StatisticheClient({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className="text-3xl font-bold tracking-tight tabular-nums text-foreground"
+              className="text-display-sm font-bold tracking-[-0.02em] tabular-nums text-foreground"
             >
               {formatEur(totalCurrent)}
             </motion.p>
@@ -478,43 +482,3 @@ function CategoryTooltip({
   )
 }
 
-function SegmentedControl({
-  groupId,
-  value,
-  onChange,
-  options,
-}: {
-  groupId: string
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <div className="relative flex rounded-2xl border border-border bg-surface-raised p-1">
-      {options.map((opt) => {
-        const isActive = value === opt.value
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={cn(
-              'relative flex-1 rounded-xl px-3 py-1.5 text-sm font-medium',
-              'transition-colors duration-150',
-              isActive ? 'text-foreground' : 'text-muted',
-            )}
-          >
-            {isActive && (
-              <motion.span
-                layoutId={`segctl-${groupId}`}
-                transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-                className="absolute inset-0 -z-10 rounded-xl bg-surface shadow-soft"
-              />
-            )}
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
