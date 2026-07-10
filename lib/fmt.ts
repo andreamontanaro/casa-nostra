@@ -53,15 +53,69 @@ export const CATEGORY_ICON: Record<string, string> = {
   altro: '📦',
 }
 
-export const CATEGORY_COLOR: Record<string, string> = {
-  affitto: 'bg-blue-100 dark:bg-blue-400/15',
-  bolletta: 'bg-yellow-100 dark:bg-yellow-400/15',
-  spesa_alimentare: 'bg-green-100 dark:bg-green-400/15',
-  abbonamento: 'bg-purple-100 dark:bg-purple-400/15',
-  manutenzione: 'bg-orange-100 dark:bg-orange-400/15',
-  viaggi: 'bg-sky-100 dark:bg-sky-400/15',
-  altro: 'bg-zinc-100 dark:bg-zinc-400/15',
+// Palette categorica — UNICA fonte di verità (icone categoria + grafici).
+// Validata CVD (protan/deutan) su banda lightness in light e dark.
+//  · hex/hexDark → fill dei grafici (Recharts) nei due temi
+//  · container   → classi Tailwind per il tondo dietro l'emoji (stessa tinta ~15%)
+export interface CategoryVisual {
+  hex: string
+  hexDark: string
+  container: string
 }
+
+export const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
+  affitto: {
+    hex: '#2a78d6',
+    hexDark: '#2a78d6',
+    container: 'bg-[#2a78d6]/15 dark:bg-[#2a78d6]/20',
+  },
+  bolletta: {
+    hex: '#eda100',
+    hexDark: '#c48300',
+    container: 'bg-[#eda100]/15 dark:bg-[#c48300]/25',
+  },
+  spesa_alimentare: {
+    hex: '#1baf7a',
+    hexDark: '#1baf7a',
+    container: 'bg-[#1baf7a]/15 dark:bg-[#1baf7a]/20',
+  },
+  abbonamento: {
+    hex: '#4a3aa7',
+    hexDark: '#8b76e8',
+    container: 'bg-[#4a3aa7]/15 dark:bg-[#8b76e8]/20',
+  },
+  manutenzione: {
+    hex: '#eb6834',
+    hexDark: '#dd5c2a',
+    container: 'bg-[#eb6834]/15 dark:bg-[#dd5c2a]/20',
+  },
+  viaggi: {
+    hex: '#e87ba4',
+    hexDark: '#d5628f',
+    container: 'bg-[#e87ba4]/15 dark:bg-[#d5628f]/20',
+  },
+  altro: {
+    hex: '#71717a',
+    hexDark: '#8b8b93',
+    container: 'bg-[#71717a]/15 dark:bg-[#8b8b93]/20',
+  },
+}
+
+// Hex "altro" di fallback (grigio "Other", convenzione dataviz).
+export const CATEGORY_FALLBACK_HEX = CATEGORY_VISUAL.altro.hex
+export const CATEGORY_FALLBACK_HEX_DARK = CATEGORY_VISUAL.altro.hexDark
+
+/** Restituisce il fill del grafico per una categoria nel tema corrente. */
+export function categoryHex(category: string, isDark = false): string {
+  const v = CATEGORY_VISUAL[category]
+  if (!v) return isDark ? CATEGORY_FALLBACK_HEX_DARK : CATEGORY_FALLBACK_HEX
+  return isDark ? v.hexDark : v.hex
+}
+
+// Alias storico: classi container per il tondo icona (usato da ExpenseRow/CategoryIcon).
+export const CATEGORY_COLOR: Record<string, string> = Object.fromEntries(
+  Object.entries(CATEGORY_VISUAL).map(([k, v]) => [k, v.container]),
+)
 
 export const SPLIT_LABELS: Record<string, string> = {
   fifty_fifty: '50 / 50',

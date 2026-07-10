@@ -46,7 +46,7 @@ export function BottomNav() {
         'bg-surface/70 backdrop-blur-xl backdrop-saturate-150',
         'supports-[backdrop-filter]:bg-surface/65',
         'pb-[env(safe-area-inset-bottom)]',
-        'shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.08)]',
+        'shadow-nav',
       )}
     >
       <ul

@@ -5,117 +5,172 @@
 /* ─── Design tokens ─────────────────────────────────────────── */
 
 :root {
-  /* Palette tonale Material 3 (seed teal).
+  /* Palette "teal evoluto" (light).
      Mapping ruoli M3 → alias storici del progetto:
      surface → --background · surface-container-lowest → --surface
      surface-container → --surface-raised · surface-container-high → --surface-sunken
      primary → --accent · on-primary → --accent-foreground
      primary-container → --accent-muted · on-primary-container → --accent-soft
-     on-surface-variant → --muted · outline-variant → --border · outline → --border-strong */
-  --background: #f4faf8;
-  --foreground: #161d1c;
+     on-surface-variant → --muted · outline-variant → --border · outline → --border-strong
+
+     I valori dark sono definiti qui come --dk-* (unica fonte) e nei due blocchi
+     dark sotto avviene solo la riassegnazione, per non duplicare gli hex. */
+
+  --background: #f6f8f7;
+  --foreground: #0f1c1a;
   --surface: #ffffff;
-  --surface-raised: #e9efed;
-  --surface-sunken: #e0e7e5;
+  --surface-raised: #eef2f0;
+  --surface-sunken: #e5eae8;
 
-  /* Primary — teal "denaro" (tone 40) */
-  --accent: #00756d;
+  /* Primary — teal "denaro" più profondo (AA 6.50:1 su bianco) */
+  --accent: #006a60;
   --accent-foreground: #ffffff;
-  --accent-muted: #9cf1ec;
-  --accent-soft: #00504b;
+  --accent-muted: #d3f3ee;
+  --accent-soft: #00423b;
 
-  /* Testo */
-  --muted: #5c6664;
+  /* Testo secondario */
+  --muted: #566360;
 
   /* Bordi */
-  --border: #dbe4e1;
-  --border-strong: #b7c2bf;
+  --border: #e1e7e4;
+  --border-strong: #b9c4c0;
 
   /* Semantici (error M3) */
   --destructive: #ba1a1a;
   --destructive-foreground: #ffffff;
 
-  /* Glass (vetro/blur) */
-  --glass-bg: rgb(244 250 248 / 0.72);
+  /* Positivo — saldo a credito, importi positivi (mint/verde) */
+  --positive: #047857;
+  --positive-muted: #d7f5e7;
+  --positive-soft: #065f46;
+
+  /* Glass (vetro/blur) — solo header + bottom nav */
+  --glass-bg: rgb(246 248 247 / 0.72);
   --glass-border: rgb(255 255 255 / 0.6);
   --glass-blur: 20px;
 
-  /* Elevazioni M3 (tonali + ombre morbide) */
-  --shadow-soft: 0 1px 2px rgb(15 31 29 / 0.05), 0 1px 3px rgb(15 31 29 / 0.07);
-  --shadow-card: 0 1px 2px rgb(15 31 29 / 0.05), 0 8px 24px -8px rgb(15 31 29 / 0.09);
-  --shadow-fab: 0 4px 12px rgb(0 117 109 / 0.32), 0 1px 2px rgb(15 31 29 / 0.1);
-  --shadow-dialog: 0 1px 3px rgb(15 31 29 / 0.08), 0 24px 48px -12px rgb(15 31 29 / 0.18);
+  /* Elevazioni: scala più piatta (fintech = bordi + contrasto superficie) */
+  --shadow-soft: 0 1px 2px rgb(15 28 26 / 0.04);
+  --shadow-card: 0 1px 2px rgb(15 28 26 / 0.04), 0 4px 12px -6px rgb(15 28 26 / 0.06);
+  --shadow-fab: 0 4px 12px rgb(0 106 96 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+  --shadow-dialog: 0 1px 3px rgb(15 28 26 / 0.06), 0 16px 40px -12px rgb(15 28 26 / 0.16);
+  --shadow-nav: 0 -8px 24px -12px rgb(15 28 26 / 0.08);
+
+  /* ── Sorgente valori dark (--dk-*) ── */
+  --dk-background: #0b100f;
+  --dk-foreground: #e6ecea;
+  --dk-surface: #121817;
+  --dk-surface-raised: #1a211f;
+  --dk-surface-sunken: #070b0a;
+
+  --dk-accent: #2fd5c8;
+  --dk-accent-foreground: #003732;
+  --dk-accent-muted: #0e4e47;
+  --dk-accent-soft: #a7f3eb;
+
+  --dk-muted: #93a29d;
+
+  --dk-border: #232b29;
+  --dk-border-strong: #37413e;
+
+  --dk-destructive: #ffb4ab;
+  --dk-destructive-foreground: #4a0805;
+
+  --dk-positive: #34d399;
+  --dk-positive-muted: #0b3b2c;
+  --dk-positive-soft: #a7f3d0;
+
+  --dk-glass-bg: rgb(18 24 23 / 0.7);
+  --dk-glass-border: rgb(255 255 255 / 0.08);
+  --dk-glass-blur: 24px;
+
+  --dk-shadow-soft: 0 1px 2px rgb(0 0 0 / 0.3);
+  --dk-shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  --dk-shadow-fab: 0 4px 12px rgb(47 213 200 / 0.25), 0 1px 2px rgb(0 0 0 / 0.4);
+  --dk-shadow-dialog: 0 1px 3px rgb(0 0 0 / 0.5), 0 16px 40px -12px rgb(0 0 0 / 0.6);
+  --dk-shadow-nav: 0 -8px 24px -12px rgb(0 0 0 / 0.5);
 }
 
-/* Tokens dark mode: applicati quando il sistema è in dark e non c'è override,
-   oppure quando l'utente forza esplicitamente data-theme="dark". */
+/* Riassegnazioni dark: media query (sistema dark, nessun override esplicito)
+   e override utente data-theme="dark". Entrambi puntano ai --dk-* di :root. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #0e1514;
-    --foreground: #dde4e2;
-    --surface: #161d1c;
-    --surface-raised: #1f2625;
-    --surface-sunken: #0a1110;
+    --background: var(--dk-background);
+    --foreground: var(--dk-foreground);
+    --surface: var(--dk-surface);
+    --surface-raised: var(--dk-surface-raised);
+    --surface-sunken: var(--dk-surface-sunken);
 
-    --accent: #4ddbd2;
-    --accent-foreground: #003735;
-    --accent-muted: #00504b;
-    --accent-soft: #9cf1ec;
+    --accent: var(--dk-accent);
+    --accent-foreground: var(--dk-accent-foreground);
+    --accent-muted: var(--dk-accent-muted);
+    --accent-soft: var(--dk-accent-soft);
 
-    --muted: #94a09c;
+    --muted: var(--dk-muted);
 
-    --border: #283230;
-    --border-strong: #3a4543;
+    --border: var(--dk-border);
+    --border-strong: var(--dk-border-strong);
 
-    --destructive: #ffb4ab;
-    --destructive-foreground: #690005;
+    --destructive: var(--dk-destructive);
+    --destructive-foreground: var(--dk-destructive-foreground);
 
-    --glass-bg: rgb(22 29 28 / 0.7);
-    --glass-border: rgb(255 255 255 / 0.08);
-    --glass-blur: 24px;
+    --positive: var(--dk-positive);
+    --positive-muted: var(--dk-positive-muted);
+    --positive-soft: var(--dk-positive-soft);
 
-    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -8px rgb(0 0 0 / 0.5);
-    --shadow-fab: 0 4px 12px rgb(77 219 210 / 0.35), 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-dialog: 0 1px 3px rgb(0 0 0 / 0.5), 0 24px 48px -12px rgb(0 0 0 / 0.6);
+    --glass-bg: var(--dk-glass-bg);
+    --glass-border: var(--dk-glass-border);
+    --glass-blur: var(--dk-glass-blur);
+
+    --shadow-soft: var(--dk-shadow-soft);
+    --shadow-card: var(--dk-shadow-card);
+    --shadow-fab: var(--dk-shadow-fab);
+    --shadow-dialog: var(--dk-shadow-dialog);
+    --shadow-nav: var(--dk-shadow-nav);
   }
 }
 
 :root[data-theme="dark"] {
-  --background: #0e1514;
-  --foreground: #dde4e2;
-  --surface: #161d1c;
-  --surface-raised: #1f2625;
-  --surface-sunken: #0a1110;
+  --background: var(--dk-background);
+  --foreground: var(--dk-foreground);
+  --surface: var(--dk-surface);
+  --surface-raised: var(--dk-surface-raised);
+  --surface-sunken: var(--dk-surface-sunken);
 
-  --accent: #4ddbd2;
-  --accent-foreground: #003735;
-  --accent-muted: #00504b;
-  --accent-soft: #9cf1ec;
+  --accent: var(--dk-accent);
+  --accent-foreground: var(--dk-accent-foreground);
+  --accent-muted: var(--dk-accent-muted);
+  --accent-soft: var(--dk-accent-soft);
 
-  --muted: #94a09c;
+  --muted: var(--dk-muted);
 
-  --border: #283230;
-  --border-strong: #3a4543;
+  --border: var(--dk-border);
+  --border-strong: var(--dk-border-strong);
 
-  --destructive: #ffb4ab;
-  --destructive-foreground: #690005;
+  --destructive: var(--dk-destructive);
+  --destructive-foreground: var(--dk-destructive-foreground);
 
-  --glass-bg: rgb(22 29 28 / 0.7);
-  --glass-border: rgb(255 255 255 / 0.08);
-  --glass-blur: 24px;
+  --positive: var(--dk-positive);
+  --positive-muted: var(--dk-positive-muted);
+  --positive-soft: var(--dk-positive-soft);
 
-  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -8px rgb(0 0 0 / 0.5);
-  --shadow-fab: 0 4px 12px rgb(77 219 210 / 0.35), 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-dialog: 0 1px 3px rgb(0 0 0 / 0.5), 0 24px 48px -12px rgb(0 0 0 / 0.6);
+  --glass-bg: var(--dk-glass-bg);
+  --glass-border: var(--dk-glass-border);
+  --glass-blur: var(--dk-glass-blur);
+
+  --shadow-soft: var(--dk-shadow-soft);
+  --shadow-card: var(--dk-shadow-card);
+  --shadow-fab: var(--dk-shadow-fab);
+  --shadow-dialog: var(--dk-shadow-dialog);
+  --shadow-nav: var(--dk-shadow-nav);
 }
 
 /* ─── Tailwind v4 token registration ────────────────────────── */
 
 @theme inline {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -135,10 +190,31 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
 
+  --color-positive: var(--positive);
+  --color-positive-muted: var(--positive-muted);
+  --color-positive-soft: var(--positive-soft);
+
   --shadow-soft: var(--shadow-soft);
   --shadow-card: var(--shadow-card);
   --shadow-fab: var(--shadow-fab);
   --shadow-dialog: var(--shadow-dialog);
+  --shadow-nav: var(--shadow-nav);
+
+  /* Radius: bottoni restano pill, i container usano questi step */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Scala tipografica distintiva (grandi numeri) */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.05;
+  --text-display-sm: 2rem;
+  --text-display-sm--line-height: 1.1;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.3;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.2;
 }
 
 /* ─── Base ───────────────────────────────────────────────────── */

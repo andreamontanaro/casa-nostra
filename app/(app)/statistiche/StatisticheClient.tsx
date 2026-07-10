@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus } from 'lucide-react'
 import {
@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import {
   CATEGORY_ICON,
   CATEGORY_LABELS,
+  categoryHex,
   formatDate,
   formatEur,
 } from '@/lib/fmt'
@@ -58,15 +59,28 @@ const PERIOD_LABEL_LONG: Record<Period, string> = {
   all: 'da sempre',
 }
 
-// Colori categorie (coerenti con CATEGORY_COLOR ma in formato hex per Recharts)
-const CATEGORY_HEX: Record<string, string> = {
-  affitto: '#3b82f6',
-  bolletta: '#eab308',
-  spesa_alimentare: '#22c55e',
-  abbonamento: '#a855f7',
-  manutenzione: '#f97316',
-  viaggi: '#0ea5e9',
-  altro: '#71717a',
+// Rileva il tema attivo per scegliere i fill dei grafici (light/dark).
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const compute = () => {
+      const attr = document.documentElement.getAttribute('data-theme')
+      if (attr === 'dark') return true
+      if (attr === 'light') return false
+      return window.matchMedia('(prefers-color-scheme: dark)').matches
+    }
+    setIsDark(compute())
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => setIsDark(compute())
+    mq.addEventListener('change', onChange)
+    const obs = new MutationObserver(onChange)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => {
+      mq.removeEventListener('change', onChange)
+      obs.disconnect()
+    }
+  }, [])
+  return isDark
 }
 
 export function StatisticheClient({
@@ -74,6 +88,7 @@ export function StatisticheClient({
   settlements,
 }: StatisticheClientProps) {
   const [period, setPeriod] = useState<Period>('3months')
+  const isDark = useIsDark()
 
   const now = useMemo(() => new Date(), [])
   const range = useMemo(() => getPeriodRange(period, now), [period, now])
@@ -239,7 +254,7 @@ export function StatisticheClient({
                       {categoryBuckets.map((b) => (
                         <Cell
                           key={b.category}
-                          fill={CATEGORY_HEX[b.category] ?? '#71717a'}
+                          fill={categoryHex(b.category, isDark)}
                         />
                       ))}
                     </Pie>
@@ -252,7 +267,7 @@ export function StatisticheClient({
               <ul className="mt-3 flex flex-col gap-2.5">
                 {categoryBuckets.map((b) => {
                   const pct = totalCurrent > 0 ? (b.total / totalCurrent) * 100 : 0
-                  const color = CATEGORY_HEX[b.category] ?? '#71717a'
+                  const color = categoryHex(b.category, isDark)
                   return (
                     <li key={b.category} className="flex flex-col gap-1">
                       <div className="flex items-center justify-between gap-3">
