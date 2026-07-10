@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
+import { springSnappy } from '@/lib/motion'
 import { Sheet } from '@/components/ui/Sheet'
 import { ExpenseForm } from '@/app/(app)/spese/nuova/ExpenseForm'
 import type { OptimisticExpense } from '@/app/(app)/spese/nuova/ExpenseForm'
@@ -49,11 +50,11 @@ export function NuovaSpesaFab({
         aria-label="Nuova spesa"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 22, delay: 0.1 }}
+        transition={{ ...springSnappy, delay: 0.1 }}
         whileTap={{ scale: 0.92 }}
         className={cn(
           'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30',
-          'flex size-14 items-center justify-center rounded-2xl',
+          'flex size-14 items-center justify-center rounded-full',
           'bg-accent text-accent-foreground shadow-fab',
         )}
       >

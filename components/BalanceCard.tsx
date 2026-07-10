@@ -1,8 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import { motion } from 'motion/react'
-import { Check, ArrowRight } from 'lucide-react'
+import { Check, ArrowRight, ArrowLeftRight } from 'lucide-react'
+import { AmountDisplay } from '@/components/ui/AmountDisplay'
+import { buttonVariants } from '@/components/ui/Button'
 import { formatEur } from '@/lib/fmt'
+import { springSoft } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import { Tables } from '@/types/database'
 
@@ -20,26 +24,38 @@ function initialsOf(name: string | null): string {
   return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
+function firstName(name: string | null): string {
+  return name?.trim().split(/\s+/)[0] ?? '—'
+}
+
 function Avatar({
   name,
   highlighted,
-  className,
 }: {
   name: string | null
   highlighted?: boolean
-  className?: string
 }) {
   return (
     <div
       className={cn(
-        'flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold',
+        'flex size-9 items-center justify-center rounded-full text-xs font-semibold',
         highlighted
-          ? 'border-accent/30 bg-accent text-accent-foreground'
-          : 'border-border bg-surface/70 text-muted',
-        className,
+          ? 'bg-accent text-accent-foreground'
+          : 'border border-border bg-surface text-muted',
       )}
     >
       {initialsOf(name)}
+    </div>
+  )
+}
+
+function StatTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface px-3 py-2.5">
+      <p className="truncate text-xs text-muted">{label}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+        {formatEur(value)}
+      </p>
     </div>
   )
 }
@@ -49,14 +65,16 @@ export function BalanceCard({ rows, currentUserId }: BalanceCardProps) {
   const other = rows.find((r) => r.user_id !== currentUserId)
 
   // Manca uno dei due profili (es. secondo utente non ancora configurato):
-  // mostra uno stato neutro invece di far sparire la card senza spiegazione.
+  // stato neutro invece di far sparire la card senza spiegazione.
   if (!me || !other) {
     return (
-      <div className="relative px-1 py-2 text-foreground">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted">
+      <div className="px-1 pt-1">
+        <p className="text-label font-medium uppercase tracking-wider text-muted">
           Saldo corrente
         </p>
-        <p className="mt-2 text-2xl font-bold tracking-tight">Non disponibile</p>
+        <p className="mt-2 text-display-sm font-bold text-foreground">
+          Non disponibile
+        </p>
         <p className="mt-1 text-sm text-muted">
           Il saldo comparirà quando entrambi i profili saranno configurati.
         </p>
@@ -76,99 +94,78 @@ export function BalanceCard({ rows, currentUserId }: BalanceCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-      className="relative px-1 py-2 text-foreground"
+      transition={springSoft}
+      className="px-1 pt-1"
     >
-      <div className="relative">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted">
-          Saldo corrente
-        </p>
+      <p className="text-label font-medium uppercase tracking-wider text-muted">
+        Saldo corrente
+      </p>
 
-        {isZero ? (
-          <div className="mt-2 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-muted text-accent-soft">
-              <Check className="size-5" strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold tracking-tight">Siete pari</p>
-              <p className="text-sm opacity-90">Niente da conguagliare</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <motion.p
-              key={absAmount}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="mt-2 text-4xl font-bold tracking-tight tabular-nums"
-            >
-              {formatEur(absAmount)}
-            </motion.p>
-
-            <div className="mt-3 flex items-center gap-3">
-              <Avatar
-                name={payer.display_name}
-                highlighted={!isCredit}
-                className="ring-1 ring-accent-foreground/10"
-              />
-              <motion.div
-                initial={{ x: -6, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.15, duration: 0.3 }}
-                className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-muted text-accent-soft"
-              >
-                <ArrowRight className="size-3.5" strokeWidth={2.5} />
-              </motion.div>
-              <Avatar
-                name={receiver.display_name}
-                highlighted={isCredit}
-                className="ring-1 ring-accent-foreground/10"
-              />
-              <p className="ml-1 text-sm leading-tight text-muted">
-                {isCredit ? (
-                  <>
-                    <span className="font-medium text-foreground">
-                      {payer.display_name}
-                    </span>
-                    <br />
-                    ti deve questi soldi
-                  </>
-                ) : (
-                  <>
-                    Devi a{' '}
-                    <span className="font-medium text-foreground">
-                      {receiver.display_name}
-                    </span>
-                  </>
-                )}
-              </p>
-            </div>
-          </>
-        )}
-
-        <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border pt-3 text-xs">
-          <div>
-            <p className="text-muted">Hai anticipato</p>
-            <p className="mt-0.5 font-semibold tabular-nums">
-              {formatEur(me.total_anticipated ?? 0)}
-            </p>
-          </div>
-          <div className="border-x border-border px-3">
-            <p className="text-muted">Quota personale</p>
-            <p className="mt-0.5 font-semibold tabular-nums">
-              {formatEur(me.total_owed ?? 0)}
-            </p>
+      {isZero ? (
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex size-11 items-center justify-center rounded-full bg-positive-muted text-positive-soft">
+            <Check className="size-5" strokeWidth={2.5} />
           </div>
           <div>
-            <p className="truncate text-muted">
-              {other.display_name?.split(' ')[0]} ha messo
+            <p className="text-display-sm font-bold tracking-[-0.02em] text-foreground">
+              Siete pari
             </p>
-            <p className="mt-0.5 font-semibold tabular-nums">
-              {formatEur(other.total_anticipated ?? 0)}
-            </p>
+            <p className="text-sm text-muted">Niente da conguagliare</p>
           </div>
         </div>
+      ) : (
+        <>
+          <div className="mt-1">
+            <AmountDisplay
+              value={absAmount}
+              size="display"
+              tone={isCredit ? 'positive' : 'neutral'}
+            />
+          </div>
+
+          {/* Direzione del bonifico */}
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface py-1.5 pl-1.5 pr-4">
+            <Avatar name={payer.display_name} highlighted={!isCredit} />
+            <ArrowRight className="size-4 shrink-0 text-muted" strokeWidth={2.5} />
+            <Avatar name={receiver.display_name} highlighted={isCredit} />
+            <p className="pl-1 text-sm leading-tight text-muted">
+              {isCredit ? (
+                <>
+                  <span className="font-semibold text-foreground">
+                    {firstName(payer.display_name)}
+                  </span>{' '}
+                  ti deve
+                </>
+              ) : (
+                <>
+                  Devi a{' '}
+                  <span className="font-semibold text-foreground">
+                    {firstName(receiver.display_name)}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+
+          {/* Azione chiave a un tap */}
+          <Link
+            href="/conguaglio"
+            className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'mt-4 w-full')}
+          >
+            <ArrowLeftRight className="size-5" strokeWidth={2.4} />
+            Conguaglia
+          </Link>
+        </>
+      )}
+
+      {/* Stat-tile */}
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <StatTile label="Hai anticipato" value={me.total_anticipated ?? 0} />
+        <StatTile label="Quota tua" value={me.total_owed ?? 0} />
+        <StatTile
+          label={`${firstName(other.display_name)} ha messo`}
+          value={other.total_anticipated ?? 0}
+        />
       </div>
     </motion.div>
   )
