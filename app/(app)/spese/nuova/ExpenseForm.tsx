@@ -1,22 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
 import { createExpense, type ExpenseFormState } from "@/app/actions/expenses";
 import { uploadAttachments } from "@/lib/attachments";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
+import { ExpenseFormFields } from "@/components/expense/ExpenseFormFields";
 import { toast } from "@/lib/toast";
-import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import {
-  CATEGORY_LABELS,
-  CATEGORY_ICON,
-  SPLIT_LABELS,
-  DEFAULT_SPLIT,
-  formatEur,
-  todayISO,
-} from "@/lib/fmt";
+import { DEFAULT_SPLIT, todayISO } from "@/lib/fmt";
 import { Tables, Constants } from "@/types/database";
 import { cn } from "@/lib/utils";
 
@@ -73,9 +65,11 @@ export function ExpenseForm({
   const [rawAmount, setRawAmount] = useState("");
   const [description, setDescription] = useState("");
   const [customOtherShare, setCustomOtherShare] = useState("");
+  const [expenseDate, setExpenseDate] = useState(todayISO());
 
-  // Ref usata solo per il focus dopo un suggerimento; il valore è controllato.
-  const descriptionInputRef = useRef<HTMLInputElement | null>(null);
+  // Nel flusso bottom-sheet (senza redirect) il Salva è una barra sticky in
+  // fondo; a schermo intero (con redirect) resta in coda allo scroll.
+  const isSheet = !redirectTo;
 
   // Quando createExpense torna un expenseId (caso con allegati) entriamo nella
   // fase di finalizzazione: upload dei file e poi navigazione.
@@ -88,6 +82,7 @@ export function ExpenseForm({
     setSplitRule("sixty_forty");
     setPaidBy(currentUserId);
     setCustomOtherShare("");
+    setExpenseDate(todayISO());
     setAttachFiles([]);
   }
 
@@ -147,11 +142,7 @@ export function ExpenseForm({
     if (isNaN(amt) || amt <= 0) return;
     const desc = description.trim();
     if (!desc) return;
-
-    const dateInput = (e.currentTarget.elements.namedItem(
-      "expense_date",
-    ) as HTMLInputElement | null)?.value;
-    if (!dateInput) return;
+    if (!expenseDate) return;
 
     const payer = profiles.find((p) => p.id === paidBy);
     const customShareValue =
@@ -167,7 +158,7 @@ export function ExpenseForm({
       category,
       split_rule: splitRule,
       paid_by: paidBy,
-      expense_date: dateInput,
+      expense_date: expenseDate,
       settlement_id: null,
       created_by: currentUserId,
       custom_other_share:
@@ -202,246 +193,48 @@ export function ExpenseForm({
     }
   }
 
-  function applySuggestion(s: string) {
-    setDescription(s);
-    descriptionInputRef.current?.focus();
-  }
-
-  const otherProfile = profiles.find((p) => p.id !== paidBy);
-  const parsedAmount = parseFloat(rawAmount.replace(",", "."));
-  const parsedCustomShare = parseFloat(customOtherShare.replace(",", "."));
-  const showCustomPreview =
-    splitRule === "custom" &&
-    !isNaN(parsedAmount) &&
-    parsedAmount > 0 &&
-    !isNaN(parsedCustomShare) &&
-    parsedCustomShare > 0 &&
-    parsedCustomShare < parsedAmount;
-
   return (
     <form
       action={action}
       onSubmit={handleSubmit}
-      className="flex flex-col gap-5 px-4 pt-4 pb-6"
+      className={cn("flex flex-col px-4 pt-4", isSheet ? "pb-0" : "pb-6")}
     >
-      {/* Importo — hero */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-foreground">
-          Importo (€)
-        </label>
-        <input
-          name="amount"
-          type="text"
-          inputMode="decimal"
-          placeholder="0,00"
-          required
-          disabled={pending}
-          value={rawAmount}
-          onChange={(e) => setRawAmount(e.target.value)}
-          className={cn(
-            "h-16 w-full rounded-2xl border border-border bg-surface px-4",
-            "text-3xl font-bold tracking-tight text-foreground tabular-nums",
-            "placeholder:text-muted/60 placeholder:font-medium",
-            "shadow-soft transition-[border-color,box-shadow] duration-150",
-            "focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent",
-            "disabled:opacity-50",
-          )}
-        />
-        {state.fieldErrors?.amount && (
-          <p className="text-xs text-destructive">{state.fieldErrors.amount}</p>
-        )}
-      </div>
-
-      {/* Descrizione + suggerimenti */}
-      <div className="flex flex-col gap-2">
-        <Input
-          ref={descriptionInputRef}
-          label="Descrizione"
-          name="description"
-          placeholder="es. Coop settimana"
-          required
-          disabled={pending}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          error={state.fieldErrors?.description}
-        />
-        {suggestions.length > 0 && (
-          <div className="-mx-4 overflow-x-auto no-scrollbar">
-            <div className="flex gap-2 px-4">
-              {suggestions.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => applySuggestion(s)}
-                  disabled={pending}
-                  className={cn(
-                    "shrink-0 rounded-lg border border-border-strong bg-transparent",
-                    "px-3 py-1.5 text-xs font-medium text-muted",
-                    "hover:border-accent/50 hover:text-foreground",
-                    "active:scale-95 transition-[transform,border-color,color] duration-150",
-                  )}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Categoria — chip con emoji+label */}
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-foreground">Categoria</span>
-        <div className="grid grid-cols-3 gap-2">
-          {Constants.public.Enums.expense_category.map((cat) => {
-            const isActive = category === cat;
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => handleCategoryChange(cat)}
-                disabled={pending}
-                className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-2xl border px-2 py-2.5",
-                  "text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
-                  "active:scale-[0.97]",
-                  isActive
-                    ? "border-transparent bg-accent-muted text-accent-soft shadow-soft"
-                    : "border-border bg-surface text-muted hover:border-accent/40",
-                )}
-              >
-                <span className="text-base leading-none">
-                  {CATEGORY_ICON[cat]}
-                </span>
-                <span className="truncate">{CATEGORY_LABELS[cat]}</span>
-              </button>
-            );
-          })}
-        </div>
-        <input type="hidden" name="category" value={category} />
-      </div>
-
-      {/* Regola divisione */}
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-foreground">Divisione</span>
-        <div className="flex gap-2">
-          {Constants.public.Enums.split_rule.map((rule) => (
-            <button
-              key={rule}
-              type="button"
-              onClick={() => setSplitRule(rule)}
-              disabled={pending}
-              className={cn(
-                "flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
-                "active:scale-[0.97]",
-                splitRule === rule
-                  ? "border-transparent bg-accent-muted text-accent-soft shadow-soft"
-                  : "border-border bg-surface text-muted hover:border-accent/40",
-              )}
-            >
-              {SPLIT_LABELS[rule]}
-            </button>
-          ))}
-        </div>
-        <input type="hidden" name="split_rule" value={splitRule} />
-      </div>
-
-      {/* Quota personalizzata — comparsa animata */}
-      <AnimatePresence initial={false}>
-        {splitRule === "custom" && (
-          <motion.div
-            key="custom-share"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-foreground">
-                Quota di {otherProfile?.display_name ?? "altra persona"} (€)
-              </label>
-              <input
-                name="custom_other_share"
-                type="text"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={customOtherShare}
-                onChange={(e) => setCustomOtherShare(e.target.value)}
-                disabled={pending}
-                className={cn(
-                  "h-12 w-full rounded-2xl border border-border bg-surface px-4",
-                  "text-xl font-semibold text-foreground tabular-nums",
-                  "placeholder:text-muted shadow-soft",
-                  "focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent",
-                  "disabled:opacity-50",
-                )}
-              />
-              {showCustomPreview && (
-                <p className="text-xs text-muted tabular-nums">
-                  La tua quota: {formatEur(parsedAmount - parsedCustomShare)}
-                </p>
-              )}
-              {state.fieldErrors?.custom_other_share && (
-                <p className="text-xs text-destructive">
-                  {state.fieldErrors.custom_other_share}
-                </p>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {splitRule !== "custom" && (
-        <input type="hidden" name="custom_other_share" value="" />
-      )}
-
-      {/* Pagato da */}
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-foreground">Pagato da</span>
-        <div className="flex gap-2">
-          {profiles.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setPaidBy(p.id)}
-              disabled={pending}
-              className={cn(
-                "flex-1 rounded-2xl border py-2.5 text-sm font-medium transition-[border-color,background-color,color,transform] duration-150",
-                "active:scale-[0.97]",
-                paidBy === p.id
-                  ? "border-transparent bg-accent-muted text-accent-soft shadow-soft"
-                  : "border-border bg-surface text-muted hover:border-accent/40",
-              )}
-            >
-              {p.id === currentUserId ? "Io" : p.display_name}
-            </button>
-          ))}
-        </div>
-        <input type="hidden" name="paid_by" value={paidBy} />
-      </div>
-
-      {/* Data */}
-      <Input
-        label="Data"
-        name="expense_date"
-        type="date"
-        defaultValue={todayISO()}
-        required
+      <ExpenseFormFields
+        profiles={profiles}
+        currentUserId={currentUserId}
         disabled={pending}
+        fieldErrors={state.fieldErrors}
+        suggestions={suggestions}
+        amountAutoFocus={isSheet}
+        amount={rawAmount}
+        onAmountChange={setRawAmount}
+        description={description}
+        onDescriptionChange={setDescription}
+        category={category}
+        onCategoryChange={handleCategoryChange}
+        splitRule={splitRule}
+        onSplitRuleChange={setSplitRule}
+        customOtherShare={customOtherShare}
+        onCustomOtherShareChange={setCustomOtherShare}
+        paidBy={paidBy}
+        onPaidByChange={setPaidBy}
+        expenseDate={expenseDate}
+        onExpenseDateChange={setExpenseDate}
+        attachmentsSlot={
+          <div className="flex flex-col gap-2">
+            <span className="text-label font-medium text-muted">
+              Allegati (facoltativi)
+            </span>
+            <AttachmentUploader
+              mode="deferred"
+              files={attachFiles}
+              onFilesChange={setAttachFiles}
+              disabled={pending || finalizing}
+            />
+          </div>
+        }
       />
 
-      {/* Allegati */}
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-foreground">
-          Allegati (facoltativi)
-        </span>
-        <AttachmentUploader
-          mode="deferred"
-          files={attachFiles}
-          onFilesChange={setAttachFiles}
-          disabled={pending || finalizing}
-        />
-      </div>
       <input
         type="hidden"
         name="has_attachments"
@@ -450,19 +243,27 @@ export function ExpenseForm({
       <input type="hidden" name="redirect_to" value={redirectTo ?? ""} />
 
       {state.error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="mt-4 text-sm text-destructive">
           {state.error}
         </p>
       )}
 
-      <Button
-        type="submit"
-        size="lg"
-        loading={pending || finalizing}
-        className="mt-1 w-full"
+      <div
+        className={cn(
+          "mt-5",
+          isSheet &&
+            "sticky bottom-0 z-10 -mx-4 mt-4 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+        )}
       >
-        Salva spesa
-      </Button>
+        <Button
+          type="submit"
+          size="lg"
+          loading={pending || finalizing}
+          className="w-full"
+        >
+          Salva spesa
+        </Button>
+      </div>
     </form>
   );
 }

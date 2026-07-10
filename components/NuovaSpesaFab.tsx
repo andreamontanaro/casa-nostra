@@ -64,8 +64,8 @@ export function NuovaSpesaFab({
       <Sheet
         open={open}
         onOpenChange={setOpen}
+        size="full"
         title="Nuova spesa"
-        description="Pre-compila gli ultimi campi più frequenti."
       >
         <ExpenseForm
           profiles={profiles}
