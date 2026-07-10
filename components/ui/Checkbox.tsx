@@ -10,12 +10,13 @@ interface CheckboxProps
 
 export function Checkbox({ ref, className, ...props }: CheckboxProps) {
   return (
-    <span className="relative inline-flex shrink-0">
+    // Wrapper 44px = touch target minimo, box visivo 22px centrato.
+    <span className="relative inline-flex size-11 shrink-0 items-center justify-center">
       <input
         ref={ref}
         type="checkbox"
         className={cn(
-          'peer h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border-2 border-border bg-surface',
+          'peer size-[22px] shrink-0 cursor-pointer appearance-none rounded-md border-2 border-border-strong bg-surface',
           'transition-colors',
           'checked:border-accent checked:bg-accent',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background',
@@ -25,7 +26,7 @@ export function Checkbox({ ref, className, ...props }: CheckboxProps) {
         {...props}
       />
       <Check
-        className="pointer-events-none absolute left-1/2 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 text-accent-foreground opacity-0 peer-checked:opacity-100"
+        className="pointer-events-none absolute left-1/2 top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 text-accent-foreground opacity-0 peer-checked:opacity-100"
         strokeWidth={3.5}
         aria-hidden
       />

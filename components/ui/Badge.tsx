@@ -2,8 +2,10 @@ const variants = {
   default: 'bg-surface-raised text-foreground border border-border',
   accent: 'bg-accent-muted text-accent-soft',
   success: 'bg-accent-muted text-accent-soft',
+  positive: 'bg-positive-muted text-positive-soft',
   destructive: 'bg-destructive/12 text-destructive',
   muted: 'bg-surface-raised text-muted',
+  outline: 'border border-border-strong text-muted',
 } as const
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {

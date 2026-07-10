@@ -200,12 +200,6 @@
   --shadow-dialog: var(--shadow-dialog);
   --shadow-nav: var(--shadow-nav);
 
-  /* Radius: bottoni restano pill, i container usano questi step */
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
-
   /* Scala tipografica distintiva (grandi numeri) */
   --text-display: 2.5rem;
   --text-display--line-height: 1.05;

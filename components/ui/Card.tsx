@@ -1,15 +1,33 @@
 import { cn } from '@/lib/utils'
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  ref?: React.Ref<HTMLDivElement>
+type CardTone = 'default' | 'raised' | 'sunken'
+
+const toneClass: Record<CardTone, string> = {
+  default: 'bg-surface',
+  raised: 'bg-surface-raised',
+  sunken: 'bg-surface-sunken',
 }
 
-export function Card({ ref, className, children, ...props }: CardProps) {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  ref?: React.Ref<HTMLDivElement>
+  // Superficie della card. `raised`/`sunken` sostituiscono i vari
+  // `bg-surface/86 backdrop-blur` sparsi: le card ora sono opache.
+  tone?: CardTone
+}
+
+export function Card({
+  ref,
+  tone = 'default',
+  className,
+  children,
+  ...props
+}: CardProps) {
   return (
     <div
       ref={ref}
       className={cn(
-        'bg-surface rounded-2xl border border-border/70 shadow-card',
+        'rounded-2xl border border-border shadow-card',
+        toneClass[tone],
         className,
       )}
       {...props}

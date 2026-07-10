@@ -7,7 +7,7 @@ import { Spinner } from './Spinner'
 const buttonVariants = cva(
   [
     'relative inline-flex items-center justify-center gap-2 font-medium',
-    'transition-[opacity,transform,background-color] duration-150',
+    'transition-[transform,background-color,border-color,color] duration-150',
     'active:scale-[0.98]',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
@@ -15,21 +15,23 @@ const buttonVariants = cva(
   ].join(' '),
   {
     variants: {
-      // Ruoli M3: primary = filled, secondary = filled tonal, ghost = text, destructive = filled error
+      // Hover via color-mix (scurisce/tinge il fill) invece dell'opacity, che sul
+      // nuovo look piatto risultava slavata.
       variant: {
         primary:
-          'bg-accent text-accent-foreground hover:opacity-95 active:opacity-90',
+          'bg-accent text-accent-foreground hover:[background-color:color-mix(in_oklab,var(--accent),#000_8%)] active:[background-color:color-mix(in_oklab,var(--accent),#000_14%)]',
         secondary:
-          'bg-accent-muted text-accent-soft hover:opacity-90 active:opacity-80',
-        ghost:
-          'text-foreground hover:bg-surface-raised active:bg-border',
+          'bg-accent-muted text-accent-soft hover:[background-color:color-mix(in_oklab,var(--accent-muted),var(--accent)_10%)]',
+        outline:
+          'border border-border-strong bg-transparent text-foreground hover:bg-surface-raised active:bg-border',
+        ghost: 'text-foreground hover:bg-surface-raised active:bg-border',
         destructive:
-          'bg-destructive text-destructive-foreground hover:opacity-95 active:opacity-90',
+          'bg-destructive text-destructive-foreground hover:[background-color:color-mix(in_oklab,var(--destructive),#000_8%)] active:[background-color:color-mix(in_oklab,var(--destructive),#000_14%)]',
       },
       size: {
         sm: 'h-9 px-4 text-sm rounded-full',
         md: 'h-11 px-5 text-base rounded-full',
-        lg: 'h-12 px-6 text-base font-semibold rounded-full',
+        lg: 'h-13 px-6 text-base font-semibold rounded-full',
       },
     },
     defaultVariants: {

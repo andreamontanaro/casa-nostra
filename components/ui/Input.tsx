@@ -30,7 +30,7 @@ export function Input({
         ref={ref}
         id={inputId}
         className={cn(
-          'h-11 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground',
+          'h-12 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground',
           'placeholder:text-muted',
           'shadow-soft',
           'transition-[border-color,box-shadow] duration-150',
