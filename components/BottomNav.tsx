@@ -12,6 +12,7 @@ import {
   Fuel,
   LineChart,
 } from 'lucide-react'
+import { springLayout, springSnappy } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 const casaItems = [
@@ -71,13 +72,13 @@ export function BottomNav() {
                   {active && (
                     <motion.span
                       layoutId="nav-pill"
-                      transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                      transition={springLayout}
                       className="absolute inset-0 rounded-full bg-accent-muted"
                     />
                   )}
                   <motion.span
                     animate={{ scale: active ? 1.05 : 1 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 24 }}
+                    transition={springSnappy}
                     className={cn('relative', active ? 'text-accent-soft' : 'text-muted')}
                   >
                     <Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />

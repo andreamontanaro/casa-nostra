@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { ArrowRight, Check } from 'lucide-react'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { registerSettlement } from '@/app/actions/settlement'
+import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Checkbox } from '@/components/ui/Checkbox'
-import { Dialog } from '@/components/ui/Dialog'
+import { Sheet } from '@/components/ui/Sheet'
+import { CategoryIcon } from '@/components/CategoryIcon'
 import { toast } from '@/lib/toast'
 import { CATEGORY_LABELS, formatDate, formatEur } from '@/lib/fmt'
 import { cn } from '@/lib/utils'
@@ -19,6 +21,16 @@ interface ConguaglioClientProps {
   otherUserName: string
 }
 
+function DirectionPill({ payer, receiver }: { payer: string; receiver: string }) {
+  return (
+    <div className="inline-flex items-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium">
+      <span className="text-foreground">{payer}</span>
+      <ArrowRight className="size-4 shrink-0 text-muted" strokeWidth={2.5} />
+      <span className="text-foreground">{receiver}</span>
+    </div>
+  )
+}
+
 export function ConguaglioClient({
   expenses,
   otherUserName,
@@ -26,7 +38,7 @@ export function ConguaglioClient({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(expenses.map((e) => e.id)),
   )
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const net = useMemo(() => {
@@ -73,21 +85,17 @@ export function ConguaglioClient({
       } catch (e) {
         if (isRedirectError(e)) throw e
         toast.error('Errore durante il conguaglio. Riprova.')
-        setDialogOpen(false)
+        setConfirmOpen(false)
       }
     })
   }
 
-  const dialogDescription = allSelected
-    ? 'Tutte le spese aperte verranno marcate come saldate. Assicurati che il bonifico sia già avvenuto.'
-    : `Verranno marcate come saldate solo le ${selectedCount} spese selezionate. Le altre resteranno aperte. Assicurati che il bonifico sia già avvenuto.`
-
   return (
     <>
-      {/* Card saldo netto */}
+      {/* Hero saldo netto */}
       {!hasBalance ? (
         <div className="flex flex-col items-center gap-3 px-1 py-6">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-muted text-accent-soft">
+          <div className="flex size-12 items-center justify-center rounded-full bg-positive-muted text-positive-soft">
             <Check className="size-6" strokeWidth={2.5} />
           </div>
           <div className="text-center">
@@ -114,32 +122,20 @@ export function ConguaglioClient({
           )}
         </div>
       ) : (
-        <div className="relative px-1 py-2 text-foreground">
-          <div className="relative flex flex-col items-center gap-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted">
-              Saldo netto
-            </p>
-            <p className="text-4xl font-bold tracking-tight tabular-nums">
-              {formatEur(absAmount)}
-            </p>
-            <div className="flex items-center gap-3 rounded-full bg-accent-muted px-3 py-1 text-sm font-medium text-accent-soft">
-              <span className={isCredit ? 'text-foreground' : ''}>
-                {payer}
-              </span>
-              <ArrowRight className="size-4" strokeWidth={2.5} />
-              <span className={!isCredit ? 'text-foreground' : ''}>
-                {receiver}
-              </span>
-            </div>
-          </div>
+        <div className="flex flex-col items-center gap-3 py-2">
+          <p className="text-label font-medium uppercase tracking-wider text-muted">
+            Saldo netto
+          </p>
+          <AmountDisplay value={absAmount} size="display" />
+          <DirectionPill payer={payer} receiver={receiver} />
         </div>
       )}
 
       {/* Lista spese con checkbox */}
       {totalCount > 0 && (
         <section>
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+          <div className="mb-2 flex items-center justify-between gap-3 px-1">
+            <h2 className="text-label font-semibold uppercase tracking-wide text-muted">
               Spese ({selectedCount}/{totalCount})
             </h2>
             <button
@@ -150,41 +146,28 @@ export function ConguaglioClient({
               {allSelected ? 'Deseleziona tutte' : 'Seleziona tutte'}
             </button>
           </div>
-          <Card className="divide-y divide-border overflow-hidden bg-surface/86 p-0 backdrop-blur">
+          <Card className="divide-y divide-border overflow-hidden p-0">
             {expenses.map((e) => {
               const checked = selectedIds.has(e.id)
               return (
                 <label
                   key={e.id}
                   className={cn(
-                    'flex min-h-12 cursor-pointer items-center gap-3 px-4 py-3 transition-opacity',
-                    !checked && 'opacity-50',
+                    'flex cursor-pointer items-center gap-2 py-2 pl-1 pr-4 transition-opacity',
+                    !checked && 'opacity-60',
                   )}
                 >
-                  <Checkbox
-                    checked={checked}
-                    onChange={() => toggle(e.id)}
-                  />
+                  <Checkbox checked={checked} onChange={() => toggle(e.id)} />
+                  <CategoryIcon category={e.category} size="md" />
                   <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        'truncate text-sm font-medium text-foreground',
-                        !checked && 'line-through',
-                      )}
-                    >
+                    <p className="truncate text-sm font-medium text-foreground">
                       {e.description}
                     </p>
                     <p className="text-xs text-muted">
-                      {formatDate(e.expense_date)} ·{' '}
-                      {CATEGORY_LABELS[e.category]}
+                      {formatDate(e.expense_date)} · {CATEGORY_LABELS[e.category]}
                     </p>
                   </div>
-                  <span
-                    className={cn(
-                      'ml-3 shrink-0 text-sm font-semibold tabular-nums text-foreground',
-                      !checked && 'line-through',
-                    )}
-                  >
+                  <span className="ml-2 shrink-0 text-sm font-semibold tabular-nums text-foreground">
                     {formatEur(e.amount)}
                   </span>
                 </label>
@@ -194,28 +177,33 @@ export function ConguaglioClient({
         </section>
       )}
 
-      {/* Barra azione: mostrata solo se c'è qualcosa da conguagliare, così non
-          resta un bottone disabilitato "morto" quando non ci sono spese aperte. */}
+      {/* Barra azione solida, fusa con la BottomNav (un solo border-t) */}
       {totalCount > 0 && (
         <div
           className={cn(
             'sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4',
-            'border-t border-border',
-            'bg-surface/85 backdrop-blur-xl backdrop-saturate-150',
-            'supports-[backdrop-filter]:bg-surface/75',
-            'px-4 pt-3 pb-3',
-            'flex flex-col gap-2',
+            'border-t border-border bg-background px-4 pt-3 pb-3',
           )}
         >
-          <Button
-            size="lg"
-            className="w-full"
-            disabled={!hasBalance}
-            onClick={() => setDialogOpen(true)}
-          >
-            Registra conguaglio
-          </Button>
-          {!hasBalance && (
+          {hasBalance ? (
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted">
+                  {selectedCount} {selectedCount === 1 ? 'spesa' : 'spese'}
+                </p>
+                <p className="text-sm font-semibold tabular-nums text-foreground">
+                  {formatEur(absAmount)}
+                </p>
+              </div>
+              <Button
+                size="lg"
+                className="flex-[2]"
+                onClick={() => setConfirmOpen(true)}
+              >
+                Conguaglia
+              </Button>
+            </div>
+          ) : (
             <p className="text-center text-sm text-muted">
               {selectedCount === 0
                 ? 'Seleziona almeno una spesa per conguagliare.'
@@ -225,15 +213,46 @@ export function ConguaglioClient({
         </div>
       )}
 
-      <Dialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+      {/* Sheet payment-confirm */}
+      <Sheet
+        open={confirmOpen}
+        onOpenChange={(o) => {
+          if (!isPending) setConfirmOpen(o)
+        }}
         title="Conferma conguaglio"
-        description={dialogDescription}
-        confirmLabel="Conferma"
-        onConfirm={handleConfirm}
-        loading={isPending}
-      />
+        footer={
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              size="lg"
+              className="flex-1"
+              onClick={() => setConfirmOpen(false)}
+              disabled={isPending}
+            >
+              Annulla
+            </Button>
+            <Button
+              size="lg"
+              className="flex-1"
+              onClick={handleConfirm}
+              loading={isPending}
+            >
+              Conferma
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-2">
+          <AmountDisplay value={absAmount} size="display-sm" />
+          <DirectionPill payer={payer} receiver={receiver} />
+          <p className="text-center text-sm text-muted">
+            {allSelected
+              ? `Verranno marcate come saldate tutte le ${selectedCount} spese aperte.`
+              : `Verranno marcate come saldate le ${selectedCount} spese selezionate; le altre resteranno aperte.`}
+            {' '}Assicurati che il bonifico sia già avvenuto.
+          </p>
+        </div>
+      </Sheet>
     </>
   )
 }

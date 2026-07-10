@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, Home, Car, Settings, ChevronRight } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { cn } from '@/lib/utils'
 
 const MODULES = [
@@ -102,6 +103,13 @@ export function AppHeader() {
             <span className="flex-1">Impostazioni</span>
             <ChevronRight className="size-4 text-muted" />
           </Link>
+
+          <div className="my-1.5 h-px bg-border" />
+
+          <div className="flex flex-col gap-2 px-1">
+            <span className="text-label font-medium text-muted">Tema</span>
+            <ThemeToggle />
+          </div>
         </nav>
       </Sheet>
     </>
