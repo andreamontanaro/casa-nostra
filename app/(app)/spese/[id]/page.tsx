@@ -9,7 +9,11 @@ import {
 } from '@/lib/queries'
 import { EditExpenseForm } from './EditExpenseForm'
 import { AttachmentList } from '@/components/AttachmentList'
+import { CategoryIcon } from '@/components/CategoryIcon'
+import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { Badge } from '@/components/ui/Badge'
+import { Card } from '@/components/ui/Card'
+import { ListRow } from '@/components/ui/ListRow'
 import { formatDate, formatEur, CATEGORY_LABELS, SPLIT_LABELS } from '@/lib/fmt'
 
 function splitLabel(expense: { split_rule: string; custom_other_share: number | null }) {
@@ -39,34 +43,82 @@ export default async function SpesaDetailPage({ params }: Props) {
   const isSettled = expense.settlement_id !== null
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col pb-4">
       <header className="flex items-center gap-3 px-4 pt-6 pb-4">
         <Link
           href="/spese"
-          className="flex size-9 items-center justify-center rounded-full hover:bg-surface-raised transition-colors text-muted"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised"
           aria-label="Torna allo storico"
         >
           <ArrowLeft className="size-5" />
         </Link>
-        <div className="flex-1">
-          <h1 className="text-lg font-semibold text-foreground leading-tight">
-            {expense.description}
-          </h1>
-          <p className="text-xs text-muted">{formatDate(expense.expense_date)}</p>
-        </div>
-        {expense.settlement_id && <Badge variant="muted">saldata</Badge>}
+        <h1 className="text-lg font-semibold leading-tight text-foreground">
+          Dettaglio spesa
+        </h1>
       </header>
 
-      <div className="flex gap-4 px-4 pb-4">
-        <Stat label="Importo" value={formatEur(expense.amount)} />
-        <Stat label="Pagato da" value={paidByProfile?.display_name ?? '—'} />
-        <Stat label="Categoria" value={CATEGORY_LABELS[expense.category]} />
-        <Stat label="Divisione" value={splitLabel(expense)} />
+      {/* Hero recap */}
+      <section className="px-4 pb-5">
+        <div className="flex items-start gap-4">
+          <CategoryIcon category={expense.category} size="lg" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-title font-semibold text-foreground">
+              {expense.description}
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              {formatDate(expense.expense_date)}
+            </p>
+          </div>
+          <Badge variant={isSettled ? 'muted' : 'positive'}>
+            {isSettled ? 'Saldata' : 'Aperta'}
+          </Badge>
+        </div>
+        <div className="mt-4">
+          <AmountDisplay value={expense.amount} size="display-sm" />
+        </div>
+      </section>
+
+      {/* Transaction detail */}
+      <div className="px-4 pb-5">
+        <Card className="divide-y divide-border overflow-hidden p-0">
+          <ListRow
+            title={<span className="font-normal text-muted">Pagato da</span>}
+            trailing={
+              <span className="text-sm font-semibold text-foreground">
+                {paidByProfile?.display_name ?? '—'}
+              </span>
+            }
+          />
+          <ListRow
+            title={<span className="font-normal text-muted">Categoria</span>}
+            trailing={
+              <span className="text-sm font-semibold text-foreground">
+                {CATEGORY_LABELS[expense.category]}
+              </span>
+            }
+          />
+          <ListRow
+            title={<span className="font-normal text-muted">Divisione</span>}
+            trailing={
+              <span className="text-sm font-semibold text-foreground">
+                {splitLabel(expense)}
+              </span>
+            }
+          />
+          <ListRow
+            title={<span className="font-normal text-muted">Importo</span>}
+            trailing={
+              <span className="text-sm font-semibold tabular-nums text-foreground">
+                {formatEur(expense.amount)}
+              </span>
+            }
+          />
+        </Card>
       </div>
 
       {attachments.length > 0 && (
-        <div className="flex flex-col gap-2 px-4 pb-4">
-          <span className="text-sm font-medium text-foreground">Allegati</span>
+        <div className="flex flex-col gap-2 px-4 pb-5">
+          <span className="text-label font-medium text-muted">Allegati</span>
           <AttachmentList attachments={attachments} readOnly={isSettled} />
         </div>
       )}
@@ -79,15 +131,6 @@ export default async function SpesaDetailPage({ params }: Props) {
         currentUserId={user.id}
         attachmentCount={attachments.length}
       />
-    </div>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   )
 }

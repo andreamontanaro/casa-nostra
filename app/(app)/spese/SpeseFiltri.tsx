@@ -2,11 +2,13 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { motion } from 'motion/react'
-import { Search, X } from 'lucide-react'
+import { Search, X, SlidersHorizontal } from 'lucide-react'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { Sheet } from '@/components/ui/Sheet'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { formatDate, formatEur, CATEGORY_LABELS } from '@/lib/fmt'
 import { Tables, Constants } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -48,6 +50,9 @@ function previousMonthKey(): string {
   return monthKey(d)
 }
 
+// Offset per l'ancoraggio sticky sotto l'AppHeader fisso.
+const STICKY_TOP = 'top-[calc(3.5rem+env(safe-area-inset-top))]'
+
 export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
   const searchParams = useSearchParams()
 
@@ -69,6 +74,7 @@ export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
     return v === 'corrente' || v === 'scorso' ? v : 'tutti'
   })
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Riflette i filtri nell'URL senza ricaricare la pagina (il filtraggio è
   // client-side): aggiorna la history così il back li ripristina.
@@ -111,12 +117,11 @@ export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
     })
   }, [expenses, status, category, range, query])
 
-  const summary = useMemo(() => {
-    const total = filtered.reduce((acc, e) => acc + Number(e.amount), 0)
-    return { count: filtered.length, total }
-  }, [filtered])
-
   const grouped = groupByDate(filtered)
+
+  // Filtri "avanzati" (stato/periodo) → badge sul chip Filtri.
+  const advancedCount =
+    (status !== 'tutte' ? 1 : 0) + (range !== 'tutti' ? 1 : 0)
   const hasAnyFilter =
     status !== 'tutte' ||
     category !== 'tutte' ||
@@ -124,11 +129,11 @@ export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
     query.length > 0
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Ricerca */}
+    <div className="flex flex-col gap-4 pb-24">
+      {/* Ricerca — pill senza bordo */}
       <div className="relative">
         <Search
-          className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted"
+          className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted"
           strokeWidth={2}
         />
         <input
@@ -138,11 +143,10 @@ export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Cerca per descrizione…"
           className={cn(
-            'h-11 w-full rounded-2xl border border-border bg-surface',
+            'h-11 w-full rounded-full bg-surface-raised',
             // text-base (16px): sotto i 16px iOS Safari fa zoom sulla UI al focus.
-            'pl-10 pr-10 text-base text-foreground placeholder:text-muted',
-            'shadow-soft',
-            'focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent',
+            'pl-11 pr-10 text-base text-foreground placeholder:text-muted',
+            'focus:outline-none focus:ring-2 focus:ring-accent',
           )}
         />
         {query && (
@@ -150,47 +154,51 @@ export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
             type="button"
             onClick={() => setQuery('')}
             aria-label="Cancella ricerca"
-            className="absolute right-2.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-surface-raised hover:text-foreground"
+            className="absolute right-2.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-surface-sunken hover:text-foreground"
           >
             <X className="size-4" />
           </button>
         )}
       </div>
 
-      {/* Stato (tabs animati) */}
-      <SegmentedControl
-        groupId="spese-status"
-        value={status}
-        onChange={(v) => setStatus(v as StatusFilter)}
-        options={[
-          { value: 'tutte', label: 'Tutte' },
-          { value: 'aperte', label: 'Aperte' },
-          { value: 'saldate', label: 'Saldate' },
-        ]}
-      />
-
-      {/* Periodo (preset) */}
-      <SegmentedControl
-        groupId="spese-range"
-        value={range}
-        onChange={(v) => setRange(v as RangePreset)}
-        options={[
-          { value: 'corrente', label: 'Mese' },
-          { value: 'scorso', label: 'Scorso' },
-          { value: 'tutti', label: 'Tutti' },
-        ]}
-      />
-
-      {/* Categoria (chip scroll orizzontale) */}
+      {/* Riga chip unica scrollabile */}
       <div
         className="-mx-4 overflow-x-auto no-scrollbar"
         style={{ touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}
       >
-        <div className="flex gap-2 px-4">
-          <Chip
-            active={category === 'tutte'}
-            onClick={() => setCategory('tutte')}
+        <div className="flex items-center gap-2 px-4">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium',
+              'transition-colors duration-150 active:scale-[0.97]',
+              advancedCount > 0
+                ? 'bg-accent text-accent-foreground'
+                : 'border border-border-strong text-muted hover:text-foreground',
+            )}
           >
+            <SlidersHorizontal className="size-4" strokeWidth={2.2} />
+            Filtri
+            {advancedCount > 0 && (
+              <span className="ml-0.5 flex size-4 items-center justify-center rounded-full bg-accent-foreground text-[0.625rem] font-bold text-accent">
+                {advancedCount}
+              </span>
+            )}
+          </button>
+
+          <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
+
+          <Chip
+            active={status === 'aperte'}
+            onClick={() =>
+              setStatus(status === 'aperte' ? 'tutte' : 'aperte')
+            }
+          >
+            Aperte
+          </Chip>
+
+          <Chip active={category === 'tutte'} onClick={() => setCategory('tutte')}>
             Tutte
           </Chip>
           {Constants.public.Enums.expense_category.map((cat) => (
@@ -204,30 +212,6 @@ export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
           ))}
         </div>
       </div>
-
-      {/* Card riepilogo */}
-      {hasAnyFilter && (
-        <motion.div
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className={cn(
-            'flex items-center justify-between rounded-2xl border border-border bg-surface-raised px-4 py-2.5',
-          )}
-        >
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              {summary.count}
-            </span>
-            <span className="text-xs text-muted">
-              {summary.count === 1 ? 'spesa' : 'spese'}
-            </span>
-          </div>
-          <span className="text-sm font-semibold tabular-nums text-foreground">
-            {formatEur(summary.total)}
-          </span>
-        </motion.div>
-      )}
 
       {/* Lista */}
       {filtered.length === 0 ? (
@@ -263,99 +247,92 @@ export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
             <p className="text-xs text-muted">
               Nessun risultato con i filtri attuali.
             </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={resetFilters}
-              className="mt-1"
-            >
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="mt-1">
               Azzera filtri
             </Button>
           </div>
         )
       ) : (
-        Array.from(grouped.entries()).map(([date, items]) => (
-          <div key={date}>
-            <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">
-              {formatDate(date)}
-            </p>
-            <Card className="divide-y divide-border overflow-hidden p-0">
-              {items.map((e) => (
-                <ExpenseRow key={e.id} expense={e} />
-              ))}
-            </Card>
+        Array.from(grouped.entries()).map(([date, items]) => {
+          const dayTotal = items.reduce((acc, e) => acc + Number(e.amount), 0)
+          return (
+            <div key={date}>
+              {/* Header giorno sticky: data + totale del giorno (pattern N26) */}
+              <div
+                className={cn(
+                  'sticky z-10 mb-1.5 flex items-center justify-between gap-3',
+                  'bg-background/90 px-1 py-1 backdrop-blur-sm',
+                  STICKY_TOP,
+                )}
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  {formatDate(date)}
+                </p>
+                <p className="text-xs font-semibold tabular-nums text-muted">
+                  {formatEur(dayTotal)}
+                </p>
+              </div>
+              <Card className="divide-y divide-border overflow-hidden p-0">
+                {items.map((e) => (
+                  <ExpenseRow key={e.id} expense={e} />
+                ))}
+              </Card>
+            </div>
+          )
+        })
+      )}
+
+      {/* Sheet filtri esteso */}
+      <Sheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        title="Filtri"
+      >
+        <div className="flex flex-col gap-5 px-4 pt-2 pb-6">
+          <div className="flex flex-col gap-2">
+            <span className="text-label font-medium text-muted">Stato</span>
+            <SegmentedControl
+              groupId="spese-status"
+              value={status}
+              onChange={(v) => setStatus(v as StatusFilter)}
+              options={[
+                { value: 'tutte', label: 'Tutte' },
+                { value: 'aperte', label: 'Aperte' },
+                { value: 'saldate', label: 'Saldate' },
+              ]}
+            />
           </div>
-        ))
-      )}
-    </div>
-  )
-}
 
-function SegmentedControl({
-  groupId,
-  value,
-  onChange,
-  options,
-}: {
-  groupId: string
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <div className="relative flex rounded-2xl border border-border bg-surface-raised p-1">
-      {options.map((opt) => {
-        const isActive = value === opt.value
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={cn(
-              'relative flex-1 rounded-xl px-3 py-1.5 text-sm font-medium',
-              'transition-colors duration-150',
-              isActive ? 'text-foreground' : 'text-muted',
-            )}
-          >
-            {isActive && (
-              <motion.span
-                layoutId={`segctl-${groupId}`}
-                transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-                className="absolute inset-0 -z-10 rounded-xl bg-surface shadow-soft"
-              />
-            )}
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
+          <div className="flex flex-col gap-2">
+            <span className="text-label font-medium text-muted">Periodo</span>
+            <SegmentedControl
+              groupId="spese-range"
+              value={range}
+              onChange={(v) => setRange(v as RangePreset)}
+              options={[
+                { value: 'corrente', label: 'Mese' },
+                { value: 'scorso', label: 'Scorso' },
+                { value: 'tutti', label: 'Tutti' },
+              ]}
+            />
+          </div>
 
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        // Filter chip M3: 8dp, selezionato = container tonale senza outline
-        'shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium',
-        'transition-[border-color,background-color,color,transform] duration-150',
-        'active:scale-[0.97]',
-        active
-          ? 'border-transparent bg-accent-muted text-accent-soft'
-          : 'border-border-strong bg-transparent text-muted hover:border-accent/40',
-      )}
-    >
-      {children}
-    </button>
+          <div className="flex gap-3 pt-1">
+            <Button
+              variant="outline"
+              size="md"
+              className="flex-1"
+              onClick={resetFilters}
+              disabled={!hasAnyFilter}
+            >
+              Azzera
+            </Button>
+            <Button size="md" className="flex-1" onClick={() => setFiltersOpen(false)}>
+              Fatto
+            </Button>
+          </div>
+        </div>
+      </Sheet>
+    </div>
   )
 }
