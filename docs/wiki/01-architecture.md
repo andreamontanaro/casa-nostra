@@ -53,8 +53,8 @@ Il flusso di dipendenza è rigorosamente unidirezionale dall'alto verso il basso
 La struttura del progetto segue la convenzione standard di Next.js:
 
 * `app/` → `app/`: Contiene le rotte, i layout e le Server Actions.
-  * `(app)/` → `app/(app)/`: Rotte private protette da autenticazione (home, spese, auto, impostazioni, statistiche).
-  * `actions/` → `app/actions/`: Server Actions per le mutazioni dei dati (es. `expenses.ts`, `cars.ts`, `auth.ts`).
+  * `(app)/` → `app/(app)/`: Rotte private protette da autenticazione (home, spese, conguaglio, impostazioni, statistiche).
+  * `actions/` → `app/actions/`: Server Actions per le mutazioni dei dati (es. `expenses.ts`, `auth.ts`).
   * `api/` → `app/api/`: Endpoint API serverless (l'assistente IA).
   * `landing/` → `app/landing/`: Landing page pubblica per utenti non autenticati.
   * `login/` → `app/login/`: Pagina di login.
@@ -81,10 +81,6 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/spese/[id]` → `app/(app)/spese/[id]/page.tsx`: Dettaglio e modifica/eliminazione di una singola spesa.
 * `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio.
 * `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa.
-* `/auto` → `app/(app)/auto/page.tsx`: Garage con le auto dell'utente, chilometraggi e consumi medi.
-* `/auto/[carId]` → `app/(app)/auto/[carId]/page.tsx`: Dettaglio di una singola auto con storico rifornimenti e letture km.
-* `/auto/rifornimenti` → `app/(app)/auto/rifornimenti/page.tsx`: Lista dei rifornimenti registrati.
-* `/auto/consumi` → `app/(app)/auto/consumi/page.tsx`: Grafici consumi e percorrenze delle auto personali.
 * `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password).
 
 ---

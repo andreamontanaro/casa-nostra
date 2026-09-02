@@ -9,7 +9,7 @@ Questa pagina documenta la strategia di accesso ai dati, l'integrazione con il c
 Il progetto utilizza il pacchetto `@supabase/ssr` per gestire l'autenticazione basata su sessione e cookie. Sono implementati due client distinti a seconda del contesto di esecuzione:
 
 ### 1. Client Browser (`browser.ts`)
-Utilizzato nei Client Component per operazioni interattive che avvengono sul browser (es. caricamento dei file di scontrini o foto auto) → `lib/supabase/browser.ts`:
+Utilizzato nei Client Component per operazioni interattive che avvengono sul browser (es. caricamento dei file di scontrini) → `lib/supabase/browser.ts`:
 * Inizializza il client con `createBrowserClient` usando le variabili d'ambiente pubbliche `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 ### 2. Client Server (`server.ts`)

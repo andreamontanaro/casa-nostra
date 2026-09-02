@@ -31,7 +31,7 @@ Questa pagina riassume le scelte tecnologiche e architetturali principali effett
 ## Integrazione IA (Google Gemini Studio)
 
 ### System Instruction Context Injection (No RAG)
-* **Scelta**: Il database completo delle spese, del garage e dello stato del saldo viene serializzato in formato testo e iniettato direttamente all'interno delle istruzioni di sistema inviate a Gemini ad ogni avvio di chat → `app/api/assistant/route.ts#L429`.
+* **Scelta**: Il database completo delle spese e dello stato del saldo viene serializzato in formato testo e iniettato direttamente all'interno delle istruzioni di sistema inviate a Gemini ad ogni avvio di chat → `app/api/assistant/route.ts`.
 * **Motivazione**: Trattandosi di un'app per due conviventi, la quantità totale dei record (qualche centinaio o migliaio di spese) rientra ampiamente all'interno della finestra di contesto del modello (1M+ token per Gemini 3.5 Flash). Questo elimina la necessità di implementare architetture RAG (Vector Search) o database vettoriali, garantendo all'assistente IA una visibilità matematica esatta e deterministica del 100% dei dati storici senza rischi di perdita di informazioni.
 
 ### Sentinelle NUL Stream per la Sincronizzazione Client/Server
@@ -42,8 +42,6 @@ Questa pagina riassume le scelte tecnologiche e architetturali principali effett
 
 ## Sicurezza e Visibilità (Row Level Security)
 
-### Isolamento Modulo Auto (Owner-Scoped) vs Modulo Spese (Shared)
-* **Scelta**: Due modelli di RLS distinti sul database:
-  1. **Modulo Spese**: Policy basate sulla funzione `is_authorized_user()`. Entrambi gli utenti autorizzati vedono tutte le spese, gli allegati ed i conguagli registrati nel sistema → `docs/casa_nostra_schema.sql#L253-L274`.
-  2. **Modulo Auto**: Policy basate sulla corrispondenza `owner_id = auth.uid()` o tramite clausole `EXISTS` collegate all'auto di proprietà → `docs/casa_nostra_schema.sql#L491-L501`. I dati del garage, dei consumi e delle percorrenze sono personali e totalmente invisibili all'altro partner.
-* **Motivazione**: Soddisfa il requisito del modulo auto concepito come spazio privato per il tracciamento dei consumi del proprio mezzo di trasporto, mantenendo invece la trasparenza totale sulla gestione del budget della casa.
+### Modulo Spese (Shared)
+* **Scelta**: Policy basate sulla funzione `is_authorized_user()`. Entrambi gli utenti autorizzati vedono tutte le spese, gli allegati ed i conguagli registrati nel sistema → `docs/casa_nostra_schema.sql#L218-L294`.
+* **Motivazione**: L'app è pensata per la trasparenza totale sulla gestione del budget della casa tra i due conviventi.

@@ -56,7 +56,7 @@ L'integrazione usa il pacchetto `@supabase/ssr`. I client sono in `lib/supabase/
 L'architettura del progetto è documentata dettagliatamente in `docs/wiki/01-architecture.md`. 
 
 L'applicazione segue la struttura standard di Next.js App Router:
-- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata), `/auto` (garage privata).
+- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata).
 - **Mutazioni**: Implementate tramite Server Actions in `app/actions/`.
 - **Query**: Caricate nei Server Component tramite funzioni di utility in `lib/queries.ts` e `lib/queries-cars.ts`.
 - **Interattività**: Isolata nei Client Component (es. `HomeShell.tsx`, `ExpenseForm.tsx`).

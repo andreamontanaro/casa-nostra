@@ -11,12 +11,6 @@ const MESSAGES: Record<string, { type: 'success' | 'error' | 'info'; text: strin
   'settlement-registered': { type: 'success', text: 'Conguaglio registrato.' },
   'profile-updated': { type: 'success', text: 'Profilo aggiornato.' },
   'password-updated': { type: 'success', text: 'Password aggiornata.' },
-  'car-created': { type: 'success', text: 'Auto aggiunta.' },
-  'car-updated': { type: 'success', text: 'Modifiche salvate.' },
-  'car-deleted': { type: 'success', text: 'Auto eliminata.' },
-  'fuel-created': { type: 'success', text: 'Rifornimento salvato.' },
-  'fuel-updated': { type: 'success', text: 'Modifiche salvate.' },
-  'fuel-deleted': { type: 'success', text: 'Rifornimento eliminato.' },
 }
 
 export function FlashToast() {

@@ -22,10 +22,6 @@ Regola di suddivisione dell'importo → `docs/casa_nostra_schema.sql#L25-L30`:
 * `sixty_forty`: Ripartizione 60/40. Il partner con il reddito maggiore paga il 60% dell'importo.
 * `custom`: Suddivisione personalizzata, espressa con quota fissa a carico del partner.
 
-### `fuel_type`
-Tipologie di carburante supportate per il modulo auto → `docs/casa_nostra_schema.sql#L424-L428`:
-* `benzina`, `diesel`, `gpl`, `metano`, `elettrico`, `ibrido`.
-
 ---
 
 ## Schema delle Entità
@@ -75,31 +71,3 @@ Associa i metadati di scontrini o ricevute PDF/immagini ad una spesa → `docs/c
   * `mime_type` (`text`): Tipo MIME (es. `image/jpeg`, `application/pdf`).
   * `size_bytes` (`bigint`): Dimensione file in byte (CHECK > 0).
   * `uploaded_by` (`uuid`): Riferimento al caricatore.
-
-### 5. Auto (`cars`)
-Rappresenta un veicolo di proprietà esclusiva di uno dei due partner → `docs/casa_nostra_schema.sql#L430-L441`.
-* **Proprietà**:
-  * `owner_id` (`uuid`): Riferimento a `profiles(id)` del proprietario dell'auto.
-  * `model` (`text`): Modello del veicolo (es. "Ford Fiesta").
-  * `year` (`integer`): Anno di immatricolazione (CHECK 1900-2100).
-  * `fuel_type` (`fuel_type`): Alimentazione dell'auto.
-  * `tank_capacity` (`numeric(6,2)`, Nullable): Capienza serbatoio in litri (CHECK > 0).
-  * `initial_km` (`integer`): Chilometri iniziali dell'auto al momento dell'inserimento nell'app.
-
-### 6. Rifornimento Carburante (`fuel_entries`)
-Registrazione di una spesa di carburante → `docs/casa_nostra_schema.sql#L446-L459`.
-* **Proprietà**:
-  * `car_id` (`uuid`): Ref `cars(id)` ON DELETE CASCADE.
-  * `entry_date` (`date`): Data rifornimento.
-  * `liters` (`numeric(7,3)`): Litri inseriti (CHECK > 0).
-  * `price_per_liter` (`numeric(6,3)`): Costo al litro (CHECK > 0).
-  * `total_cost` (`numeric(8,2)`): Costo totale speso (CHECK > 0).
-  * `odometer_km` (`integer`, Nullable): Lettura contachilometri al momento del rifornimento.
-  * `full_tank` (`boolean`): Specifica se è stato effettuato un pieno (default: true).
-
-### 7. Lettura Contachilometri (`odometer_readings`)
-Lettura indipendente dei km dell'auto (per statistiche di percorrenza senza rifornimento) → `docs/casa_nostra_schema.sql#L464-L472`.
-* **Proprietà**:
-  * `car_id` (`uuid`): Ref `cars(id)` ON DELETE CASCADE.
-  * `reading_date` (`date`): Data lettura contachilometri.
-  * `km` (`integer`): Chilometri registrati (CHECK >= 0).

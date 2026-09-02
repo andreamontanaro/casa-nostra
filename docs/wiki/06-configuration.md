@@ -42,12 +42,6 @@ Limiti configurati per il caricamento di scontrini e ricevute delle spese condiv
 * `MAX_SIZE_BYTES = 10 * 1024 * 1024` (10 MB): Dimensione massima consentita per ciascun file → `lib/attachments.ts#L6`.
 * `ACCEPTED_MIME = ['image/jpeg', 'image/png', 'application/pdf']`: Formati file accettati (JPG, PNG e file PDF) → `lib/attachments.ts#L8-L12`.
 
-### Foto Auto (`car-photos`)
-Limiti configurati per le immagini delle autovetture personali nel garage → `lib/car-photos.ts`:
-* `CAR_PHOTOS_BUCKET = 'car-photos'`: Nome del bucket di storage privato → `lib/car-photos.ts#L3`.
-* `MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024` (10 MB): Dimensione massima consentita per l'immagine dell'auto → `lib/car-photos.ts#L5`.
-* `ACCEPTED_PHOTO_MIME = ['image/jpeg', 'image/png']`: Formati immagine accettati (solo JPG e PNG, esclusi i PDF) → `lib/car-photos.ts#L7`.
-
 ### Assistente IA Chat (`/api/assistant`)
 Parametri di esecuzione del Route Handler serverless dell'assistente chat → `app/api/assistant/route.ts`:
 * `MAX_TURNS = 5` → `app/api/assistant/route.ts#L28`: Numero massimo di turni interni di chiamata a funzione che l'assistente IA può risolvere in una singola richiesta HTTP prima di forzare l'uscita (previene loop infiniti di tool-calling).

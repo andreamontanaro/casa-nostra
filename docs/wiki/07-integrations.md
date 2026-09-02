@@ -17,16 +17,12 @@ L'intera persistenza, l'autenticazione degli utenti e la gestione dei file binar
 * **Sicurezza (RLS)**: Row Level Security è abilitata su tutte le tabelle. La funzione SQL `is_authorized_user()` verifica che l'UUID di `auth.uid()` esista in `public.profiles` prima di consentire le letture/scritture → `docs/casa_nostra_schema.sql#L226-L234`.
 
 ### 3. File Storage (Buckets)
-L'applicazione integra due bucket privati di Supabase Storage:
+L'applicazione integra un bucket privato di Supabase Storage:
 
 * **Bucket `expense-attachments`** → `lib/attachments.ts#L3`:
   - **Uso**: Conserva immagini e PDF delle ricevute/scontrini.
   - **Pathing**: `expense_id/{uuid}.ext` → `lib/attachments.ts#L58-L61`.
   - **Accesso**: I file sono privati. Per la visualizzazione nel client o per l'assistente, viene generato un URL firmato temporaneo (1 ora) sul server → `lib/queries.ts#L76-L81`.
-* **Bucket `car-photos`** → `lib/car-photos.ts#L3`:
-  - **Uso**: Memorizza le foto delle auto personali.
-  - **Pathing**: `owner_id/car_id/{uuid}.ext` → `lib/car-photos.ts#L26-L29`.
-  - **Politica di Sicurezza**: L'RLS di Supabase restringe l'accesso basandosi sulla cartella principale. La politica `cp_select` verifica che il primo segmento del percorso dell'oggetto corrisponda a `auth.uid()` dell'utente autenticato → `docs/casa_nostra_schema.sql#L509-L517`.
 
 ---
 

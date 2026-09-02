@@ -8,30 +8,19 @@ import {
   List,
   ArrowLeftRight,
   BarChart3,
-  Car,
-  Fuel,
-  LineChart,
 } from 'lucide-react'
 import { springLayout, springSnappy } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
-const casaItems = [
+const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/spese', label: 'Storico', icon: List },
   { href: '/conguaglio', label: 'Conguaglio', icon: ArrowLeftRight },
   { href: '/statistiche', label: 'Statistiche', icon: BarChart3 },
 ]
 
-const autoItems = [
-  { href: '/auto', label: 'Garage', icon: Car },
-  { href: '/auto/rifornimenti', label: 'Rifornimenti', icon: Fuel },
-  { href: '/auto/consumi', label: 'Consumi', icon: LineChart },
-]
-
 export function BottomNav() {
   const pathname = usePathname()
-  const isAuto = pathname.startsWith('/auto')
-  const navItems = isAuto ? autoItems : casaItems
 
   // Tab attivo: l'href più lungo che è prefisso del pathname corrente.
   const activeHref = [...navItems]
@@ -50,10 +39,7 @@ export function BottomNav() {
         'shadow-nav',
       )}
     >
-      <ul
-        key={isAuto ? 'auto' : 'casa'}
-        className="mx-auto flex h-16 w-full max-w-lg px-2"
-      >
+      <ul className="mx-auto flex h-16 w-full max-w-lg px-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = href === activeHref
           return (

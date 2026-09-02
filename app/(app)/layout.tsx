@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { AppHeader } from '@/components/AppHeader'
-import { AssistantChatGate } from '@/components/AssistantChatGate'
+import { AssistantChat } from '@/components/AssistantChat'
 import { BottomNav } from '@/components/BottomNav'
 import { FlashToast } from '@/components/FlashToast'
 import { PageTransition } from '@/components/PageTransition'
@@ -16,7 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </PullToRefresh>
       </main>
       <BottomNav />
-      <AssistantChatGate />
+      <AssistantChat />
       <Suspense fallback={null}>
         <FlashToast />
       </Suspense>

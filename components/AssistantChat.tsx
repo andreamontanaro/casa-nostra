@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'motion/react'
 import { Sparkles, X, Send } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
@@ -34,24 +34,11 @@ const EXPENSE_GREETING =
   'Ciao! Sono l\'assistente di Casa Nostra. Posso aiutarti con le vostre spese: ' +
   'chiedimi un riepilogo, cosa avete comprato, chi deve quanto, o di guardare uno scontrino.'
 
-const AUTO_SUGGESTIONS = [
-  'Quali auto ho nel garage?',
-  'Registra un rifornimento',
-  'Aggiorna i km percorsi',
-  'Quali sono i consumi medi?',
-]
-
-const AUTO_GREETING =
-  'Ciao! Sono l\'assistente di Casa Nostra per le auto. Posso aiutarti a gestire i tuoi veicoli: ' +
-  'chiedimi di registrare un rifornimento, aggiornare i chilometri o mostrarti i consumi.'
-
 export function AssistantChat() {
   const router = useRouter()
-  const pathname = usePathname()
-  const isAuto = pathname.startsWith('/auto')
 
-  const greeting = isAuto ? AUTO_GREETING : EXPENSE_GREETING
-  const suggestions = isAuto ? AUTO_SUGGESTIONS : EXPENSE_SUGGESTIONS
+  const greeting = EXPENSE_GREETING
+  const suggestions = EXPENSE_SUGGESTIONS
 
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -89,7 +76,6 @@ export function AssistantChat() {
             role: m.role === 'assistant' ? 'model' : 'user',
             text: m.text,
           })),
-          context: isAuto ? 'auto' : 'expenses',
         }),
       })
 
