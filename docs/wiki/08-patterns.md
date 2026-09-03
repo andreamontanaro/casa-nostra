@@ -54,6 +54,8 @@ Preset spring condivisi in `lib/motion.ts` (`springSnappy`, `springSoft`, `sprin
 ### 7. Indicatori Attivi di Navigazione (BottomNav M3)
 La barra in basso applica il pattern M3 active indicator → `components/BottomNav.tsx`: una pillola (`bg-accent-muted`) compare dietro l'icona del tab attivo e si sposta con `motion.span` + `layoutId="nav-pill"` (`springLayout`). Ombra tokenizzata (`shadow-nav`).
 
+**Composizione dei tab (settembre 2026, modulo "Gestione casa").** Quattro voci: Home · Storico · **Casa** · Conguaglio. Statistiche è stata spostata nel `Sheet` "Menu" dell'header (insieme a "Catalogo faccende") perché la barra riflette la *frequenza d'uso*, non l'importanza dei moduli: le faccende sono l'interazione più frequente dell'app, il conguaglio la più rara → `docs/design-modulo-gestione-casa.md § 6`.
+
 ---
 
 ## Tailwind CSS v4 e PostCSS
@@ -79,6 +81,7 @@ La barra in basso applica il pattern M3 active indicator → `components/BottomN
 * **Storico** — search pill + un'unica riga di chip (chip "Filtri" apre uno `Sheet` filtri esteso); header giorno sticky con totale del giorno (pattern N26) → `app/(app)/spese/SpeseFiltri.tsx`.
 * **Dettaglio** — hero recap (`CategoryIcon` + `AmountDisplay` + badge stato) e transaction detail su `ListRow` → `app/(app)/spese/[id]/page.tsx`.
 * **Conguaglio** — payment-confirm: hero saldo, righe con `Checkbox` + `CategoryIcon` (deselezione via sola opacità), barra azione solida fusa con la BottomNav, conferma in `Sheet` payment-confirm → `app/(app)/conguaglio/ConguaglioClient.tsx`.
+* **Gestione casa** (`/casa`) — liste "Da fare" / "Gesti" / "Fatto di recente" su `Card` opache con `ChoreRow` (bottone "Fatto" inline, nessun dialog di conferma: non è un'azione distruttiva) e UI ottimistica identica al pattern §1 sotto; FAB apre `RegisterChoreSheet` per registrare qualsiasi faccenda del catalogo, anche fuori cadenza o retrodatata → `components/chores/ChoreShell.tsx`. Fase 1: XP registrati ma **non mostrati** in nessuna schermata (nessun punteggio, nessun obiettivo, nessuna barra di equilibrio — arrivano in fase 2, vedi `docs/design-modulo-gestione-casa.md`).
 
 ---
 

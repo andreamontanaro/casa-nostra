@@ -15,6 +15,8 @@ L'applicazione gestisce le spese domestiche condivise: riservata a esattamente d
 
 Un'integrazione **Telegram** opzionale porta l'app nel gruppo dei due conviventi: notifica ogni movimento (spesa aggiunta, modificata, eliminata, conguaglio) con il saldo aggiornato, e mette a disposizione lo stesso assistente IA direttamente in chat. Configurazione in `docs/telegram-setup.md`.
 
+Il modulo **Gestione casa** (`/casa`) gamifica le faccende domestiche con XP e, in una fase futura, titoli — deliberatamente *senza* saldo né conguaglio: le faccende non generano un debito fra i due. Progettazione completa, inclusi i principi anti-tossicità pensati per un gioco a due soli giocatori, in `docs/design-modulo-gestione-casa.md`.
+
 ---
 
 ## Indice della Wiki

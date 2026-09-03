@@ -37,6 +37,11 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 * `getExpenseIdsWithAttachments()` → `lib/queries.ts`: Restituisce l'insieme degli id di spesa che hanno almeno un allegato; l'assistente lo usa per marcare le spese con 📎scontrino nel contesto.
 * `getFrequentDescriptions(limit)` → `lib/queries.ts`: Recupera le ultime 200 descrizioni inserite ed effettua un conteggio delle frequenze in memoria sul server. Evita l'esposizione di funzioni RPC aggiuntive e fornisce i suggerimenti rapidi per il form.
 
+### Modulo Gestione Casa (`queries.ts`)
+* `getChoreStatus()` → `lib/queries.ts`: Interroga la vista `v_chore_status` (solo faccende attive), ordinata per `due_in_days` crescente (le più scadute per prime) e poi `sort_order`. È la query che alimenta la lista "Da fare" di `/casa` e la card compatta in home.
+* `getChoreTemplates()` → `lib/queries.ts`: L'intero catalogo, comprese le voci disattivate. Usata solo da `/casa/catalogo`.
+* `getRecentChoreLogs(limit)` → `lib/queries.ts`: Feed "Fatto di recente", con join sul nome di chi ha registrato (`profiles!chore_logs_done_by_fkey(display_name)`).
+
 ---
 
 ## Calcolo del Saldo tramite Viste SQL
@@ -64,6 +69,24 @@ Calcola la posizione netta di ciascun utente sommando i dati della vista quote l
 * **Posizione Netta (`net_position`)**: Differenza tra anticipato e dovuto ($total\_anticipated - total\_owed$).
   - $net\_position > 0$: L'utente è in credito (ha anticipato più di quanto dovuto). L'altro utente gli deve dei soldi.
   - $net\_position < 0$: L'utente è in debito. Deve dei soldi all'altro utente.
+
+---
+
+## Stato delle Faccende tramite Viste SQL (modulo Gestione Casa)
+
+Stesso principio del saldo spese, applicato al modulo faccende: lo stato è calcolato sul database, non ricalcolato lato client/assistente/bot.
+
+### 1. Vista stato faccende (`v_chore_status`)
+Per ogni faccenda **attiva**, l'ultimo completamento (via `LATERAL JOIN` su `chore_logs`) e la scadenza derivata dalla cadenza → sezione 11 dello schema:
+* `days_since`: giorni dall'ultimo completamento (`NULL` se mai fatta).
+* `due_in_days`: `cadence_days - days_since`. Negativo = in attesa da più giorni della cadenza; `0` = mai registrata o scaduta oggi; `NULL` per un **gesto** (`cadence_days IS NULL`).
+* **Nessuna riga è materializzata per le occorrenze future**: non esiste un job che genera "la faccenda di domani". Lo stato "da fare" è interamente derivato da `LEFT JOIN LATERAL` sull'ultimo log più aritmetica sulla cadenza — niente cron, niente righe fantasma da pulire.
+* Il riferimento a "oggi" è `(now() AT TIME ZONE 'Europe/Rome')::date`, non `current_date` (che seguirebbe il fuso della sessione, UTC su Supabase, e darebbe uno scarto di un giorno vicino a mezzanotte).
+
+### 2. Vista aggregati settimanali (`v_chore_week`)
+XP e numero di faccende per utente e per settimana ISO (fuso `Europe/Rome`). In fase 1 non alimenta nessuna UI (gli XP sono registrati ma non mostrati, per design — vedi `docs/design-modulo-gestione-casa.md`); è pronta per l'obiettivo settimanale e la barra di equilibrio della fase 2.
+
+**Nessuna vista di saldo.** A differenza delle spese non esiste un equivalente di `v_user_open_balance` per le faccende: il modulo non modella un debito fra i due (principio di design, non un'omissione futura).
 
 ---
 

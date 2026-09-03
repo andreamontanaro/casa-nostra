@@ -14,6 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
+      chore_logs: {
+        Row: {
+          area: Database["public"]["Enums"]["chore_area"]
+          created_at: string
+          created_by: string
+          done_at: string
+          done_by: string
+          id: string
+          note: string | null
+          template_id: string | null
+          title: string
+          updated_at: string
+          xp: number
+        }
+        Insert: {
+          area: Database["public"]["Enums"]["chore_area"]
+          created_at?: string
+          created_by: string
+          done_at?: string
+          done_by: string
+          id?: string
+          note?: string | null
+          template_id?: string | null
+          title: string
+          updated_at?: string
+          xp: number
+        }
+        Update: {
+          area?: Database["public"]["Enums"]["chore_area"]
+          created_at?: string
+          created_by?: string
+          done_at?: string
+          done_by?: string
+          id?: string
+          note?: string | null
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chore_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chore_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chore_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["done_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["done_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["done_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chore_logs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "chore_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chore_logs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "v_chore_status"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chore_templates: {
+        Row: {
+          active: boolean
+          area: Database["public"]["Enums"]["chore_area"]
+          cadence_days: number | null
+          created_at: string
+          effort_xp: number
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          area: Database["public"]["Enums"]["chore_area"]
+          cadence_days?: number | null
+          created_at?: string
+          effort_xp: number
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          area?: Database["public"]["Enums"]["chore_area"]
+          cadence_days?: number | null
+          created_at?: string
+          effort_xp?: number
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expense_attachments: {
         Row: {
           created_at: string
@@ -334,6 +469,76 @@ export type Database = {
       }
     }
     Views: {
+      v_chore_status: {
+        Row: {
+          area: Database["public"]["Enums"]["chore_area"] | null
+          cadence_days: number | null
+          days_since: number | null
+          due_in_days: number | null
+          effort_xp: number | null
+          id: string | null
+          last_done_at: string | null
+          last_done_by: string | null
+          last_done_by_name: string | null
+          name: string | null
+          sort_order: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["last_done_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["last_done_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["last_done_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      v_chore_week: {
+        Row: {
+          chore_count: number | null
+          display_name: string | null
+          user_id: string | null
+          week_start: string | null
+          xp: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chore_logs_done_by_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       v_expense_shares: {
         Row: {
           expense_amount: number | null
@@ -395,6 +600,15 @@ export type Database = {
       }
     }
     Enums: {
+      chore_area:
+        | "cucina"
+        | "bagno"
+        | "pulizie"
+        | "spazzatura"
+        | "bucato"
+        | "spesa"
+        | "manutenzione"
+        | "altro"
       expense_category:
         | "affitto"
         | "bolletta"
@@ -531,6 +745,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      chore_area: [
+        "cucina",
+        "bagno",
+        "pulizie",
+        "spazzatura",
+        "bucato",
+        "spesa",
+        "manutenzione",
+        "altro",
+      ],
       expense_category: [
         "affitto",
         "bolletta",

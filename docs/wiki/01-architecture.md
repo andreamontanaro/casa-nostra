@@ -54,7 +54,7 @@ La struttura del progetto segue la convenzione standard di Next.js:
 
 * `app/` → `app/`: Contiene le rotte, i layout e le Server Actions.
   * `(app)/` → `app/(app)/`: Rotte private protette da autenticazione (home, spese, conguaglio, impostazioni, statistiche).
-  * `actions/` → `app/actions/`: Server Actions per le mutazioni dei dati (es. `expenses.ts`, `auth.ts`).
+  * `actions/` → `app/actions/`: Server Actions per le mutazioni dei dati (es. `expenses.ts`, `auth.ts`, `chores.ts`).
   * `api/` → `app/api/`: Endpoint API serverless (l'assistente IA e il webhook del bot Telegram).
   * `landing/` → `app/landing/`: Landing page pubblica per utenti non autenticati.
   * `login/` → `app/login/`: Pagina di login.
@@ -82,11 +82,13 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/login` → `app/login/page.tsx`: Schermata di autenticazione con email e password → `app/actions/auth.ts`.
 
 ### Rotte Private
-* `/` → `app/(app)/page.tsx`: Dashboard principale con saldo e ultime 5 spese.
+* `/` → `app/(app)/page.tsx`: Dashboard principale con saldo, ultime 5 spese e le faccende più urgenti (`HomeChoreCard`).
 * `/spese` → `app/(app)/spese/page.tsx`: Storico completo delle spese con filtri avanzati.
 * `/spese/[id]` → `app/(app)/spese/[id]/page.tsx`: Dettaglio e modifica/eliminazione di una singola spesa.
+* `/casa` → `app/(app)/casa/page.tsx`: Modulo "Gestione casa" — faccende "Da fare", "Gesti" (cadenza libera) e feed "Fatto di recente", con registrazione in un tap → `components/chores/ChoreShell.tsx`.
+* `/casa/catalogo` → `app/(app)/casa/catalogo/page.tsx`: Gestione del catalogo delle faccende (creare, modificare, disattivare) → `app/(app)/casa/catalogo/CatalogoClient.tsx`. Raggiungibile dal menu dell'header, non dalla bottom nav.
 * `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio.
-* `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa.
+* `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu dell'header (non dalla bottom nav, a favore di `/casa`: vedi `08-patterns.md`).
 * `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password, collegamento dell'account Telegram).
 
 ---
