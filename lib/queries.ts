@@ -207,7 +207,10 @@ export type ChoreStatusRow = Tables<'v_chore_status'>
 export type ChoreTemplate = Tables<'chore_templates'>
 export type ChoreLog = Tables<'chore_logs'> & {
   done_by_profile: { display_name: string } | null
+  kudos: Pick<Tables<'chore_kudos'>, 'from_user_id' | 'emoji'>[]
 }
+export type ChoreWeekRow = Tables<'v_chore_week'>
+export type ChoreKudosWeekRow = Tables<'v_chore_kudos_week'>
 
 /** Stato di tutte le faccende attive, ordinate per urgenza (piu' scadute prima). */
 export async function getChoreStatus(db?: QueryClient) {
@@ -239,10 +242,54 @@ export async function getRecentChoreLogs(limit = 15, db?: QueryClient) {
   const supabase = await client(db)
   const { data, error } = await supabase
     .from('chore_logs')
-    .select('*, done_by_profile:profiles!chore_logs_done_by_fkey(display_name)')
+    .select(
+      '*, done_by_profile:profiles!chore_logs_done_by_fkey(display_name), kudos:chore_kudos(from_user_id, emoji)',
+    )
     .order('done_at', { ascending: false })
     .limit(limit)
 
+  if (error) throw error
+  return data
+}
+
+/** Righe di `v_chore_week` per le ultime `weeksBack` settimane (entrambi gli utenti). */
+export async function getChoreWeekRows(weeksBack = 12, db?: QueryClient) {
+  const supabase = await client(db)
+  const since = new Date()
+  since.setDate(since.getDate() - weeksBack * 7)
+  const { data, error } = await supabase
+    .from('v_chore_week')
+    .select('*')
+    .gte('week_start', since.toISOString().slice(0, 10))
+    .order('week_start', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+/** Righe di `v_chore_kudos_week` per le ultime `weeksBack` settimane. */
+export async function getChoreKudosWeekRows(weeksBack = 12, db?: QueryClient) {
+  const supabase = await client(db)
+  const since = new Date()
+  since.setDate(since.getDate() - weeksBack * 7)
+  const { data, error } = await supabase
+    .from('v_chore_kudos_week')
+    .select('*')
+    .gte('week_start', since.toISOString().slice(0, 10))
+    .order('week_start', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Inizio della settimana corrente nel fuso di casa (Europe/Rome), via RPC:
+ * evita di reimplementare `date_trunc('week', ...)` lato client con tutte
+ * le insidie dei fusi orari (vedi commento sulla funzione SQL).
+ */
+export async function getCurrentChoreWeekStart(db?: QueryClient): Promise<string> {
+  const supabase = await client(db)
+  const { data, error } = await supabase.rpc('current_chore_week_start')
   if (error) throw error
   return data
 }

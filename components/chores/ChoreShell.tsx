@@ -6,13 +6,17 @@ import { Plus } from 'lucide-react'
 import { ChoreRow } from '@/components/chores/ChoreRow'
 import { ChoreLogRow } from '@/components/chores/ChoreLogRow'
 import { RegisterChoreSheet } from '@/components/chores/RegisterChoreSheet'
+import { WeekGoalCard } from '@/components/chores/WeekGoalCard'
 import { Card } from '@/components/ui/Card'
 import { springSnappy } from '@/lib/motion'
-import { completeChore, undoChoreLog } from '@/app/actions/chores'
+import { completeChore, undoChoreLog, setChoreKudos, removeChoreKudos } from '@/app/actions/chores'
 import { toast } from '@/lib/toast'
 import { formatChoreRecency, formatDateShort } from '@/lib/fmt'
 import { cn } from '@/lib/utils'
-import type { ChoreStatusRow, ChoreLog } from '@/lib/queries'
+import type { ChoreStatusRow, ChoreLog, ChoreWeekRow, ChoreKudosWeekRow } from '@/lib/queries'
+import type { Tables } from '@/types/database'
+
+type Profile = Tables<'profiles'>
 
 interface OptimisticLog {
   id: string
@@ -23,9 +27,14 @@ interface OptimisticLog {
 }
 
 interface ChoreShellProps {
+  currentUserId: string
   currentUserDisplayName: string
   statusRows: ChoreStatusRow[]
   recentLogs: ChoreLog[]
+  profiles: Profile[]
+  weekRows: ChoreWeekRow[]
+  kudosWeekRows: ChoreKudosWeekRow[]
+  currentWeekStart: string
 }
 
 /**
@@ -36,15 +45,25 @@ interface ChoreShellProps {
  * sbagliato. Nessun dialog di conferma: non è un'azione distruttiva.
  */
 export function ChoreShell({
+  currentUserId,
   currentUserDisplayName,
   statusRows,
   recentLogs,
+  profiles,
+  weekRows,
+  kudosWeekRows,
+  currentWeekStart,
 }: ChoreShellProps) {
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
   const [optimisticLogs, setOptimisticLogs] = useState<OptimisticLog[]>([])
   const [optimisticBaseKey, setOptimisticBaseKey] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  const [deletingLogIds, setDeletingLogIds] = useState<Set<string>>(new Set())
+  const [kudosPendingIds, setKudosPendingIds] = useState<Set<string>>(new Set())
+  const [kudosOverrides, setKudosOverrides] = useState<Map<string, string | null>>(new Map())
+  const [kudosOverrideBaseKey, setKudosOverrideBaseKey] = useState('')
 
   const statusKey = statusRows.map((r) => `${r.id}:${r.last_done_at}`).join('|')
   const stale = optimisticBaseKey !== statusKey
@@ -58,6 +77,50 @@ export function ChoreShell({
     (r) => r.id && r.cadence_days === null && !visibleHidden.has(r.id),
   )
   const combinedLogs = [...visibleOptimisticLogs, ...recentLogs].slice(0, 15)
+
+  const recentLogsKey = recentLogs
+    .map((l) => `${l.id}:${l.kudos.map((k) => k.from_user_id + k.emoji).join(',')}`)
+    .join('|')
+  const activeKudosOverrides = kudosOverrideBaseKey === recentLogsKey ? kudosOverrides : new Map()
+
+  async function handleDeleteLog(logId: string) {
+    setDeletingLogIds((prev) => new Set(prev).add(logId))
+    const result = await undoChoreLog(logId)
+    setDeletingLogIds((prev) => {
+      const next = new Set(prev)
+      next.delete(logId)
+      return next
+    })
+    if (result.error) toast.error(result.error)
+    else toast.success('Registrazione eliminata.')
+  }
+
+  async function handleToggleKudos(log: ChoreLog, emoji: string) {
+    const current = activeKudosOverrides.has(log.id)
+      ? activeKudosOverrides.get(log.id)!
+      : (log.kudos.find((k) => k.from_user_id === currentUserId)?.emoji ?? null)
+    const next = current === emoji ? null : emoji
+
+    setKudosOverrideBaseKey(recentLogsKey)
+    setKudosOverrides((prev) => new Map(prev).set(log.id, next))
+    setKudosPendingIds((prev) => new Set(prev).add(log.id))
+
+    const result = next === null ? await removeChoreKudos(log.id) : await setChoreKudos(log.id, next)
+
+    setKudosPendingIds((prev) => {
+      const nextSet = new Set(prev)
+      nextSet.delete(log.id)
+      return nextSet
+    })
+    if (result.error) {
+      toast.error(result.error)
+      setKudosOverrides((prev) => {
+        const rollback = new Map(prev)
+        rollback.delete(log.id)
+        return rollback
+      })
+    }
+  }
 
   async function handleComplete(row: ChoreStatusRow) {
     const id = row.id
@@ -114,6 +177,14 @@ export function ChoreShell({
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-24">
+      <WeekGoalCard
+        currentUserId={currentUserId}
+        profiles={profiles}
+        weekRows={weekRows}
+        kudosWeekRows={kudosWeekRows}
+        currentWeekStart={currentWeekStart}
+      />
+
       <section>
         <h2 className="mb-3 px-1 text-label font-semibold uppercase tracking-wide text-muted">
           Da fare
@@ -188,20 +259,37 @@ export function ChoreShell({
             <AnimatePresence initial={false}>
               {combinedLogs.map((log) => {
                 const isOpt = '__optimistic' in log
+                const myKudosEmoji = isOpt
+                  ? null
+                  : activeKudosOverrides.has(log.id)
+                    ? activeKudosOverrides.get(log.id)!
+                    : (log.kudos.find((k) => k.from_user_id === currentUserId)?.emoji ?? null)
+
                 return (
                   <motion.div
                     key={log.id}
                     initial={isOpt ? { opacity: 0, y: -8 } : false}
                     animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2 }}
                   >
                     <ChoreLogRow
                       area={log.area}
                       title={log.title}
                       doneByName={
-                        isOpt ? log.doneByName : log.done_by_profile?.display_name ?? '—'
+                        isOpt ? log.doneByName : (log.done_by_profile?.display_name ?? '—')
                       }
                       whenLabel={isOpt ? 'ora' : formatDateShort(log.done_at)}
+                      interactive={!isOpt}
+                      canReact={!isOpt && log.done_by !== currentUserId}
+                      myKudosEmoji={myKudosEmoji}
+                      onToggleKudos={(emoji) => !isOpt && handleToggleKudos(log, emoji)}
+                      kudosPending={!isOpt && kudosPendingIds.has(log.id)}
+                      canDelete={
+                        !isOpt && (log.done_by === currentUserId || log.created_by === currentUserId)
+                      }
+                      onDelete={() => handleDeleteLog(log.id)}
+                      deletePending={!isOpt && deletingLogIds.has(log.id)}
                     />
                   </motion.div>
                 )

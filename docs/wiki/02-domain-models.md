@@ -112,3 +112,10 @@ Un completamento registrato → sezione 11 dello schema.
   * `note` (`text`, Nullable).
 * **Nessun saldo, nessun conguaglio.** A differenza delle spese, il modulo non modella un debito: non esiste una vista di saldo delle faccende né una RPC di pareggio. È una scelta di design, non un'omissione — vedi `docs/design-modulo-gestione-casa.md § 3` (principio "nessun debito di faccende").
 * **RLS più restrittiva del modulo spese**: si corregge o cancella solo una riga propria (`done_by` o `created_by` uguale a `auth.uid()`). Le spese permettono a entrambi di modificare qualsiasi riga; qui no, perché una riga di `chore_logs` dice "questa cosa l'ho fatta io" e poter cancellare il contributo dell'altro con un tap non deve essere possibile.
+* **Eliminazione permanente, non solo "annulla"**: dal feed "Fatto di recente" di `/casa` ogni riga propria è cancellabile in ogni momento (icona cestino + `Dialog` di conferma, stesso pattern usato per l'eliminazione di una spesa), non solo nei secondi subito dopo la registrazione tramite il toast "Annulla". Stessa Server Action (`undoChoreLog`) per entrambi i percorsi.
+
+### 8. Kudos (`chore_kudos`, fase 2)
+Reazione di un utente su una faccenda completata dall'altro → sezione 11 dello schema (migrazione fase 2).
+* **Proprietà**: `log_id` + `from_user_id` (PK composita — al massimo un kudos per utente per log: cambiare emoji aggiorna la riga, non la duplica), `emoji` (default `❤️`), `created_at`.
+* **Divieto di auto-kudos imposto da RLS**, non da un controllo client: la `WITH CHECK` della policy di insert/update confronta `from_user_id` con `done_by` del log referenziato via sottoquery.
+* **Gli XP dei kudos non sono attribuiti a nessuno dei due utenti.** Contano nel totale settimanale che alimenta l'obiettivo di casa (`KUDOS_XP` in `lib/chores/config.ts`, sommato via `v_chore_kudos_week`), ma **non** entrano nella barra di equilibrio, che si basa solo su `chore_logs.xp` per utente (`v_chore_week`). È la stessa distinzione concettuale del design: il kudos premia l'attenzione reciproca, non è un modo indiretto di accumulare punti personali.

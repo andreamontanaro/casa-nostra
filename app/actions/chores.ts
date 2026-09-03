@@ -94,13 +94,54 @@ export async function completeOneOffChore(params: {
 }
 
 /**
- * Annulla una registrazione appena fatta (bottone "Annulla" del toast). RLS
+ * Elimina una registrazione: usata sia dal bottone "Annulla" del toast
+ * subito dopo un "Fatto" sia, dal feed "Fatto di recente", per correggere
+ * una voce aggiunta per errore in qualsiasi momento successivo. RLS
  * consente la cancellazione solo su righe proprie (done_by o created_by).
  */
 export async function undoChoreLog(logId: string): Promise<ActionState> {
   const supabase = await createClient()
   const { error } = await supabase.from('chore_logs').delete().eq('id', logId)
-  if (error) return { error: 'Impossibile annullare.' }
+  if (error) return { error: 'Impossibile eliminare.' }
+
+  revalidateChores()
+  return { ok: true }
+}
+
+/**
+ * Lascia o aggiorna un kudos su una faccenda dell'altro. Al massimo uno per
+ * utente per log (PK composita `chore_kudos`): scegliere un'altra emoji
+ * aggiorna la reazione invece di aggiungerne una seconda. Il divieto di
+ * auto-kudos è imposto da RLS, non da questo controllo lato server.
+ */
+export async function setChoreKudos(logId: string, emoji: string): Promise<ActionState> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autenticato.' }
+
+  const { error } = await supabase
+    .from('chore_kudos')
+    .upsert({ log_id: logId, from_user_id: user.id, emoji }, { onConflict: 'log_id,from_user_id' })
+
+  if (error) return { error: 'Errore durante il salvataggio.' }
+
+  revalidateChores()
+  return { ok: true }
+}
+
+/** Ritira il proprio kudos da una faccenda (tap sulla stessa emoji già scelta). */
+export async function removeChoreKudos(logId: string): Promise<ActionState> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autenticato.' }
+
+  const { error } = await supabase
+    .from('chore_kudos')
+    .delete()
+    .eq('log_id', logId)
+    .eq('from_user_id', user.id)
+
+  if (error) return { error: 'Errore durante la rimozione.' }
 
   revalidateChores()
   return { ok: true }

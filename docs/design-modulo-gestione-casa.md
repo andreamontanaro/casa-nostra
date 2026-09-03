@@ -632,9 +632,15 @@ si verifica prima di investire.
   retrodatata o fuori catalogo. **XP registrati ma nascosti**:
   l'interfaccia non mostra punteggi. Si usa per due settimane e si guarda se le
   righe di log arrivano davvero.
-* **Fase 2 — il gioco.** Obiettivo settimanale, striscia, barra di equilibrio con
-  zona morta, kudos, interruttore per spegnere tutto. Ritaratura degli XP e
-  dell'obiettivo sui dati raccolti in fase 1.
+* **Fase 2 — il gioco (implementata).** Card "La nostra settimana" (obiettivo
+  settimanale di casa, striscia, barra di equilibrio a zona morta 30–70%),
+  kudos, interruttore "gamification" nelle impostazioni. Spedita **senza
+  aspettare i due settimane di dati reali** previste inizialmente — decisione
+  esplicita al momento del passaggio, con l'obiettivo settimanale impostato a un
+  valore provvisorio (`WEEKLY_GOAL_XP = 475`, sezione 5) invece che sulla
+  mediana d'uso: da ritarare sui dati reali del primo mese. È il compromesso
+  fatto per non tenere il modulo fermo in attesa di un dato che, essendo appena
+  stato pubblicato, non esisteva ancora.
 * **Fase 3 — i titoli e i canali.** Bacheca mensile, tool dell'assistente,
   notifiche Telegram sui soli eventi rari.
 
@@ -671,21 +677,23 @@ Nello spirito della lista in `AGENTS.md`:
    Statistiche spostata nel Sheet "Menu" dell'header. Vedi sezione 6.
 2. **Stagione degli XP** — **settimana** per l'obiettivo di casa e per la barra
    di equilibrio, **mese** per i titoli. Vedi principio 3.
+3. **Kudos** — **inclusi dalla fase 2**, senza aspettare i dati d'uso della fase
+   1 (mai raccolti: il modulo è passato alla fase 2 il giorno stesso del
+   rilascio). Restano l'unica meccanica che chiede un gesto *in più* invece di
+   registrare un gesto già fatto: se in pratica non si useranno, è un
+   sottosistema piccolo da spegnere o rimuovere, non un problema strutturale.
 4. **Faccende fuori catalogo** — **ammesse da subito**, via FAB, con `template_id`
    nullo sul log. Il catalogo copre il ricorrente; tutto il resto della vita
    domestica non deve restare fuori dai conti solo perché non era previsto.
+5. **Valori XP** — il perimetro del catalogo è chiuso (21 voci, sezione 5: niente
+   lavastoviglie, stiro, piante, balcone, giardino o animali), confermato a 20 XP
+   per "Cucinare la cena" (il valore più consequenziale: a 20 la simulazione
+   resta dentro la zona morta per soli 2,7 punti, a 15 ne esce).
 
 ### Aperte
 
-3. **Kudos** — dentro dalla fase 2 o si parte senza? È l'unica meccanica che
-   chiede un gesto *in più* invece di registrare un gesto già fatto, ed è quindi
-   la prima candidata a non essere usata. Da decidere alla luce dei dati della
-   fase 1.
-5. **Valori XP** — il perimetro del catalogo è chiuso (21 voci, sezione 5: niente
-   lavastoviglie, stiro, piante, balcone, giardino o animali), ma **i numeri no**.
-   Vanno concordati da entrambi prima della fase 1, per la ragione spiegata in
-   "Chi tara il catalogo": chi tocca i valori decide chi vince. Il valore più
-   consequenziale è "Cucinare la cena" — a 20 XP la simulazione resta dentro la
-   zona morta per soli 2,7 punti, a 15 ne esce. L'obiettivo settimanale
-   non è invece una decisione da prendere ora: si fissa **dopo** la fase 1, sui
-   dati reali.
+6. **Obiettivo settimanale provvisorio** — fissato a 475 XP (70% del tetto
+   teorico) invece che sulla mediana di due settimane reali, perché la fase 2 è
+   partita il giorno stesso del rilascio della fase 1, con `chore_logs` ancora
+   vuota. È il compromesso esplicito descritto in "Fasi di rilascio": da
+   rivedere su dati veri dopo il primo mese, non un valore definitivo.
