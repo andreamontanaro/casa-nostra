@@ -263,61 +263,122 @@ client, nell'assistente e nel bot Telegram, che divergerebbero al primo refactor
 * `v_chore_month` — gli stessi aggregati per mese, più il conteggio di aree
   distinte e la lunghezza delle serie per template: è l'input dei titoli.
 
-### Catalogo iniziale (seed proposto)
+### Catalogo iniziale
 
-XP ≈ minuti di lavoro, arrotondati. Da ritarare insieme prima del rilascio.
+Tarato sulla casa reale: **niente lavastoviglie**, niente stiro, niente piante,
+balcone, giardino o animali. La spesa si fa sia insieme sia da soli. XP ≈ minuti
+di lavoro, arrotondati.
 
 | Faccenda | Area | XP | Cadenza |
 |---|---|---:|---:|
-| Portare fuori la spazzatura | spazzatura | 5 | 2 gg |
-| Vetro / plastica / carta | spazzatura | 8 | 7 gg |
-| Caricare e avviare la lavastoviglie | cucina | 8 | 1 g |
-| Svuotare la lavastoviglie | cucina | 5 | 1 g |
-| Lavare i piatti a mano | cucina | 15 | 1 g |
-| Riordinare cucina e tavolo | cucina | 10 | 1 g |
-| Pulire il piano cottura | cucina | 10 | 3 gg |
 | Cucinare il pasto principale | cucina | 20 | 1 g |
+| Lavare i piatti a mano | cucina | 20 | 1 g |
+| Sparecchiare e riordinare la cucina | cucina | 8 | 1 g |
+| Pulire il piano cottura | cucina | 10 | 3 gg |
+| Pulire il frigo / buttare l'avanzato | cucina | 10 | 14 gg |
 | Fare la spesa | spesa | 30 | 7 gg |
+| Giro di riordino (mini task) | pulizie | 5 | 1 g |
+| Riordinare il soggiorno | pulizie | 10 | 3 gg |
 | Aspirare / spazzare | pulizie | 20 | 4 gg |
 | Lavare i pavimenti | pulizie | 25 | 7 gg |
-| Pulire il bagno | bagno | 25 | 7 gg |
+| Spolverare | pulizie | 15 | 14 gg |
+| Pulire il bagno a fondo | bagno | 25 | 7 gg |
+| Lavandino e specchio | bagno | 8 | 3 gg |
 | Fare la lavatrice | bucato | 10 | 3 gg |
 | Stendere il bucato | bucato | 10 | 3 gg |
 | Ritirare e piegare | bucato | 15 | 4 gg |
 | Cambiare le lenzuola | bucato | 15 | 14 gg |
-| Innaffiare le piante | altro | 5 | 4 gg |
+| Cambiare gli asciugamani | bucato | 5 | 7 gg |
+| Portare fuori la spazzatura | spazzatura | 5 | 2 gg |
+| Vetro / plastica / carta | spazzatura | 8 | 7 gg |
+| Rifare il letto | altro | 3 | 1 g |
 
-**Peso reale di ogni voce.** Il numero che conta non è l'XP della singola
-faccenda ma quanto pesa *a settimana*, cioè `effort_xp × 7 / cadence_days`. Con
-i valori sopra, il catalogo completo vale **659 XP/settimana a cadenza piena**, e
-il peso è molto sbilanciato verso la cucina:
+**Tetto teorico: 696 XP/settimana** su 21 voci. Distribuzione per area:
 
-| Voce | XP/settimana | Peso |
+| Area | XP/settimana | Peso |
 |---|---:|---:|
-| Cucinare il pasto principale | 140 | 21% |
-| Lavare i piatti a mano | 105 | 16% |
-| Riordinare cucina e tavolo | 70 | 11% |
-| Caricare e avviare la lavastoviglie | 56 | 9% |
-| Svuotare la lavastoviglie | 35 | 5% |
-| Aspirare / spazzare | 35 | 5% |
-| *(le altre 11 voci)* | 218 | 33% |
+| Cucina | 364 | **52%** |
+| Pulizie | 126 | 18% |
+| Bucato | 85 | 12% |
+| Bagno | 44 | 6% |
+| Spesa | 30 | 4% |
+| Spazzatura | 26 | 4% |
+| Altro (letto) | 21 | 3% |
 
-Due conseguenze da guardare in faccia prima di fissare i numeri:
+**Senza lavastoviglie la cucina è metà della casa.** Non è un difetto della
+taratura, è la casa: cucinare, lavare a mano e sparecchiare sono tre gesti
+quotidiani che insieme valgono 336 XP a settimana, più di tutto il resto messo
+insieme. Cucinare pesa il 20% del sistema, piatti + sparecchiare il 28%.
 
-* **"Cucinare" da solo decide l'equilibrio.** Vale un quinto dell'intero sistema.
-  Se in casa uno cucina quasi sempre e l'altro quasi sempre pulisce, è questo
-  singolo valore a stabilire da che parte pende la barra. È il numero più
-  consequenziale del catalogo, e va deciso insieme sapendo che lo è.
-* **Piatti a mano e lavastoviglie sono alternativi, non cumulativi.** 15 XP a
-  mano contro 8+5 = 13 con la macchina è coerente, ma nella stessa giornata si fa
-  l'una o l'altra: il totale di 659 è un tetto teorico che nessuna settimana
-  raggiunge davvero.
+### Obiettivo settimanale
 
-**Obiettivo settimanale**: al 70% del tetto teorico sarebbero ~450 XP. È una
-stima da carta, non da dati — quindi il valore iniziale va messo *dopo* la fase
-1, calcolandolo sulla mediana delle prime due settimane reali e arrotondando
-leggermente al ribasso. Un obiettivo che si manca sempre demoralizza, uno che si
-raggiunge il mercoledì non dice niente, e nessuno dei due si indovina a tavolino.
+696 è un tetto teorico che nessuna settimana raggiunge davvero: le cadenze sono
+il caso ideale, non la vita. Al 70% sarebbero ~475 XP, ma è una stima da carta.
+**Il valore iniziale si fissa dopo la fase 1**, sulla mediana delle prime due
+settimane reali, arrotondando leggermente al ribasso. Un obiettivo che si manca
+sempre demoralizza, uno che si raggiunge il mercoledì non dice niente, e nessuno
+dei due si indovina a tavolino.
+
+### Verifica: la zona morta regge?
+
+Vale la pena simulare la divisione dei compiti reale prima di scrivere codice.
+Ipotesi: una persona cucina praticamente sempre, l'altra fa piatti, riordino,
+bagno e pavimenti, il resto si divide a metà.
+
+    266 XP  /  430 XP   →   38% / 62%   →   "in equilibrio"
+
+Il risultato cade **dentro** la zona morta 35–65%, quindi la barra non emette
+verdetti: due persone con una divisione dei compiti asimmetrica ma funzionante
+vedono la stessa schermata neutra di due persone che fanno tutto a metà. È
+esattamente il comportamento voluto, ed è la conferma che **l'ampiezza della zona
+morta conta più della precisione degli XP**. Da notare però che 38% è vicino al
+bordo: se "cucinare" scendesse a 12–15 XP, lo stesso scenario uscirebbe dalla
+zona morta e comincerebbe a produrre etichette. Se in futuro la barra dovesse
+risultare sempre sbilanciata, **la prima cosa da allargare è la zona morta, non
+la taratura degli XP**.
+
+### Due limiti strutturali, da dire ad alta voce
+
+**1. Il catalogo sottopesa i mini task.** Un sistema a voci discrete premia le
+faccende *enumerabili, rituali e visibili* (cucinare, pulire il bagno) e
+sottovaluta il contributo diffuso — rimettere a posto le cose in giro, buttare
+una cosa, sistemare al volo — che è lavoro vero ma non ha un momento preciso in
+cui "è fatto". La voce "Giro di riordino" (5 XP, quotidiana) e la faccenda fuori
+catalogo dal FAB sono cerotti, non soluzioni: chi contribuisce così sarà sempre
+misurato per difetto. È un'altra ragione per cui la barra non è un verdetto.
+
+**2. L'app misura i minuti in casa, non le giornate.** Non sa nulla delle ore di
+lavoro retribuito, quindi 50/50 sulle faccende fra chi lavora dieci ore e chi ne
+lavora quattro non è "giusto", e 40/60 potrebbe esserlo perfettamente. Il modulo
+spese affronta la stessa asimmetria in modo esplicito, con `higher_income` e la
+regola 60/40; qui la scelta è **non** replicare quel meccanismo. Una "quota
+attesa" per persona renderebbe possibile la frase "hai fatto meno del tuo
+obiettivo", che è precisamente il verdetto che il modulo esiste per evitare. La
+zona morta ampia ottiene il risultato utile senza formalizzare un'aspettativa.
+La card dell'equilibrio porta un testo fisso e piccolo che lo dice: *«conta i
+minuti in casa, non le giornate»*.
+
+### Chi tara il catalogo
+
+Regola di processo, non tecnica, ma è la più importante del modulo: **i valori
+XP vanno concordati da entrambi prima della fase 1**, e non decisi da chi
+configura l'app. Chi tocca il catalogo decide chi vince, e un punteggio tarato da
+una parte sola non è una misura, è una tesi. Nel dubbio conviene la norma
+opposta a quella istintiva: essere generosi con le faccende che fa l'altro e
+severi con le proprie. Il catalogo è modificabile in ogni momento dalle
+impostazioni, ma **una modifica non riscrive lo storico** (gli XP sono snapshot
+sul log): si può ritarare senza sospetto di aver cambiato le carte a partita in
+corso.
+
+Nota di modellazione utile: **una faccenda fatta insieme viene registrata da
+entrambi** e accredita XP a entrambi — la spesa fatta in due vale 30 + 30. Il
+totale di casa sale, l'equilibrio non si muove, e fare le cose insieme diventa
+il modo più efficiente di raggiungere l'obiettivo settimanale. È un incentivo
+cooperativo che esce gratis dal modello, e va tenuto.
+
+**Antibarare**: nessuno. Con due giocatori e piena visibilità reciproca, ogni
+riga inventata è immediatamente visibile all'altro. Costruire controlli
+automatici su un'app per due conviventi sarebbe, oltre che inutile, offensivo.
 
 ---
 
@@ -453,9 +514,11 @@ Nello spirito della lista in `AGENTS.md`:
    chiede un gesto *in più* invece di registrare un gesto già fatto, ed è quindi
    la prima candidata a non essere usata. Da decidere alla luce dei dati della
    fase 1.
-5. **Valori XP e obiettivo settimanale** — la tabella della sezione 5 è una
-   proposta, con i pesi settimanali reali calcolati lì sotto. Va rivista da
-   entrambi, insieme al perimetro del catalogo (lavastoviglie sì/no, piante,
-   stirare, animali, balcone). È l'unico punto in cui un disaccordo va risolto
-   *prima*, a freddo, e non davanti al lavello. L'obiettivo settimanale si fissa
-   invece **dopo** la fase 1, sui dati.
+5. **Valori XP** — il perimetro del catalogo è chiuso (21 voci, sezione 5: niente
+   lavastoviglie, stiro, piante, balcone, giardino o animali), ma **i numeri no**.
+   Vanno concordati da entrambi prima della fase 1, per la ragione spiegata in
+   "Chi tara il catalogo": chi tocca i valori decide chi vince. Il valore più
+   consequenziale è "Cucinare il pasto principale" — a 20 XP la simulazione resta
+   dentro la zona morta, sotto i 15 comincia a uscirne. L'obiettivo settimanale
+   non è invece una decisione da prendere ora: si fissa **dopo** la fase 1, sui
+   dati reali.
