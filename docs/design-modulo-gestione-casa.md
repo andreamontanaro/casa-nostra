@@ -287,10 +287,37 @@ XP ≈ minuti di lavoro, arrotondati. Da ritarare insieme prima del rilascio.
 | Cambiare le lenzuola | bucato | 15 | 14 gg |
 | Innaffiare le piante | altro | 5 | 4 gg |
 
-Obiettivo settimanale di casa suggerito: **250 XP**, cioè circa la somma delle
-cadenze sopra. Va tarato al ribasso dopo due settimane di uso reale: un obiettivo
-che si manca sempre è demoralizzante, uno che si raggiunge il mercoledì non dice
-niente.
+**Peso reale di ogni voce.** Il numero che conta non è l'XP della singola
+faccenda ma quanto pesa *a settimana*, cioè `effort_xp × 7 / cadence_days`. Con
+i valori sopra, il catalogo completo vale **659 XP/settimana a cadenza piena**, e
+il peso è molto sbilanciato verso la cucina:
+
+| Voce | XP/settimana | Peso |
+|---|---:|---:|
+| Cucinare il pasto principale | 140 | 21% |
+| Lavare i piatti a mano | 105 | 16% |
+| Riordinare cucina e tavolo | 70 | 11% |
+| Caricare e avviare la lavastoviglie | 56 | 9% |
+| Svuotare la lavastoviglie | 35 | 5% |
+| Aspirare / spazzare | 35 | 5% |
+| *(le altre 11 voci)* | 218 | 33% |
+
+Due conseguenze da guardare in faccia prima di fissare i numeri:
+
+* **"Cucinare" da solo decide l'equilibrio.** Vale un quinto dell'intero sistema.
+  Se in casa uno cucina quasi sempre e l'altro quasi sempre pulisce, è questo
+  singolo valore a stabilire da che parte pende la barra. È il numero più
+  consequenziale del catalogo, e va deciso insieme sapendo che lo è.
+* **Piatti a mano e lavastoviglie sono alternativi, non cumulativi.** 15 XP a
+  mano contro 8+5 = 13 con la macchina è coerente, ma nella stessa giornata si fa
+  l'una o l'altra: il totale di 659 è un tetto teorico che nessuna settimana
+  raggiunge davvero.
+
+**Obiettivo settimanale**: al 70% del tetto teorico sarebbero ~450 XP. È una
+stima da carta, non da dati — quindi il valore iniziale va messo *dopo* la fase
+1, calcolandolo sulla mediana delle prime due settimane reali e arrotondando
+leggermente al ribasso. Un obiettivo che si manca sempre demoralizza, uno che si
+raggiunge il mercoledì non dice niente, e nessuno dei due si indovina a tavolino.
 
 ---
 
@@ -324,12 +351,12 @@ suggeriti). Una **card compatta in home** mostra le 2 faccende più urgenti con 
 tap "Fatto" diretto: è il percorso che rende davvero realistico il criterio dei 5
 secondi, perché la home è la schermata che si apre.
 
-**Navigazione.** La `BottomNav` ha già 4 voci. Consiglio di **non** farne 5: le
-faccende sono l'interazione più frequente dell'app, il conguaglio la più rara.
-La proposta è nav = **Home · Spese · Casa · Conguaglio**, con **Statistiche
-spostata nel Sheet "Menu"** dell'header, accanto a Impostazioni. In alternativa,
-5 voci: sta nei `max-w-lg`, ma ogni tab scende sotto i 72px ed è un compromesso
-peggiore.
+**Navigazione (deciso).** La `BottomNav` resta a **4 voci**: **Home · Spese ·
+Casa · Conguaglio**, con **Statistiche spostata nel Sheet "Menu"** dell'header,
+accanto a Impostazioni. Le faccende sono l'interazione più frequente dell'app e
+il conguaglio la più rara: la barra in basso deve riflettere la frequenza d'uso,
+non l'importanza percepita dei moduli. La quinta voce sarebbe stata sostenibile
+nei `max-w-lg`, ma con ogni tab sotto i 72px.
 
 ---
 
@@ -408,18 +435,27 @@ Nello spirito della lista in `AGENTS.md`:
 
 ---
 
-## 10. Decisioni aperte
+## 10. Decisioni
 
-Da chiudere prima della fase 1:
+### Chiuse
 
-1. **Navigazione**: nav a 4 voci con Statistiche spostata nel menu (consigliata),
-   oppure nav a 5 voci?
-2. **Stagione degli XP**: settimana per l'obiettivo e mese per i titoli
-   (consigliata), oppure tutto mensile?
-3. **Kudos**: dentro dalla fase 2, o si parte senza per non aggiungere un gesto
-   in più da fare?
-4. **Faccende fuori catalogo**: ammesse da subito (consigliata: sì, altrimenti il
-   catalogo diventa una gabbia), o solo catalogo chiuso?
-5. **Valori XP e obiettivo settimanale**: la tabella della sezione 5 è una
-   proposta e va rivista da entrambi — è l'unico punto in cui un disaccordo va
-   risolto *prima*, a freddo, e non davanti al lavello.
+1. **Navigazione** — `BottomNav` a 4 voci (Home · Spese · Casa · Conguaglio),
+   Statistiche spostata nel Sheet "Menu" dell'header. Vedi sezione 6.
+2. **Stagione degli XP** — **settimana** per l'obiettivo di casa e per la barra
+   di equilibrio, **mese** per i titoli. Vedi principio 3.
+4. **Faccende fuori catalogo** — **ammesse da subito**, via FAB, con `template_id`
+   nullo sul log. Il catalogo copre il ricorrente; tutto il resto della vita
+   domestica non deve restare fuori dai conti solo perché non era previsto.
+
+### Aperte
+
+3. **Kudos** — dentro dalla fase 2 o si parte senza? È l'unica meccanica che
+   chiede un gesto *in più* invece di registrare un gesto già fatto, ed è quindi
+   la prima candidata a non essere usata. Da decidere alla luce dei dati della
+   fase 1.
+5. **Valori XP e obiettivo settimanale** — la tabella della sezione 5 è una
+   proposta, con i pesi settimanali reali calcolati lì sotto. Va rivista da
+   entrambi, insieme al perimetro del catalogo (lavastoviglie sì/no, piante,
+   stirare, animali, balcone). È l'unico punto in cui un disaccordo va risolto
+   *prima*, a freddo, e non davanti al lavello. L'obiettivo settimanale si fissa
+   invece **dopo** la fase 1, sui dati.
