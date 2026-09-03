@@ -89,6 +89,29 @@
   --dk-shadow-fab: 0 4px 12px rgb(47 213 200 / 0.25), 0 1px 2px rgb(0 0 0 / 0.4);
   --dk-shadow-dialog: 0 1px 3px rgb(0 0 0 / 0.5), 0 16px 40px -12px rgb(0 0 0 / 0.6);
   --dk-shadow-nav: 0 -8px 24px -12px rgb(0 0 0 / 0.5);
+
+  /* ── Modulo "Casa" — accent di gioco, separato dal teal fintech delle spese.
+     Applicato solo dentro .chore-arena (vedi sotto): il resto dell'app non lo vede. ── */
+  --chore-accent: #7c3aed;
+  --chore-accent-foreground: #ffffff;
+  --chore-accent-muted: #ede9fe;
+  --chore-accent-soft: #5b21b6;
+
+  /* "Valuta" del gioco (XP): oro, mai confuso con l'euro delle spese. */
+  --chore-gold: #b45309;
+  --chore-gold-foreground: #ffffff;
+  --chore-gold-muted: #fef3c7;
+  --chore-gold-soft: #92400e;
+
+  --dk-chore-accent: #c4b5fd;
+  --dk-chore-accent-foreground: #2e1065;
+  --dk-chore-accent-muted: #3b2470;
+  --dk-chore-accent-soft: #ede9fe;
+
+  --dk-chore-gold: #fbbf24;
+  --dk-chore-gold-foreground: #422006;
+  --dk-chore-gold-muted: #4a3200;
+  --dk-chore-gold-soft: #fde68a;
 }
 
 /* Riassegnazioni dark: media query (sistema dark, nessun override esplicito)
@@ -127,6 +150,15 @@
     --shadow-fab: var(--dk-shadow-fab);
     --shadow-dialog: var(--dk-shadow-dialog);
     --shadow-nav: var(--dk-shadow-nav);
+
+    --chore-accent: var(--dk-chore-accent);
+    --chore-accent-foreground: var(--dk-chore-accent-foreground);
+    --chore-accent-muted: var(--dk-chore-accent-muted);
+    --chore-accent-soft: var(--dk-chore-accent-soft);
+    --chore-gold: var(--dk-chore-gold);
+    --chore-gold-foreground: var(--dk-chore-gold-foreground);
+    --chore-gold-muted: var(--dk-chore-gold-muted);
+    --chore-gold-soft: var(--dk-chore-gold-soft);
   }
 }
 
@@ -163,6 +195,27 @@
   --shadow-fab: var(--dk-shadow-fab);
   --shadow-dialog: var(--dk-shadow-dialog);
   --shadow-nav: var(--dk-shadow-nav);
+
+  --chore-accent: var(--dk-chore-accent);
+  --chore-accent-foreground: var(--dk-chore-accent-foreground);
+  --chore-accent-muted: var(--dk-chore-accent-muted);
+  --chore-accent-soft: var(--dk-chore-accent-soft);
+  --chore-gold: var(--dk-chore-gold);
+  --chore-gold-foreground: var(--dk-chore-gold-foreground);
+  --chore-gold-muted: var(--dk-chore-gold-muted);
+  --chore-gold-soft: var(--dk-chore-gold-soft);
+}
+
+/* Ambito del modulo "Casa": mentre siamo su /casa, .chore-arena sta anche su
+   <html> (vedi ChoreArenaScope), quindi copre pure gli overlay in portale
+   (Sheet, Dialog) di Radix, che sono fratelli di <body> ma discendenti di
+   <html>. Ridefinire qui gli alias --accent-* reskinna gratis bottoni, chip,
+   FAB e focus ring di tutto il modulo, senza toccare i singoli componenti. */
+.chore-arena {
+  --accent: var(--chore-accent);
+  --accent-foreground: var(--chore-accent-foreground);
+  --accent-muted: var(--chore-accent-muted);
+  --accent-soft: var(--chore-accent-soft);
 }
 
 /* ─── Tailwind v4 token registration ────────────────────────── */
@@ -193,6 +246,11 @@
   --color-positive: var(--positive);
   --color-positive-muted: var(--positive-muted);
   --color-positive-soft: var(--positive-soft);
+
+  --color-chore-gold: var(--chore-gold);
+  --color-chore-gold-foreground: var(--chore-gold-foreground);
+  --color-chore-gold-muted: var(--chore-gold-muted);
+  --color-chore-gold-soft: var(--chore-gold-soft);
 
   --shadow-soft: var(--shadow-soft);
   --shadow-card: var(--shadow-card);
@@ -300,4 +358,56 @@ dialog::backdrop {
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* ─── Modulo "Casa" — animazioni del tema arcade ────────────────── */
+
+/* Sfondo decorativo dietro /casa: qualche macchia di colore sfumata, per
+   segnalare a colpo d'occhio "sei in un modulo diverso" senza un secondo
+   font né una seconda palette da mantenere ovunque. */
+.chore-arena-backdrop {
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in oklab, var(--chore-accent), transparent 84%) 0%, transparent 46%),
+    radial-gradient(circle at 88% 4%, color-mix(in oklab, var(--chore-gold), transparent 86%) 0%, transparent 42%),
+    radial-gradient(circle at 78% 46%, color-mix(in oklab, var(--positive), transparent 88%) 0%, transparent 48%);
+}
+
+@keyframes chore-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-10deg); }
+  60% { transform: rotate(8deg); }
+  85% { transform: rotate(-4deg); }
+}
+.chore-wiggle {
+  animation: chore-wiggle 0.6s ease-in-out;
+}
+
+@keyframes chore-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--chore-accent), transparent 55%);
+  }
+  50% {
+    box-shadow: 0 0 0 9px color-mix(in oklab, var(--chore-accent), transparent 100%);
+  }
+}
+.chore-fab-glow {
+  animation: chore-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes chore-shine {
+  0% { transform: translateX(-130%) skewX(-12deg); }
+  100% { transform: translateX(260%) skewX(-12deg); }
+}
+.chore-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, white, transparent 55%),
+    transparent
+  );
+  animation: chore-shine 2.8s ease-in-out infinite;
 }

@@ -61,16 +61,19 @@ export function HomeChoreCard({ rows }: HomeChoreCardProps) {
   }
 
   return (
-    <section>
+    // .chore-arena locale (solo variabili --accent-*, niente sfondo): la card
+    // "sbuca" con i colori del modulo Casa in mezzo alla home teal, come
+    // primo indizio — prima ancora di aprire "/casa" — che è un modulo a sé.
+    <section className="chore-arena">
       <div className="mb-3 flex items-center justify-between px-1">
-        <h2 className="text-label font-semibold uppercase tracking-wide text-muted">
-          Da fare in casa
+        <h2 className="inline-flex items-center gap-1.5 text-label font-semibold uppercase tracking-wide text-muted">
+          🎮 Da fare in casa
         </h2>
-        <Link href="/casa" className="text-sm font-medium text-accent">
+        <Link href="/casa" className="text-sm font-semibold text-accent">
           Vedi tutte
         </Link>
       </div>
-      <Card className="divide-y divide-border overflow-hidden p-0">
+      <Card className="divide-y divide-border overflow-hidden rounded-3xl border-2 border-accent-muted p-0">
         <AnimatePresence initial={false}>
           {visible.map((row) => (
             <motion.div key={row.id} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
