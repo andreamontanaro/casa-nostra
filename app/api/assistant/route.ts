@@ -56,8 +56,9 @@ export async function POST(request: Request) {
           apiKey,
           onText: write,
           onAction: (action) => write(ACTION_OPEN + action + ACTION_CLOSE),
-          // Spesa creata: segnala al client di rinfrescare la pagina sottostante.
+          // Spesa creata o eliminata: segnala al client di rinfrescare la pagina sottostante.
           onExpenseCreated: () => write(REFRESH_SENTINEL),
+          onExpenseDeleted: () => write(REFRESH_SENTINEL),
         })
         controller.close()
       } catch {

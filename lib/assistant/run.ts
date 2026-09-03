@@ -1,7 +1,7 @@
 import { GoogleGenAI, type Content, type Part, type FunctionCall } from '@google/genai'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { ACCEPTED_MIME } from '@/lib/attachments'
+import { ACCEPTED_MIME, ATTACHMENTS_BUCKET } from '@/lib/attachments'
 import { CATEGORY_LABELS, SPLIT_LABELS, formatEur, todayISO } from '@/lib/fmt'
 import {
   getExpenseAttachments,
@@ -10,11 +10,11 @@ import {
   type QueryClient,
 } from '@/lib/queries'
 import { sendTelegramMessage } from '@/lib/telegram/api'
-import { expenseCreatedMessage, notifyTelegram } from '@/lib/telegram/notify'
+import { expenseCreatedMessage, expenseDeletedMessage, notifyTelegram } from '@/lib/telegram/notify'
 import { Constants } from '@/types/database'
 import type { Database } from '@/types/database'
 import { buildSystemInstruction, type AssistantChannel } from './instructions'
-import { createExpenseTool, getAttachmentsTool } from './tools'
+import { createExpenseTool, deleteExpenseTool, getAttachmentsTool } from './tools'
 
 export const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest'
 export const MAX_TURNS = 5
@@ -47,6 +47,8 @@ export interface RunAssistantOptions {
   onAction?: (action: string) => void
   /** Invocata quando l'assistente ha davvero creato una spesa. */
   onExpenseCreated?: (expenseId: string) => void
+  /** Invocata quando l'assistente ha davvero eliminato una spesa. */
+  onExpenseDeleted?: (expenseId: string) => void
 }
 
 /**
@@ -72,7 +74,7 @@ export async function runAssistant(options: RunAssistantOptions): Promise<string
 
   const config = {
     systemInstruction,
-    tools: [{ functionDeclarations: [getAttachmentsTool, createExpenseTool] }],
+    tools: [{ functionDeclarations: [getAttachmentsTool, createExpenseTool, deleteExpenseTool] }],
     temperature: 0.4,
   }
 
@@ -155,6 +157,20 @@ export async function runAssistant(options: RunAssistantOptions): Promise<string
           },
         })
         if (result.ok) options.onExpenseCreated?.(result.expenseId)
+      } else if (call.name === 'delete_expense') {
+        const result = await deleteExpenseFromTool(
+          call.args as Record<string, unknown> | undefined,
+          userId,
+          { db, channel },
+        )
+        responseParts.push({
+          functionResponse: {
+            id: call.id,
+            name: 'delete_expense',
+            response: result.ok ? { result: result.summary } : { error: result.error },
+          },
+        })
+        if (result.ok) options.onExpenseDeleted?.(result.expenseId)
       } else {
         responseParts.push({
           functionResponse: {
@@ -350,4 +366,94 @@ async function createExpenseFromTool(
     `divisione ${splitLabel}, pagata da ${payer.display_name}, data ${expenseDate}.`
 
   return { ok: true, expenseId: inserted.id, summary }
+}
+
+type DeleteExpenseResult =
+  | { ok: true; expenseId: string; summary: string }
+  | { ok: false; error: string }
+
+/**
+ * Valida gli argomenti del tool delete_expense ed elimina la spesa da Supabase.
+ * Replica la logica di app/actions/expenses.ts::deleteExpense (non riusabile qui
+ * perché legata al redirect), incluso il rifiuto delle spese già saldate.
+ */
+async function deleteExpenseFromTool(
+  args: Record<string, unknown> | undefined,
+  currentUserId: string,
+  options: { db?: QueryClient; channel: AssistantChannel },
+): Promise<DeleteExpenseResult> {
+  const a = args ?? {}
+  const { db, channel } = options
+
+  const expenseId = String(a.expense_id ?? '').trim()
+  if (!expenseId) return { ok: false, error: 'Id della spesa mancante.' }
+
+  const supabase = db ?? (await createClient())
+
+  const { data: expense, error: fetchError } = await supabase
+    .from('expenses')
+    .select('amount, description, category, split_rule, paid_by, expense_date, settlement_id')
+    .eq('id', expenseId)
+    .single()
+
+  if (fetchError || !expense) {
+    return { ok: false, error: 'Spesa non trovata: verifica l\'id.' }
+  }
+  if (expense.settlement_id) {
+    return {
+      ok: false,
+      error: 'Questa spesa è già stata saldata con un conguaglio e non può più essere eliminata.',
+    }
+  }
+
+  // La FK ON DELETE CASCADE rimuove le righe expense_attachments, ma non i file
+  // su Storage: vanno rimossi a mano prima di eliminare la spesa.
+  const { data: attachments } = await supabase
+    .from('expense_attachments')
+    .select('storage_path')
+    .eq('expense_id', expenseId)
+  if (attachments && attachments.length > 0) {
+    await supabase.storage
+      .from(ATTACHMENTS_BUCKET)
+      .remove(attachments.map((att) => att.storage_path))
+  }
+
+  const { error: deleteError } = await supabase.from('expenses').delete().eq('id', expenseId)
+  if (deleteError) {
+    return { ok: false, error: "Errore durante l'eliminazione della spesa nel database." }
+  }
+
+  try {
+    revalidatePath('/')
+    revalidatePath('/spese')
+  } catch (e) {
+    console.error('[assistant] revalidate fallita dopo l\'eliminazione della spesa:', e)
+  }
+
+  const profiles = await getProfiles(db)
+  const author = profiles.find((p) => p.id === currentUserId)
+  const payer = profiles.find((p) => p.id === expense.paid_by)
+  const message = expenseDeletedMessage({
+    actorName: author?.display_name ?? 'Assistente',
+    expenseId,
+    amount: expense.amount,
+    description: expense.description,
+    category: expense.category,
+    splitRule: expense.split_rule,
+    payerName: payer?.display_name ?? 'Qualcuno',
+    expenseDate: expense.expense_date,
+    balance: await getOpenBalance(db).catch(() => []),
+  })
+  if (channel === 'telegram') {
+    await sendTelegramMessage(message)
+  } else {
+    notifyTelegram(message)
+  }
+
+  const catLabel = CATEGORY_LABELS[expense.category] ?? expense.category
+  const summary =
+    `Spesa eliminata: ${formatEur(expense.amount)} — "${expense.description}" (${catLabel}), ` +
+    `del ${expense.expense_date}.`
+
+  return { ok: true, expenseId, summary }
 }

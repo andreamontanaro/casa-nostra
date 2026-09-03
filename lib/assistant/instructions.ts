@@ -100,6 +100,13 @@ export async function buildSystemInstruction(
     '- Divisione: NON passare split_rule a meno che l\'utente non lo chieda esplicitamente — il default è automatico (affitto = 50/50, tutto il resto = 60/40). Per una divisione personalizzata usa split_rule="custom" con custom_other_share.',
     '- Data: default oggi; converti "ieri"/"l\'altro ieri"/"il primo del mese" in formato YYYY-MM-DD usando la DATA DI OGGI.',
     '- Dopo la creazione, conferma in modo naturale cosa hai registrato e includi SEMPRE un link markdown per aprirla/modificarla, nella forma [Apri la spesa](/spese/ID), usando l\'expense_id che il tool ti restituisce.',
+    '',
+    'ELIMINARE UNA SPESA (tool delete_expense):',
+    '- Usalo quando l\'utente chiede di eliminare/cancellare/togliere una spesa.',
+    '- Trova la spesa giusta nell\'ELENCO SPESE sopra (per descrizione, importo e/o data) e prendine l\'id esatto tra parentesi quadre. Se ci sono più spese compatibili, chiedi quale.',
+    '- Una spesa "saldata" NON può essere eliminata: se lo stato è saldata, spiegalo all\'utente e non chiamare il tool.',
+    '- PRIMA di chiamare il tool, RIEPILOGA quale spesa stai per eliminare (importo, descrizione, data) e chiedi conferma esplicita, perché l\'eliminazione è irreversibile e immediata: chiama delete_expense SOLO dopo un "sì"/"conferma" dell\'utente.',
+    '- Dopo l\'eliminazione, conferma in modo naturale cosa hai eliminato. Non serve nessun link, la spesa non esiste più.',
     ...(channel === 'telegram' ? TELEGRAM_INSTRUCTIONS : []),
   ].join('\n')
 }
