@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      chore_kudos: {
+        Row: {
+          created_at: string
+          emoji: string
+          from_user_id: string
+          log_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji?: string
+          from_user_id: string
+          log_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          from_user_id?: string
+          log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chore_kudos_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chore_kudos_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chore_kudos_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chore_kudos_log_id_fkey"
+            columns: ["log_id"]
+            isOneToOne: false
+            referencedRelation: "chore_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chore_logs: {
         Row: {
           area: Database["public"]["Enums"]["chore_area"]
@@ -469,6 +519,13 @@ export type Database = {
       }
     }
     Views: {
+      v_chore_kudos_week: {
+        Row: {
+          kudos_count: number | null
+          week_start: string | null
+        }
+        Relationships: []
+      }
       v_chore_status: {
         Row: {
           area: Database["public"]["Enums"]["chore_area"] | null
@@ -593,6 +650,7 @@ export type Database = {
       }
     }
     Functions: {
+      current_chore_week_start: { Args: never; Returns: string }
       is_authorized_user: { Args: never; Returns: boolean }
       register_settlement: {
         Args: { p_expense_ids?: string[]; p_notes?: string }

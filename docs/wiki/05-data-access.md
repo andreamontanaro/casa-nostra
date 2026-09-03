@@ -40,7 +40,9 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 ### Modulo Gestione Casa (`queries.ts`)
 * `getChoreStatus()` → `lib/queries.ts`: Interroga la vista `v_chore_status` (solo faccende attive), ordinata per `due_in_days` crescente (le più scadute per prime) e poi `sort_order`. È la query che alimenta la lista "Da fare" di `/casa` e la card compatta in home.
 * `getChoreTemplates()` → `lib/queries.ts`: L'intero catalogo, comprese le voci disattivate. Usata solo da `/casa/catalogo`.
-* `getRecentChoreLogs(limit)` → `lib/queries.ts`: Feed "Fatto di recente", con join sul nome di chi ha registrato (`profiles!chore_logs_done_by_fkey(display_name)`).
+* `getRecentChoreLogs(limit)` → `lib/queries.ts`: Feed "Fatto di recente", con join sul nome di chi ha registrato (`profiles!chore_logs_done_by_fkey(display_name)`) e sui kudos ricevuti (`chore_kudos(from_user_id, emoji)`, fase 2).
+* `getChoreWeekRows(weeksBack)` / `getChoreKudosWeekRows(weeksBack)` → `lib/queries.ts`: righe grezze di `v_chore_week` / `v_chore_kudos_week` per le ultime N settimane (default 12), ridotte lato server in `lib/chores/weekly.ts` (`summarizeWeeks`, `computeStreak`, `computeBalance`) — funzioni pure, senza dipendenze da Supabase, per poterle verificare isolatamente.
+* `getCurrentChoreWeekStart()` → `lib/queries.ts`: chiama la RPC `current_chore_week_start()` invece di ricalcolare `date_trunc('week', ...)` lato client, per restare coerente col fuso `Europe/Rome` usato dalle viste.
 
 ---
 
@@ -87,6 +89,9 @@ Per ogni faccenda **attiva**, l'ultimo completamento (via `LATERAL JOIN` su `cho
 XP e numero di faccende per utente e per settimana ISO (fuso `Europe/Rome`). In fase 1 non alimenta nessuna UI (gli XP sono registrati ma non mostrati, per design — vedi `docs/design-modulo-gestione-casa.md`); è pronta per l'obiettivo settimanale e la barra di equilibrio della fase 2.
 
 **Nessuna vista di saldo.** A differenza delle spese non esiste un equivalente di `v_user_open_balance` per le faccende: il modulo non modella un debito fra i due (principio di design, non un'omissione futura).
+
+### 3. Kudos per settimana (`v_chore_kudos_week`, fase 2)
+Numero di kudos per settimana ISO, indipendentemente da chi li ha dati o ricevuti. Combinato con `v_chore_week` in `summarizeWeeks()` (`lib/chores/weekly.ts`): `totalXp` (quello che conta per l'obiettivo settimanale di casa) = XP delle faccende + `kudos_count * KUDOS_XP`; `choreXp`/`choreXpByUser` (quello che alimenta la barra di equilibrio) restano solo le faccende. I kudos gonfiano il traguardo comune ma non spostano mai l'ago dell'equilibrio fra i due.
 
 ---
 
