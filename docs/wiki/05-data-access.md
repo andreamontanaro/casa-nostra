@@ -86,12 +86,12 @@ Per ogni faccenda **attiva**, l'ultimo completamento (via `LATERAL JOIN` su `cho
 * Il riferimento a "oggi" è `(now() AT TIME ZONE 'Europe/Rome')::date`, non `current_date` (che seguirebbe il fuso della sessione, UTC su Supabase, e darebbe uno scarto di un giorno vicino a mezzanotte).
 
 ### 2. Vista aggregati settimanali (`v_chore_week`)
-XP e numero di faccende per utente e per settimana ISO (fuso `Europe/Rome`). In fase 1 non alimenta nessuna UI (gli XP sono registrati ma non mostrati, per design — vedi `docs/design-modulo-gestione-casa.md`); è pronta per l'obiettivo settimanale e la barra di equilibrio della fase 2.
+XP e numero di faccende per utente e per settimana ISO (fuso `Europe/Rome`). La vista resta per utente (`user_id` incluso), ma lato client `summarizeWeeks()` (`lib/chores/weekly.ts`) somma subito tutti gli utenti in un unico `choreXp` di casa: dalla decisione 9 (`docs/design-modulo-gestione-casa.md`) non esiste più nessun consumatore della scomposizione per persona — rimossa la barra di equilibrio, non serviva più nemmeno il dato intermedio.
 
 **Nessuna vista di saldo.** A differenza delle spese non esiste un equivalente di `v_user_open_balance` per le faccende: il modulo non modella un debito fra i due (principio di design, non un'omissione futura).
 
 ### 3. Kudos per settimana (`v_chore_kudos_week`, fase 2)
-Numero di kudos per settimana ISO, indipendentemente da chi li ha dati o ricevuti. Combinato con `v_chore_week` in `summarizeWeeks()` (`lib/chores/weekly.ts`): `totalXp` (quello che conta per l'obiettivo settimanale di casa) = XP delle faccende + `kudos_count * KUDOS_XP`; `choreXp`/`choreXpByUser` (quello che alimenta la barra di equilibrio) restano solo le faccende. I kudos gonfiano il traguardo comune ma non spostano mai l'ago dell'equilibrio fra i due.
+Numero di kudos per settimana ISO, indipendentemente da chi li ha dati o ricevuti. Combinato con `v_chore_week` in `summarizeWeeks()` (`lib/chores/weekly.ts`): `totalXp` (quello che conta per l'obiettivo settimanale di casa, e per la bottiglia — vedi `computeFilledNotches`) = XP delle faccende + `kudos_count * KUDOS_XP`, sempre e solo a livello di casa.
 
 ### 4. Faccende per area e per settimana (`v_chore_week_area`, rifinitura UI fase 2)
 Conteggio e XP per area (`chore_area`) e per settimana ISO, **a livello di casa**: raggruppa solo su `week_start` e `area`, senza `user_id`. È una scelta strutturale, non solo di query — un riepilogo "questa settimana in cucina X, in bagno Y" non deve poter diventare "questa settimana TU in cucina X, LUI in bagno Y": la vista non ha nemmeno la colonna per farlo. Alimenta i chip di riepilogo nella card "La nostra settimana" (`summarizeWeekAreas()` in `lib/chores/weekly.ts`).

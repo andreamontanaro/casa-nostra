@@ -1,4 +1,4 @@
-import { BALANCE_DEAD_BAND_LOW, BALANCE_DEAD_BAND_HIGH, KUDOS_XP } from '@/lib/chores/config'
+import { KUDOS_XP } from '@/lib/chores/config'
 import type { Tables } from '@/types/database'
 
 export type ChoreWeekRow = Tables<'v_chore_week'>
@@ -29,9 +29,7 @@ export function summarizeWeekAreas(
 
 export interface WeekSummary {
   weekStart: string
-  /** XP delle faccende, per utente — è la base della barra di equilibrio. */
-  choreXpByUser: Record<string, number>
-  /** XP delle faccende, entrambi gli utenti insieme. */
+  /** XP delle faccende, entrambi gli utenti insieme — mai spezzato per persona. */
   choreXp: number
   /** XP dei kudos di quella settimana (non attribuiti a nessuno). */
   kudosXp: number
@@ -54,7 +52,7 @@ export function summarizeWeeks(
   function ensure(weekStart: string): WeekSummary {
     let s = byWeek.get(weekStart)
     if (!s) {
-      s = { weekStart, choreXpByUser: {}, choreXp: 0, kudosXp: 0, totalXp: 0 }
+      s = { weekStart, choreXp: 0, kudosXp: 0, totalXp: 0 }
       byWeek.set(weekStart, s)
     }
     return s
@@ -64,7 +62,6 @@ export function summarizeWeeks(
     if (!row.week_start || !row.user_id) continue
     const s = ensure(row.week_start)
     const xp = row.xp ?? 0
-    s.choreXpByUser[row.user_id] = (s.choreXpByUser[row.user_id] ?? 0) + xp
     s.choreXp += xp
     s.totalXp += xp
   }
@@ -120,39 +117,4 @@ export function computeStreak(
     cursor = shiftWeek(cursor, -1)
   }
   return streak
-}
-
-export interface BalanceResult {
-  /** true se la ripartizione cade nella zona morta: non va etichettata. */
-  inDeadBand: boolean
-  /** Percentuale (0–100) dell'utente `primaryUserId`, arrotondata. */
-  primaryPercent: number
-  /** userId di chi ha spinto di più questa settimana (solo se !inDeadBand). */
-  leaderUserId: string | null
-}
-
-/**
- * Ripartizione delle faccende fra i due utenti questa settimana, con la
- * zona morta del design: qualsiasi valore fra i due estremi è "in
- * equilibrio" e non genera un'etichetta o un confronto (principio "mai un
- * verdetto" — vedi docs/design-modulo-gestione-casa.md § 3).
- */
-export function computeBalance(
-  choreXpByUser: Record<string, number>,
-  primaryUserId: string,
-  otherUserId: string,
-): BalanceResult {
-  const primaryXp = choreXpByUser[primaryUserId] ?? 0
-  const otherXp = choreXpByUser[otherUserId] ?? 0
-  const total = primaryXp + otherXp
-
-  // Nessuna attività: 50/50 neutro, non "in credito" a nessuno dei due.
-  const primaryPercent = total === 0 ? 50 : Math.round((primaryXp / total) * 100)
-  const inDeadBand = primaryPercent >= BALANCE_DEAD_BAND_LOW && primaryPercent <= BALANCE_DEAD_BAND_HIGH
-
-  return {
-    inDeadBand,
-    primaryPercent,
-    leaderUserId: inDeadBand ? null : primaryPercent > 50 ? primaryUserId : otherUserId,
-  }
 }

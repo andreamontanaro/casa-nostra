@@ -29,9 +29,6 @@ import type {
   ChoreKudosWeekRow,
   ChoreWeekAreaRow,
 } from '@/lib/queries'
-import type { Tables } from '@/types/database'
-
-type Profile = Tables<'profiles'>
 
 interface OptimisticLog {
   id: string
@@ -49,7 +46,6 @@ interface ChoreShellProps {
   currentUserDisplayName: string
   statusRows: ChoreStatusRow[]
   recentLogs: ChoreLog[]
-  profiles: Profile[]
   weekRows: ChoreWeekRow[]
   kudosWeekRows: ChoreKudosWeekRow[]
   weekAreaRows: ChoreWeekAreaRow[]
@@ -90,7 +86,6 @@ export function ChoreShell({
   currentUserDisplayName,
   statusRows,
   recentLogs,
-  profiles,
   weekRows,
   kudosWeekRows,
   weekAreaRows,
@@ -246,8 +241,6 @@ export function ChoreShell({
       <ChoreWelcomeHeader displayName={currentUserDisplayName} />
 
       <WeekGoalCard
-        currentUserId={currentUserId}
-        profiles={profiles}
         weekRows={weekRows}
         kudosWeekRows={kudosWeekRows}
         weekAreaRows={weekAreaRows}

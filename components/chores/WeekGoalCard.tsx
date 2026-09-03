@@ -12,41 +12,29 @@ import {
   summarizeWeeks,
   summarizeWeekAreas,
   computeStreak,
-  computeBalance,
   computeFilledNotches,
 } from '@/lib/chores/weekly'
-import { springSnappy, springSoft } from '@/lib/motion'
+import { springSnappy } from '@/lib/motion'
 import { CHORE_AREA_ICON, CHORE_AREA_LABELS } from '@/lib/fmt'
 import { choreAreaSolid } from '@/lib/chores/areaTheme'
 import type { ChoreWeekRow, ChoreKudosWeekRow, ChoreWeekAreaRow } from '@/lib/queries'
-import type { Tables } from '@/types/database'
-
-type Profile = Tables<'profiles'>
 
 interface WeekGoalCardProps {
-  currentUserId: string
-  profiles: Profile[]
   weekRows: ChoreWeekRow[]
   kudosWeekRows: ChoreKudosWeekRow[]
   weekAreaRows: ChoreWeekAreaRow[]
   currentWeekStart: string
 }
 
-function firstName(name: string | null | undefined): string {
-  return name?.trim().split(/\s+/)[0] ?? '—'
-}
-
 /**
  * Card "La nostra settimana": un cruscotto da videogioco (livello, barra XP
  * con "shine", striscia che brilla) ma con lo stesso contenuto di sempre — il
  * numero grande è quello della casa, non della persona (principio 1 del
- * design), e la barra di equilibrio resta muta dentro la zona morta, senza
- * percentuali né colori per persona (decisione chiusa #7 del design doc).
+ * design). Nessun dato per utente: niente barra di equilibrio, niente "chi
+ * ha spinto di più" (decisione 9 del design doc — niente confronti, punto).
  * Solo la cornice diventa gioco: i dati e le regole di tono restano identici.
  */
 export function WeekGoalCard({
-  currentUserId,
-  profiles,
   weekRows,
   kudosWeekRows,
   weekAreaRows,
@@ -56,13 +44,9 @@ export function WeekGoalCard({
   const [confettiActive, setConfettiActive] = useState(true)
   if (!enabled) return null
 
-  const other = profiles.find((p) => p.id !== currentUserId)
-  if (!other) return null
-
   const weeks = summarizeWeeks(weekRows, kudosWeekRows)
   const current = weeks.get(currentWeekStart) ?? {
     weekStart: currentWeekStart,
-    choreXpByUser: {},
     choreXp: 0,
     kudosXp: 0,
     totalXp: 0,
@@ -74,10 +58,6 @@ export function WeekGoalCard({
   const streak = reachedThisWeek ? pastStreak + 1 : pastStreak
   const progressPercent = Math.min(100, Math.round((current.totalXp / WEEKLY_GOAL_XP) * 100))
   const filledNotches = computeFilledNotches(current.totalXp, WEEKLY_GOAL_XP)
-
-  const balance = computeBalance(current.choreXpByUser, currentUserId, other.id)
-  const leaderName =
-    balance.leaderUserId === currentUserId ? 'Tu hai' : `${firstName(other.display_name)} ha`
 
   return (
     <Card className="relative overflow-hidden rounded-3xl border-2 border-accent-muted p-4">
@@ -163,23 +143,6 @@ export function WeekGoalCard({
           ))}
         </div>
       )}
-
-      {/* Barra di equilibrio: zona morta ampia, nessun verdetto sulle settimane
-          normali. Stile invariato di proposito (decisione chiusa #7): niente
-          colori per persona, niente percentuali fuori dalla zona morta. */}
-      <div className="mt-4">
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-border-strong">
-          <motion.div
-            className="h-full rounded-full bg-accent"
-            initial={false}
-            animate={{ width: `${balance.primaryPercent}%` }}
-            transition={springSoft}
-          />
-        </div>
-        <p className="mt-1.5 text-xs text-muted">
-          {balance.inDeadBand ? 'In equilibrio questa settimana' : `${leaderName} spinto di più questa settimana`}
-        </p>
-      </div>
     </Card>
   )
 }

@@ -42,7 +42,6 @@ export default async function CasaPage() {
       currentUserDisplayName={currentUserDisplayName}
       statusRows={statusRows}
       recentLogs={recentLogs}
-      profiles={profiles}
       weekRows={weekRows}
       kudosWeekRows={kudosWeekRows}
       weekAreaRows={weekAreaRows}
