@@ -41,7 +41,7 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 * `getChoreStatus()` → `lib/queries.ts`: Interroga la vista `v_chore_status` (solo faccende attive), ordinata per `due_in_days` crescente (le più scadute per prime) e poi `sort_order`. È la query che alimenta la lista "Da fare" di `/casa` e la card compatta in home.
 * `getChoreTemplates()` → `lib/queries.ts`: L'intero catalogo, comprese le voci disattivate. Usata solo da `/casa/catalogo`.
 * `getRecentChoreLogs(limit)` → `lib/queries.ts`: Feed "Fatto di recente", con join sul nome di chi ha registrato (`profiles!chore_logs_done_by_fkey(display_name)`) e sui kudos ricevuti (`chore_kudos(from_user_id, emoji)`, fase 2).
-* `getChoreWeekRows(weeksBack)` / `getChoreKudosWeekRows(weeksBack)` → `lib/queries.ts`: righe grezze di `v_chore_week` / `v_chore_kudos_week` per le ultime N settimane (default 12), ridotte lato server in `lib/chores/weekly.ts` (`summarizeWeeks`, `computeStreak`, `computeBalance`) — funzioni pure, senza dipendenze da Supabase, per poterle verificare isolatamente.
+* `getChoreWeekRows(weeksBack)` / `getChoreKudosWeekRows(weeksBack)` / `getChoreWeekAreaRows(weeksBack)` → `lib/queries.ts`: righe grezze di `v_chore_week` / `v_chore_kudos_week` / `v_chore_week_area` per le ultime N settimane (default 12), ridotte lato server in `lib/chores/weekly.ts` (`summarizeWeeks`, `computeStreak`, `computeBalance`, `summarizeWeekAreas`) — funzioni pure, senza dipendenze da Supabase, per poterle verificare isolatamente.
 * `getCurrentChoreWeekStart()` → `lib/queries.ts`: chiama la RPC `current_chore_week_start()` invece di ricalcolare `date_trunc('week', ...)` lato client, per restare coerente col fuso `Europe/Rome` usato dalle viste.
 
 ---
@@ -92,6 +92,9 @@ XP e numero di faccende per utente e per settimana ISO (fuso `Europe/Rome`). In 
 
 ### 3. Kudos per settimana (`v_chore_kudos_week`, fase 2)
 Numero di kudos per settimana ISO, indipendentemente da chi li ha dati o ricevuti. Combinato con `v_chore_week` in `summarizeWeeks()` (`lib/chores/weekly.ts`): `totalXp` (quello che conta per l'obiettivo settimanale di casa) = XP delle faccende + `kudos_count * KUDOS_XP`; `choreXp`/`choreXpByUser` (quello che alimenta la barra di equilibrio) restano solo le faccende. I kudos gonfiano il traguardo comune ma non spostano mai l'ago dell'equilibrio fra i due.
+
+### 4. Faccende per area e per settimana (`v_chore_week_area`, rifinitura UI fase 2)
+Conteggio e XP per area (`chore_area`) e per settimana ISO, **a livello di casa**: raggruppa solo su `week_start` e `area`, senza `user_id`. È una scelta strutturale, non solo di query — un riepilogo "questa settimana in cucina X, in bagno Y" non deve poter diventare "questa settimana TU in cucina X, LUI in bagno Y": la vista non ha nemmeno la colonna per farlo. Alimenta i chip di riepilogo nella card "La nostra settimana" (`summarizeWeekAreas()` in `lib/chores/weekly.ts`).
 
 ---
 

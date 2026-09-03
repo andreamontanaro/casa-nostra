@@ -211,6 +211,7 @@ export type ChoreLog = Tables<'chore_logs'> & {
 }
 export type ChoreWeekRow = Tables<'v_chore_week'>
 export type ChoreKudosWeekRow = Tables<'v_chore_kudos_week'>
+export type ChoreWeekAreaRow = Tables<'v_chore_week_area'>
 
 /** Stato di tutte le faccende attive, ordinate per urgenza (piu' scadute prima). */
 export async function getChoreStatus(db?: QueryClient) {
@@ -274,6 +275,26 @@ export async function getChoreKudosWeekRows(weeksBack = 12, db?: QueryClient) {
   since.setDate(since.getDate() - weeksBack * 7)
   const { data, error } = await supabase
     .from('v_chore_kudos_week')
+    .select('*')
+    .gte('week_start', since.toISOString().slice(0, 10))
+    .order('week_start', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Righe di `v_chore_week_area` per le ultime `weeksBack` settimane. A
+ * livello di casa, senza suddivisione per utente: alimenta il riepilogo
+ * "questa settimana per area", che non deve poter diventare un confronto
+ * fra i due (vedi commento sulla vista).
+ */
+export async function getChoreWeekAreaRows(weeksBack = 12, db?: QueryClient) {
+  const supabase = await client(db)
+  const since = new Date()
+  since.setDate(since.getDate() - weeksBack * 7)
+  const { data, error } = await supabase
+    .from('v_chore_week_area')
     .select('*')
     .gte('week_start', since.toISOString().slice(0, 10))
     .order('week_start', { ascending: false })
