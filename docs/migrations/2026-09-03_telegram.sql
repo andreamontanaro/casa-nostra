@@ -2,7 +2,8 @@
 -- Casa Nostra - Migrazione "notifiche e assistente Telegram"
 -- 3 settembre 2026
 -- ------------------------------------------------------------
--- Da eseguire nell'editor SQL di Supabase (o via MCP apply_migration).
+-- APPLICATA il 3 settembre 2026 come migrazione `telegram_notifications_and_assistant`.
+-- Conservata qui come riferimento e per ricreare lo schema da zero.
 -- Aggiunge:
 --   1. profiles.telegram_user_id  -> collega un profilo a un account Telegram
 --   2. public.telegram_messages   -> memoria della conversazione di gruppo
