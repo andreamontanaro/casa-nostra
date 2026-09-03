@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Input } from '@/components/ui/Input'
 import { Chip } from '@/components/ui/Chip'
@@ -9,7 +10,7 @@ import { ListRow } from '@/components/ui/ListRow'
 import { ChoreIcon } from '@/components/ChoreIcon'
 import { Spinner } from '@/components/ui/Spinner'
 import { CHORE_AREA_LABELS, todayISO } from '@/lib/fmt'
-import { completeChore, completeOneOffChore } from '@/app/actions/chores'
+import { completeChore, completeOneOffChore, estimateChoreXp } from '@/app/actions/chores'
 import { toast } from '@/lib/toast'
 import { Constants } from '@/types/database'
 import type { ChoreStatusRow } from '@/lib/queries'
@@ -46,6 +47,7 @@ export function RegisterChoreSheet({
   const [oneOffArea, setOneOffArea] = useState<ChoreArea>('altro')
   const [oneOffXp, setOneOffXp] = useState('10')
   const [oneOffPending, setOneOffPending] = useState(false)
+  const [estimating, setEstimating] = useState(false)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -61,6 +63,24 @@ export function RegisterChoreSheet({
     setOneOffName('')
     setOneOffArea('altro')
     setOneOffXp('10')
+    setEstimating(false)
+  }
+
+  async function handleEstimate() {
+    if (!oneOffName.trim()) {
+      toast.error('Scrivi prima cosa hai fatto.')
+      return
+    }
+    setEstimating(true)
+    const result = await estimateChoreXp(oneOffName)
+    setEstimating(false)
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    setOneOffArea(result.area)
+    setOneOffXp(String(result.xp))
+    toast.success(`Stimato: ${CHORE_AREA_LABELS[result.area]} · ${result.xp} XP`)
   }
 
   function doneAtIso(): string {
@@ -171,6 +191,18 @@ export function RegisterChoreSheet({
                 value={oneOffName}
                 onChange={(e) => setOneOffName(e.target.value)}
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="self-start"
+                loading={estimating}
+                disabled={!oneOffName.trim()}
+                onClick={handleEstimate}
+              >
+                <Sparkles className="size-3.5" strokeWidth={2.5} />
+                Stima area e XP con l&apos;IA
+              </Button>
               <div className="flex flex-wrap gap-2">
                 {AREAS.map((a) => (
                   <Chip
