@@ -128,9 +128,12 @@ per cui si costruisce il modulo. Il punto è **come** si mostra.
 
 * Una sola barra orizzontale, due segmenti con i colori dei due profili, senza
   numeri sopra.
-* **Zona morta ampia**: qualsiasi ripartizione fra 35% e 65% viene etichettata
-  "in equilibrio", senza percentuali e senza evidenziare nessuno dei due. Le
-  settimane normali devono quindi apparire *tutte uguali*.
+* **Zona morta ampia**: qualsiasi ripartizione fra **30% e 70%** viene
+  etichettata "in equilibrio", senza percentuali e senza evidenziare nessuno dei
+  due. Le settimane normali devono quindi apparire *tutte uguali*. La soglia è
+  volutamente generosa e vive in una costante di configurazione: vedi la
+  simulazione in sezione 5, che la fa scattare da 35–65% a 30–70% prima ancora
+  del primo rilascio.
 * Le percentuali compaiono solo fuori dalla zona morta, e con un testo neutro e
   orientato al futuro ("questa settimana ha spinto soprattutto Andrea"), mai
   accusatorio verso chi ha fatto meno.
@@ -266,12 +269,22 @@ client, nell'assistente e nel bot Telegram, che divergerebbero al primo refactor
 ### Catalogo iniziale
 
 Tarato sulla casa reale: **niente lavastoviglie**, niente stiro, niente piante,
-balcone, giardino o animali. La spesa si fa sia insieme sia da soli. XP ≈ minuti
-di lavoro, arrotondati.
+balcone, giardino o animali. La spesa si fa sia insieme sia da soli, **la
+lavatrice una volta a settimana**, le lenzuola ogni due. XP ≈ minuti di lavoro,
+arrotondati.
+
+**Il pranzo non è nel catalogo.** I due non pranzano quasi mai insieme, quindi il
+pranzo è una cosa che ognuno fa per sé: non è lavoro *per la casa* e non entra
+nei conti. La voce si chiama per questo "Cucinare la cena" e non "il pasto
+principale" — un nome ambiguo avrebbe reso incerto cosa registrare, e
+l'incertezza su cosa vale un punto è il primo modo in cui un punteggio perde
+credibilità. Il bucato settimanale ha carichi più grossi di uno ogni tre giorni,
+quindi stendere e piegare valgono di più a parità di gesto (15 e 20 invece di
+10 e 15).
 
 | Faccenda | Area | XP | Cadenza |
 |---|---|---:|---:|
-| Cucinare il pasto principale | cucina | 20 | 1 g |
+| Cucinare la cena | cucina | 20 | 1 g |
 | Lavare i piatti a mano | cucina | 20 | 1 g |
 | Sparecchiare e riordinare la cucina | cucina | 8 | 1 g |
 | Pulire il piano cottura | cucina | 10 | 3 gg |
@@ -284,22 +297,22 @@ di lavoro, arrotondati.
 | Spolverare | pulizie | 15 | 14 gg |
 | Pulire il bagno a fondo | bagno | 25 | 7 gg |
 | Lavandino e specchio | bagno | 8 | 3 gg |
-| Fare la lavatrice | bucato | 10 | 3 gg |
-| Stendere il bucato | bucato | 10 | 3 gg |
-| Ritirare e piegare | bucato | 15 | 4 gg |
+| Fare la lavatrice | bucato | 10 | 7 gg |
+| Stendere il bucato | bucato | 15 | 7 gg |
+| Ritirare e piegare | bucato | 20 | 7 gg |
 | Cambiare le lenzuola | bucato | 15 | 14 gg |
 | Cambiare gli asciugamani | bucato | 5 | 7 gg |
 | Portare fuori la spazzatura | spazzatura | 5 | 2 gg |
 | Vetro / plastica / carta | spazzatura | 8 | 7 gg |
 | Rifare il letto | altro | 3 | 1 g |
 
-**Tetto teorico: 696 XP/settimana** su 21 voci. Distribuzione per area:
+**Tetto teorico: 668 XP/settimana** su 21 voci. Distribuzione per area:
 
 | Area | XP/settimana | Peso |
 |---|---:|---:|
-| Cucina | 364 | **52%** |
-| Pulizie | 126 | 18% |
-| Bucato | 85 | 12% |
+| Cucina | 364 | **55%** |
+| Pulizie | 126 | 19% |
+| Bucato | 58 | 9% |
 | Bagno | 44 | 6% |
 | Spesa | 30 | 4% |
 | Spazzatura | 26 | 4% |
@@ -308,11 +321,13 @@ di lavoro, arrotondati.
 **Senza lavastoviglie la cucina è metà della casa.** Non è un difetto della
 taratura, è la casa: cucinare, lavare a mano e sparecchiare sono tre gesti
 quotidiani che insieme valgono 336 XP a settimana, più di tutto il resto messo
-insieme. Cucinare pesa il 20% del sistema, piatti + sparecchiare il 28%.
+insieme. Cucinare pesa il 21% del sistema, piatti + sparecchiare il 29%. Con la
+lavatrice settimanale il bucato scende al 9%, e lo sbilanciamento verso la cucina
+si accentua ancora.
 
 ### Obiettivo settimanale
 
-696 è un tetto teorico che nessuna settimana raggiunge davvero: le cadenze sono
+668 è un tetto teorico che nessuna settimana raggiunge davvero: le cadenze sono
 il caso ideale, non la vita. Al 70% sarebbero ~475 XP, ma è una stima da carta.
 **Il valore iniziale si fissa dopo la fase 1**, sulla mediana delle prime due
 settimane reali, arrotondando leggermente al ribasso. Un obiettivo che si manca
@@ -322,20 +337,38 @@ dei due si indovina a tavolino.
 ### Verifica: la zona morta regge?
 
 Vale la pena simulare la divisione dei compiti reale prima di scrivere codice.
-Ipotesi: una persona cucina praticamente sempre, l'altra fa piatti, riordino,
-bagno e pavimenti, il resto si divide a metà.
+Ipotesi: una persona cucina praticamente sempre, l'altra fa piatti, sparecchia,
+tiene in ordine, pulisce bagno e pavimenti, il resto si divide a metà.
 
-    266 XP  /  430 XP   →   38% / 62%   →   "in equilibrio"
+    252 XP  /  416 XP   →   38% / 62%
 
-Il risultato cade **dentro** la zona morta 35–65%, quindi la barra non emette
-verdetti: due persone con una divisione dei compiti asimmetrica ma funzionante
-vedono la stessa schermata neutra di due persone che fanno tutto a metà. È
-esattamente il comportamento voluto, ed è la conferma che **l'ampiezza della zona
-morta conta più della precisione degli XP**. Da notare però che 38% è vicino al
-bordo: se "cucinare" scendesse a 12–15 XP, lo stesso scenario uscirebbe dalla
-zona morta e comincerebbe a produrre etichette. Se in futuro la barra dovesse
-risultare sempre sbilanciata, **la prima cosa da allargare è la zona morta, non
-la taratura degli XP**.
+Il risultato cade dentro la zona morta, quindi la barra non emette verdetti: due
+persone con una divisione dei compiti asimmetrica ma funzionante vedono la stessa
+schermata neutra di due persone che fanno tutto a metà. È il comportamento
+voluto. **Ma il margine è sottile**: 38% dista 2,7 punti dal bordo dei 35%, e
+basta ritoccare il valore della cena per uscirne.
+
+| "Cucinare la cena" | Ripartizione | Zona morta 35–65% (ipotesi iniziale) |
+|---|---|---|
+| 15 XP | 34% / 66% | **fuori** |
+| 20 XP | 38% / 62% | dentro, per 2,7 punti |
+| 25 XP | 41% / 59% | dentro |
+| 30 XP | 44% / 56% | dentro |
+
+**Raccomandazione: allargare la zona morta a 30–70%.** Il documento aveva già la
+regola — se la barra risulta cronicamente sbilanciata, si allarga la zona morta e
+non si ritocca la taratura — e la simulazione la fa scattare prima ancora di
+scrivere una riga di codice. Il motivo non è indulgenza: in questa casa una delle
+due persone lavora fuori tutto il giorno, quindi una ripartizione 62/38 delle
+faccende non è uno squilibrio da segnalare, è probabilmente **l'assetto giusto**.
+Una zona morta che etichetta come squilibrata una casa che funziona non sta
+misurando l'equilibrio, sta misurando la differenza fra le due giornate — che è
+esattamente ciò che il modulo non sa e non deve fingere di sapere. Oltre il
+70/30 c'è invece qualcosa di cui vale la pena parlare.
+
+Conseguenza pratica: la soglia va tenuta come **una costante di configurazione**
+(`lib/chores/config.ts`), non sparsa nel codice della card. Sarà il primo numero
+da rivedere dopo un mese d'uso.
 
 ### Due limiti strutturali, da dire ad alta voce
 
@@ -518,7 +551,7 @@ Nello spirito della lista in `AGENTS.md`:
    lavastoviglie, stiro, piante, balcone, giardino o animali), ma **i numeri no**.
    Vanno concordati da entrambi prima della fase 1, per la ragione spiegata in
    "Chi tara il catalogo": chi tocca i valori decide chi vince. Il valore più
-   consequenziale è "Cucinare il pasto principale" — a 20 XP la simulazione resta
-   dentro la zona morta, sotto i 15 comincia a uscirne. L'obiettivo settimanale
+   consequenziale è "Cucinare la cena" — a 20 XP la simulazione resta dentro la
+   zona morta per soli 2,7 punti, a 15 ne esce. L'obiettivo settimanale
    non è invece una decisione da prendere ora: si fissa **dopo** la fase 1, sui
    dati reali.
