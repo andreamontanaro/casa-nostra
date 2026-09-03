@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { ChoreIcon } from '@/components/ChoreIcon'
+import { Avatar } from '@/components/ui/Avatar'
 import { Dialog } from '@/components/ui/Dialog'
 import { KUDOS_EMOJIS } from '@/lib/chores/config'
 import { cn } from '@/lib/utils'
@@ -11,6 +12,8 @@ interface ChoreLogRowProps {
   area: string
   title: string
   doneByName: string
+  /** true se l'ha fatta l'utente che sta guardando lo schermo. */
+  doneByMe: boolean
   whenLabel: string
   /** false per le righe ottimistiche appena inserite: niente kudos/elimina finché non arrivano i dati reali. */
   interactive: boolean
@@ -30,6 +33,7 @@ export function ChoreLogRow({
   area,
   title,
   doneByName,
+  doneByMe,
   whenLabel,
   interactive,
   canReact,
@@ -48,8 +52,11 @@ export function ChoreLogRow({
         <ChoreIcon area={area} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium text-foreground">{title}</div>
-          <div className="mt-0.5 truncate text-xs text-muted">
-            {doneByName} · {whenLabel}
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+            <Avatar name={doneByName} highlighted={doneByMe} size="sm" />
+            <span className="truncate">
+              {doneByMe ? 'Tu' : doneByName} · {whenLabel}
+            </span>
           </div>
         </div>
         {interactive && canDelete && (

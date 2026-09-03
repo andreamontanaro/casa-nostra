@@ -196,3 +196,27 @@ export function formatChoreCadence(days: number | null): string {
   if (days === 1) return 'Ogni giorno'
   return `Ogni ${days} giorni`
 }
+
+/** Chiave 'YYYY-MM-DD' di un timestamp nel fuso di casa (Europe/Rome). */
+export function romeDateKey(iso: string): string {
+  // 'sv-SE' è un trucco comune per ottenere il formato ISO YYYY-MM-DD da
+  // toLocaleDateString senza librerie di date aggiuntive.
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' })
+}
+
+/** Etichetta di un giorno per gli header del feed: "Oggi", "Ieri", o la data estesa. */
+export function formatChoreDayLabel(dateKey: string): string {
+  const today = romeDateKey(new Date().toISOString())
+  const yesterday = romeDateKey(new Date(Date.now() - 86400000).toISOString())
+  if (dateKey === today) return 'Oggi'
+  if (dateKey === yesterday) return 'Ieri'
+  return formatDate(dateKey)
+}
+
+/** Saluto contestuale all'ora del giorno, per l'header di benvenuto del modulo faccende. */
+export function greetingForHour(hour: number): string {
+  if (hour < 6) return 'Buonanotte'
+  if (hour < 12) return 'Buongiorno'
+  if (hour < 18) return 'Buon pomeriggio'
+  return 'Buonasera'
+}

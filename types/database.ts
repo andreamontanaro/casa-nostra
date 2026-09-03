@@ -519,6 +519,15 @@ export type Database = {
       }
     }
     Views: {
+      v_chore_week_area: {
+        Row: {
+          area: Database["public"]["Enums"]["chore_area"] | null
+          chore_count: number | null
+          week_start: string | null
+          xp: number | null
+        }
+        Relationships: []
+      }
       v_chore_kudos_week: {
         Row: {
           kudos_count: number | null

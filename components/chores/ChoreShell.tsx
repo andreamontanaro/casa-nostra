@@ -5,15 +5,29 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import { ChoreRow } from '@/components/chores/ChoreRow'
 import { ChoreLogRow } from '@/components/chores/ChoreLogRow'
+import { ChoreWelcomeHeader } from '@/components/chores/ChoreWelcomeHeader'
 import { RegisterChoreSheet } from '@/components/chores/RegisterChoreSheet'
 import { WeekGoalCard } from '@/components/chores/WeekGoalCard'
 import { Card } from '@/components/ui/Card'
 import { springSnappy } from '@/lib/motion'
 import { completeChore, undoChoreLog, setChoreKudos, removeChoreKudos } from '@/app/actions/chores'
 import { toast } from '@/lib/toast'
-import { formatChoreRecency, formatDateShort } from '@/lib/fmt'
+import {
+  formatChoreRecency,
+  formatChoreDayLabel,
+  formatDateShort,
+  romeDateKey,
+  CHORE_AREA_ICON,
+  CHORE_AREA_LABELS,
+} from '@/lib/fmt'
 import { cn } from '@/lib/utils'
-import type { ChoreStatusRow, ChoreLog, ChoreWeekRow, ChoreKudosWeekRow } from '@/lib/queries'
+import type {
+  ChoreStatusRow,
+  ChoreLog,
+  ChoreWeekRow,
+  ChoreKudosWeekRow,
+  ChoreWeekAreaRow,
+} from '@/lib/queries'
 import type { Tables } from '@/types/database'
 
 type Profile = Tables<'profiles'>
@@ -26,6 +40,8 @@ interface OptimisticLog {
   __optimistic: true
 }
 
+type FeedEntry = ChoreLog | OptimisticLog
+
 interface ChoreShellProps {
   currentUserId: string
   currentUserDisplayName: string
@@ -34,7 +50,30 @@ interface ChoreShellProps {
   profiles: Profile[]
   weekRows: ChoreWeekRow[]
   kudosWeekRows: ChoreKudosWeekRow[]
+  weekAreaRows: ChoreWeekAreaRow[]
   currentWeekStart: string
+}
+
+/**
+ * Raggruppa per chiave, preservando l'ordine di prima comparsa di ogni
+ * gruppo e l'ordine relativo degli elementi al suo interno. Usata per "Da
+ * fare" (per area: gli elementi sono ordinati per urgenza, non per area, e
+ * la stessa area può ricomparire più volte nella lista se non raggruppata
+ * esplicitamente) e per il feed (per giorno: lì è già un raggruppamento
+ * "gratuito", perché i log arrivano già ordinati per data decrescente).
+ */
+function groupByKey<T>(items: T[], keyOf: (item: T) => string): [string, T[]][] {
+  const order: string[] = []
+  const map = new Map<string, T[]>()
+  for (const item of items) {
+    const key = keyOf(item)
+    if (!map.has(key)) {
+      map.set(key, [])
+      order.push(key)
+    }
+    map.get(key)!.push(item)
+  }
+  return order.map((key) => [key, map.get(key)!])
 }
 
 /**
@@ -52,6 +91,7 @@ export function ChoreShell({
   profiles,
   weekRows,
   kudosWeekRows,
+  weekAreaRows,
   currentWeekStart,
 }: ChoreShellProps) {
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
@@ -77,6 +117,12 @@ export function ChoreShell({
     (r) => r.id && r.cadence_days === null && !visibleHidden.has(r.id),
   )
   const combinedLogs = [...visibleOptimisticLogs, ...recentLogs].slice(0, 15)
+
+  const recurringByArea = groupByKey(recurring, (r) => r.area ?? 'altro')
+  const todayKey = romeDateKey(new Date().toISOString())
+  const logsByDay = groupByKey(combinedLogs, (log) =>
+    '__optimistic' in log ? todayKey : romeDateKey(log.done_at),
+  )
 
   const recentLogsKey = recentLogs
     .map((l) => `${l.id}:${l.kudos.map((k) => k.from_user_id + k.emoji).join(',')}`)
@@ -177,11 +223,14 @@ export function ChoreShell({
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-24">
+      <ChoreWelcomeHeader displayName={currentUserDisplayName} />
+
       <WeekGoalCard
         currentUserId={currentUserId}
         profiles={profiles}
         weekRows={weekRows}
         kudosWeekRows={kudosWeekRows}
+        weekAreaRows={weekAreaRows}
         currentWeekStart={currentWeekStart}
       />
 
@@ -194,29 +243,41 @@ export function ChoreShell({
             <p className="px-4 py-8 text-center text-sm text-muted">Tutto fatto, per ora.</p>
           </Card>
         ) : (
-          <Card className="divide-y divide-border overflow-hidden p-0">
-            <AnimatePresence initial={false}>
-              {recurring.map((row) => (
-                <motion.div
-                  key={row.id}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ChoreRow
-                    area={row.area ?? 'altro'}
-                    title={row.name ?? ''}
-                    subtitle={
-                      row.last_done_by_name
-                        ? `${formatChoreRecency(row.days_since)} · ${row.last_done_by_name}`
-                        : formatChoreRecency(row.days_since)
-                    }
-                    onComplete={() => handleComplete(row)}
-                    pending={pendingIds.has(row.id!)}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </Card>
+          <div className="flex flex-col gap-3">
+            {recurringByArea.map(([area, rows]) => (
+              <Card key={area} className="overflow-hidden p-0">
+                <div className="flex items-center gap-2 border-b border-border bg-surface-sunken/60 px-4 py-2">
+                  <span aria-hidden>{CHORE_AREA_ICON[area] ?? '✨'}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                    {CHORE_AREA_LABELS[area] ?? area}
+                  </span>
+                </div>
+                <div className="divide-y divide-border">
+                  <AnimatePresence initial={false}>
+                    {rows.map((row) => (
+                      <motion.div
+                        key={row.id}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChoreRow
+                          area={row.area ?? 'altro'}
+                          title={row.name ?? ''}
+                          subtitle={
+                            row.last_done_by_name
+                              ? `${formatChoreRecency(row.days_since)} · ${row.last_done_by_name}`
+                              : formatChoreRecency(row.days_since)
+                          }
+                          onComplete={() => handleComplete(row)}
+                          pending={pendingIds.has(row.id!)}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </Card>
+            ))}
+          </div>
         )}
       </section>
 
@@ -255,47 +316,59 @@ export function ChoreShell({
             </p>
           </Card>
         ) : (
-          <Card className="divide-y divide-border overflow-hidden p-0">
-            <AnimatePresence initial={false}>
-              {combinedLogs.map((log) => {
-                const isOpt = '__optimistic' in log
-                const myKudosEmoji = isOpt
-                  ? null
-                  : activeKudosOverrides.has(log.id)
-                    ? activeKudosOverrides.get(log.id)!
-                    : (log.kudos.find((k) => k.from_user_id === currentUserId)?.emoji ?? null)
+          <div className="flex flex-col gap-4">
+            {logsByDay.map(([dayKey, logs]) => (
+              <div key={dayKey}>
+                <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                  {formatChoreDayLabel(dayKey)}
+                </p>
+                <Card className="divide-y divide-border overflow-hidden p-0">
+                  <AnimatePresence initial={false}>
+                    {logs.map((log: FeedEntry) => {
+                      const isOpt = '__optimistic' in log
+                      const myKudosEmoji = isOpt
+                        ? null
+                        : activeKudosOverrides.has(log.id)
+                          ? activeKudosOverrides.get(log.id)!
+                          : (log.kudos.find((k) => k.from_user_id === currentUserId)?.emoji ?? null)
+                      const doneByMe = isOpt || log.done_by === currentUserId
 
-                return (
-                  <motion.div
-                    key={log.id}
-                    initial={isOpt ? { opacity: 0, y: -8 } : false}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <ChoreLogRow
-                      area={log.area}
-                      title={log.title}
-                      doneByName={
-                        isOpt ? log.doneByName : (log.done_by_profile?.display_name ?? '—')
-                      }
-                      whenLabel={isOpt ? 'ora' : formatDateShort(log.done_at)}
-                      interactive={!isOpt}
-                      canReact={!isOpt && log.done_by !== currentUserId}
-                      myKudosEmoji={myKudosEmoji}
-                      onToggleKudos={(emoji) => !isOpt && handleToggleKudos(log, emoji)}
-                      kudosPending={!isOpt && kudosPendingIds.has(log.id)}
-                      canDelete={
-                        !isOpt && (log.done_by === currentUserId || log.created_by === currentUserId)
-                      }
-                      onDelete={() => handleDeleteLog(log.id)}
-                      deletePending={!isOpt && deletingLogIds.has(log.id)}
-                    />
-                  </motion.div>
-                )
-              })}
-            </AnimatePresence>
-          </Card>
+                      return (
+                        <motion.div
+                          key={log.id}
+                          initial={isOpt ? { opacity: 0, y: -8 } : false}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChoreLogRow
+                            area={log.area}
+                            title={log.title}
+                            doneByName={
+                              isOpt ? log.doneByName : (log.done_by_profile?.display_name ?? '—')
+                            }
+                            doneByMe={doneByMe}
+                            whenLabel={isOpt ? 'ora' : formatDateShort(log.done_at)}
+                            interactive={!isOpt}
+                            canReact={!isOpt && log.done_by !== currentUserId}
+                            myKudosEmoji={myKudosEmoji}
+                            onToggleKudos={(emoji) => !isOpt && handleToggleKudos(log, emoji)}
+                            kudosPending={!isOpt && kudosPendingIds.has(log.id)}
+                            canDelete={
+                              !isOpt &&
+                              (log.done_by === currentUserId || log.created_by === currentUserId)
+                            }
+                            onDelete={() => handleDeleteLog(log.id)}
+                            deletePending={!isOpt && deletingLogIds.has(log.id)}
+                          />
+                        </motion.div>
+                      )
+                    })}
+                  </AnimatePresence>
+                </Card>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 

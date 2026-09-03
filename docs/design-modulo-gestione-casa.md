@@ -689,6 +689,23 @@ Nello spirito della lista in `AGENTS.md`:
    lavastoviglie, stiro, piante, balcone, giardino o animali), confermato a 20 XP
    per "Cucinare la cena" (il valore più consequenziale: a 20 la simulazione
    resta dentro la zona morta per soli 2,7 punti, a 15 ne esce).
+7. **"Confronti con l'altro" nella UI, testata contro la richiesta reale** —
+   durante la rifinitura visiva della fase 2 è arrivata esplicitamente la
+   richiesta di "confronti con le attività dell'altro". È precisamente il
+   principio 1/3 e la voce "Non mostrare classifiche cumulative" di questo
+   documento messi alla prova da chi userà l'app, non solo da un'ipotesi in
+   fase di progettazione — la circostanza in cui questi principi contano
+   davvero. Risolta chiedendo di più: **visibilità reciproca sì, punteggio a
+   confronto no**. Concretamente: avatar e nome di chi ha fatto cosa nel feed
+   "Fatto di recente" (raggruppato per giorno), riepilogo per area **a livello
+   di casa** (nessuna colonna utente nella vista SQL sottostante, non solo
+   nessuna colonna nella UI — vedi `v_chore_week_area` in
+   `docs/wiki/05-data-access.md`). Mai due numeri Tu/Lui-Lei fianco a fianco
+   fuori dalla barra di equilibrio, che resta muta dentro la zona morta.
+   Aggiunte anche animazioni di feedback (un piccolo "pop" al tap "Fatto", un
+   banner quando si raggiunge l'obiettivo settimanale) e un header di
+   benvenuto: nessuna delle due tocca il principio anti-confronto, sono pura
+   sostanza di gioco senza punteggio personale.
 
 ### Aperte
 

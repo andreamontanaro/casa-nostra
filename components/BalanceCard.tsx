@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { motion } from 'motion/react'
 import { Check, ArrowRight, ArrowLeftRight } from 'lucide-react'
 import { AmountDisplay } from '@/components/ui/AmountDisplay'
+import { Avatar } from '@/components/ui/Avatar'
 import { buttonVariants } from '@/components/ui/Button'
 import { formatEur } from '@/lib/fmt'
 import { springSoft } from '@/lib/motion'
@@ -17,36 +18,8 @@ interface BalanceCardProps {
   currentUserId: string
 }
 
-function initialsOf(name: string | null): string {
-  if (!name) return '?'
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[1][0]).toUpperCase()
-}
-
 function firstName(name: string | null): string {
   return name?.trim().split(/\s+/)[0] ?? '—'
-}
-
-function Avatar({
-  name,
-  highlighted,
-}: {
-  name: string | null
-  highlighted?: boolean
-}) {
-  return (
-    <div
-      className={cn(
-        'flex size-9 items-center justify-center rounded-full text-xs font-semibold',
-        highlighted
-          ? 'bg-accent text-accent-foreground'
-          : 'border border-border bg-surface text-muted',
-      )}
-    >
-      {initialsOf(name)}
-    </div>
-  )
 }
 
 function StatTile({ label, value }: { label: string; value: number }) {

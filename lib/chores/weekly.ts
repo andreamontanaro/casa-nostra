@@ -3,6 +3,29 @@ import type { Tables } from '@/types/database'
 
 export type ChoreWeekRow = Tables<'v_chore_week'>
 export type ChoreKudosWeekRow = Tables<'v_chore_kudos_week'>
+export type ChoreWeekAreaRow = Tables<'v_chore_week_area'>
+
+export interface AreaBreakdownEntry {
+  area: string
+  choreCount: number
+  xp: number
+}
+
+/**
+ * Faccende per area nella settimana `weekStart`, ordinate per conteggio
+ * decrescente. Riepilogo di casa, non un confronto: le righe di
+ * `v_chore_week_area` non hanno già una suddivisione per utente, quindi
+ * non c'è nulla da poter attribuire all'uno o all'altro qui.
+ */
+export function summarizeWeekAreas(
+  rows: ChoreWeekAreaRow[],
+  weekStart: string,
+): AreaBreakdownEntry[] {
+  return rows
+    .filter((r) => r.week_start === weekStart && r.area)
+    .map((r) => ({ area: r.area as string, choreCount: r.chore_count ?? 0, xp: r.xp ?? 0 }))
+    .sort((a, b) => b.choreCount - a.choreCount)
+}
 
 export interface WeekSummary {
   weekStart: string
