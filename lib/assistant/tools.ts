@@ -83,3 +83,27 @@ export const createExpenseTool = {
     required: ['amount', 'description', 'category', 'paid_by'],
   },
 }
+
+// Dichiarazione del tool con cui il modello elimina una spesa esistente NON ancora
+// saldata. Da invocare SOLO dopo aver riepilogato quale spesa verrà eliminata e
+// ottenuto conferma esplicita dall'utente: l'eliminazione è irreversibile.
+export const deleteExpenseTool = {
+  name: 'delete_expense',
+  description:
+    'Elimina definitivamente una spesa ESISTENTE e ancora aperta (non saldata), identificata dal suo id. ' +
+    'Usalo solo quando l\'utente ha confermato esplicitamente di voler eliminare quella specifica spesa; ' +
+    'prima di chiamare il tool riepiloga quale spesa verrà eliminata (importo, descrizione, data) e attendi ' +
+    'un "sì" dell\'utente, perché l\'operazione è irreversibile. ' +
+    'Se la spesa risulta "saldata" nell\'elenco spese, non può essere eliminata: dillo all\'utente senza chiamare il tool.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      expense_id: {
+        type: Type.STRING,
+        description: 'L\'id (UUID) esatto della spesa da eliminare, preso dall\'elenco spese.',
+      },
+      action: actionParam,
+    },
+    required: ['expense_id'],
+  },
+}
