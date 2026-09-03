@@ -5,7 +5,12 @@
 export interface TelegramConfig {
   /** Token del bot ottenuto da @BotFather. */
   botToken: string
-  /** Id della chat di gruppo in cui il bot pubblica le notifiche. */
+  /**
+   * Id della chat di gruppo in cui il bot pubblica le notifiche. Può essere
+   * vuoto durante la configurazione iniziale: è il valore che si scopre proprio
+   * scrivendo `/id` nel gruppo, quindi il webhook deve poter rispondere a quel
+   * comando prima di conoscerlo.
+   */
   chatId: string
   /** Secret condiviso con Telegram e verificato a ogni update in arrivo. */
   webhookSecret: string
@@ -22,20 +27,20 @@ export interface TelegramConfig {
 }
 
 /**
- * Restituisce la configurazione se l'integrazione è utilizzabile, altrimenti null.
- * Bot token e chat id sono il minimo indispensabile per notificare; il secret è
- * richiesto solo dal webhook, che lo verifica a parte.
+ * Configurazione del bot, se esiste un token con cui parlare con Telegram.
+ * Il solo token basta per rispondere a `/id` in fase di bootstrap; per pubblicare
+ * notifiche serve anche `chatId` (vedi `isTelegramConfigured`), e il secret lo
+ * verifica il webhook per conto suo.
  */
 export function getTelegramConfig(): TelegramConfig | null {
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim()
-  const chatId = process.env.TELEGRAM_CHAT_ID?.trim()
-  if (!botToken || !chatId) return null
+  if (!botToken) return null
 
   const replyMode = process.env.TELEGRAM_REPLY_MODE?.trim() === 'all' ? 'all' : 'mention'
 
   return {
     botToken,
-    chatId,
+    chatId: process.env.TELEGRAM_CHAT_ID?.trim() ?? '',
     webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET?.trim() ?? '',
     botUsername: (process.env.TELEGRAM_BOT_USERNAME?.trim() ?? '').replace(/^@/, ''),
     replyMode,
@@ -43,6 +48,12 @@ export function getTelegramConfig(): TelegramConfig | null {
   }
 }
 
+/**
+ * L'integrazione è completa: c'è un bot e c'è un gruppo dove scrivere. È la
+ * condizione che governa notifiche e comandi diversi da `/id`; con il solo token
+ * il bot esiste ma non ha ancora una casa.
+ */
 export function isTelegramConfigured(): boolean {
-  return getTelegramConfig() !== null
+  const config = getTelegramConfig()
+  return config !== null && config.chatId !== ''
 }

@@ -95,9 +95,10 @@ npm run build   # production build
 npm run start   # start the production build
 npm run lint    # lint the code (ESLint)
 
-npm run telegram:setup -- set https://<your-app>.vercel.app   # register the bot webhook
-npm run telegram:setup -- info                                 # inspect webhook status
-npm run telegram:setup -- delete                               # remove the webhook
+npm run telegram:setup -- chats                                 # list chat ids that messaged the bot
+npm run telegram:setup -- set https://<your-app>.vercel.app     # register the bot webhook
+npm run telegram:setup -- info                                  # inspect webhook status
+npm run telegram:setup -- delete                                # remove the webhook
 ```
 
 ## Deployment

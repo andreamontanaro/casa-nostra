@@ -60,14 +60,23 @@ export async function POST(request: Request) {
   const text = message?.text?.trim()
   if (!message || !text || message.from?.is_bot) return acknowledge()
 
+  const command = parseCommand(text, config.botUsername)
+  if (command === 'other-bot') return acknowledge()
+
   // Si risponde solo nel gruppo configurato e nelle chat private col bot: se
   // qualcuno lo aggiunge altrove, resta muto.
   const isConfiguredGroup = String(message.chat.id) === config.chatId
   const isPrivate = message.chat.type === 'private'
-  if (!isConfiguredGroup && !isPrivate) return acknowledge()
 
-  const command = parseCommand(text, config.botUsername)
-  if (command === 'other-bot') return acknowledge()
+  // Bootstrap: finché TELEGRAM_CHAT_ID non è impostato non esiste un gruppo da
+  // riconoscere, e /id è proprio il comando che serve a scoprirne l'id. In quello
+  // stato si risponde ovunque, ma SOLO a /id: nessun accesso ai dati, e chi
+  // scrive riceve due numeri che già possiede.
+  if (!config.chatId) {
+    if (command?.name !== 'id') return acknowledge()
+  } else if (!isConfiguredGroup && !isPrivate) {
+    return acknowledge()
+  }
 
   if (!shouldReply({ message, text, command, config, isPrivate })) return acknowledge()
 
@@ -154,6 +163,16 @@ async function handleMessage(params: {
   const chatId = message.chat.id
   const isGroup = message.chat.type !== 'private'
   const senderName = telegramDisplayName(message.from)
+
+  // Bootstrap (gruppo non ancora configurato): si risponde a /id e basta, senza
+  // toccare il database — qui serve solo far leggere due numeri a chi configura.
+  if (!config.chatId) {
+    await sendTelegramMessage(idMessage(chatId, message.from?.id), {
+      chatId,
+      replyTo: isGroup ? message.message_id : undefined,
+    })
+    return
+  }
 
   const db = createServiceClient()
 
@@ -283,10 +302,10 @@ function idMessage(chatId: number, userId: number | undefined): string {
   return [
     '🔧 <b>Dati per la configurazione</b>',
     '',
-    `Chat: <code>${chatId}</code>`,
-    `Il tuo account Telegram: <code>${userId ?? '?'}</code>`,
+    `Questa chat: <code>${chatId}</code>`,
+    `Il tuo account: <code>${userId ?? '?'}</code>`,
     '',
-    '<i>La chat va in TELEGRAM_CHAT_ID; l\'id personale si collega da Impostazioni → Telegram.</i>',
+    '<i>L\'id della chat va nella variabile TELEGRAM_CHAT_ID; il tuo id personale si incolla in Casa Nostra, in Impostazioni → Telegram.</i>',
   ].join('\n')
 }
 

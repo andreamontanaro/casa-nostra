@@ -57,7 +57,11 @@ export async function sendTelegramMessage(
   const config = getTelegramConfig()
   if (!config) return false
 
+  // Senza destinatario non c'è niente da fare: succede quando il bot ha il token
+  // ma il gruppo non è ancora configurato.
   const chatId = options.chatId ?? config.chatId
+  if (!chatId) return false
+
   const chunks = splitMessage(html)
   let delivered = false
 

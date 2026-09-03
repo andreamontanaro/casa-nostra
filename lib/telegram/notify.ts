@@ -1,7 +1,7 @@
 import { after } from 'next/server'
 import { describeBalance, type BalanceRow } from '@/lib/balance'
 import { CATEGORY_ICON, CATEGORY_LABELS, SPLIT_LABELS, formatDate, formatEur } from '@/lib/fmt'
-import { getTelegramConfig } from './config'
+import { getTelegramConfig, isTelegramConfigured } from './config'
 import { escapeHtml } from './format'
 import { sendTelegramMessage } from './api'
 
@@ -11,7 +11,7 @@ import { sendTelegramMessage } from './api'
  * fallire il salvataggio della spesa.
  */
 export function notifyTelegram(html: string): void {
-  if (!getTelegramConfig()) return
+  if (!isTelegramConfigured()) return
 
   const send = async () => {
     try {

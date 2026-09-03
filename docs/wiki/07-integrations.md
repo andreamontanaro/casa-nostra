@@ -79,6 +79,8 @@ Nel gruppo il bot risponde solo se il messaggio è un comando, contiene una menz
 
 Comandi gestiti senza passare da Gemini: `/id`, `/aiuto`, `/saldo`, `/conguaglio`. Tutto il resto (compresi `/recap` e `/spesa`) diventa un prompt per l'assistente.
 
+**Bootstrap**: `TELEGRAM_CHAT_ID` si scopre con `/id`, ma quel comando è nel webhook — che senza la variabile non saprebbe quale chat riconoscere. Per rompere il cerchio, finché la variabile è vuota il webhook risponde in qualsiasi chat, ma esclusivamente a `/id`, senza accedere al database: restituisce l'id della chat e quello del mittente, due valori che chi scrive già possiede. Impostata la variabile, il filtro sulle chat torna pieno. In alternativa `npm run telegram:setup -- chats` legge gli stessi id da `getUpdates`, senza che l'app sia online.
+
 ### 4. Memoria conversazionale
 Il webhook è stateless, quindi la cronologia vive nella tabella `telegram_messages`: gli ultimi 20 messaggi delle ultime 3 ore vengono ricostruiti come turni per Gemini, con i messaggi utente prefissati dal nome di chi ha scritto (`[Andrea] ho pagato io`) perché nel gruppo scrivono in due → `lib/telegram/conversation.ts`.
 

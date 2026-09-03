@@ -2,6 +2,7 @@
 /**
  * Registra (o rimuove) il webhook del bot Telegram.
  *
+ *   node scripts/telegram-setup.mjs chats                                    # id delle chat che hanno scritto al bot
  *   node scripts/telegram-setup.mjs set    https://casa-nostra.vercel.app
  *   node scripts/telegram-setup.mjs info
  *   node scripts/telegram-setup.mjs delete
@@ -44,6 +45,34 @@ switch (command) {
     break
   }
 
+  case 'chats': {
+    // Scopre l'id del gruppo senza bisogno dell'app: Telegram tiene in coda gli
+    // update recenti e qui li si legge direttamente. Funziona solo se il webhook
+    // non è attivo (le due modalità si escludono a vicenda).
+    const updates = await api('getUpdates', { allowed_updates: ['message'], limit: 100 })
+
+    const chats = new Map()
+    for (const update of updates) {
+      const chat = update.message?.chat
+      if (!chat) continue
+      chats.set(chat.id, chat.title ?? [chat.first_name, chat.last_name].filter(Boolean).join(' '))
+    }
+
+    if (chats.size === 0) {
+      console.log('Nessun messaggio in coda.')
+      console.log('Scrivi qualcosa nel gruppo (es. /id) e rilancia questo comando.')
+      break
+    }
+
+    console.log('Chat che hanno scritto al bot:\n')
+    for (const [id, name] of chats) {
+      const kind = id < 0 ? 'gruppo' : 'chat privata'
+      console.log(`  ${id}  ${name || '(senza nome)'}  — ${kind}`)
+    }
+    console.log('\nL\'id negativo è quello del gruppo: va in TELEGRAM_CHAT_ID.')
+    break
+  }
+
   case 'info': {
     const me = await api('getMe', {})
     console.log(`Bot: @${me.username} (${me.first_name})`)
@@ -52,7 +81,7 @@ switch (command) {
   }
 
   default:
-    fail(`Comando sconosciuto: ${command}. Usa set | info | delete.`)
+    fail(`Comando sconosciuto: ${command}. Usa chats | set | info | delete.`)
 }
 
 async function api(method, payload) {
@@ -62,7 +91,15 @@ async function api(method, payload) {
     body: JSON.stringify(payload),
   })
   const body = await res.json()
-  if (!body.ok) fail(`${method} fallito: ${body.description ?? res.status}`)
+  if (!body.ok) {
+    if (method === 'getUpdates' && res.status === 409) {
+      fail(
+        'Il webhook è attivo, quindi Telegram non consente di leggere gli update qui.\n' +
+          '  Rimuovilo con "delete", rilancia "chats", poi rimettilo con "set".',
+      )
+    }
+    fail(`${method} fallito: ${body.description ?? res.status}`)
+  }
   return body.result
 }
 
