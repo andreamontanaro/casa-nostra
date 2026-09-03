@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Casa Nostra
 
-## Getting Started
+Mobile-first web app for transparently managing household expenses between two cohabiting partners. Every expense entered is shared by definition: 50/50 for rent, 60/40 for everything else (the partner with the higher income pays 60%). The app always shows the current balance and lets you settle it in one tap.
 
-First, run the development server:
+For a full guide to the architecture, domain models, and patterns used in the project, see the **[Developer Wiki](docs/wiki/00-index.md)** (in Italian).
+
+## Tech stack
+
+- [Next.js](https://nextjs.org) 16 (App Router, Turbopack)
+- [React](https://react.dev) 19
+- [Tailwind CSS](https://tailwindcss.com) v4
+- [Supabase](https://supabase.com) (Postgres + Auth + Storage)
+- [Google Gemini](https://ai.google.dev) (`@google/genai`) for the AI assistant
+- TypeScript
+
+## Prerequisites
+
+- Node.js 20 or later
+- A [Supabase](https://supabase.com) project (free tier works) with access to the admin dashboard
+- A [Google AI Studio](https://aistudio.google.com/apikey) API key for the AI assistant (Gemini)
+
+## Project setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Set up the Supabase database
+
+The database schema (tables, views, RPCs, RLS) is defined in [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql), which is the authoritative source of truth for the applied schema.
+
+1. Create a new project on [supabase.com](https://supabase.com).
+2. Open the project's **SQL Editor** and run the entire contents of `docs/casa_nostra_schema.sql`.
+3. The app is designed for exactly two fixed users, created manually (there is no public signup page):
+   - Go to **Authentication → Users → Add user** and create the two accounts (email + password).
+   - Copy the generated UUIDs and insert the two corresponding rows into `public.profiles`, following the example in section 9 (`BOOTSTRAP dei due profili`) at the end of the SQL script.
+4. Retrieve the project's **URL** and **anon key** from **Project Settings → API**: you'll need them in the next step.
+
+### 3. Environment variables
+
+Create a `.env.local` file in the project root (ignored by Git) with the following variables. Each one is documented in detail in [`docs/wiki/06-configuration.md`](docs/wiki/06-configuration.md).
+
+```bash
+# Supabase — Project Settings → API
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-project-anon-key>
+
+# Google Gemini — AI assistant (route /api/assistant)
+GEMINI_API_KEY=<your-google-ai-studio-api-key>
+# Optional — default: gemini-flash-lite-latest
+GEMINI_MODEL=gemini-flash-lite-latest
+```
+
+| Variable | Required | Scope | Description |
+|---|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Client + Server | API endpoint of the Supabase project |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Client + Server | Supabase public "anon" key, enables RLS |
+| `GEMINI_API_KEY` | Yes | Server (secret) | Credential for calls to the Google Gemini API |
+| `GEMINI_MODEL` | No | Server | Gemini model to use (fallback: `gemini-flash-lite-latest`) |
+
+### 4. Run in development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). You'll be redirected to `/login`: sign in with one of the two accounts created in step 2.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Available scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev     # development server (Turbopack)
+npm run build   # production build
+npm run start   # start the production build
+npm run lint    # lint the code (ESLint)
+```
 
-## Learn More
+## Deployment
 
-To learn more about Next.js, take a look at the following resources:
+The reference deployment target is [Vercel](https://vercel.com):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Import the repository into Vercel.
+2. Configure the same environment variables from step 3 under **Project Settings → Environment Variables** in Vercel.
+3. Deployment runs automatically on every push to the production branch.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for further details.
 
-## Deploy on Vercel
+## Documentation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`docs/wiki/00-index.md`](docs/wiki/00-index.md) — Developer Wiki (architecture, models, services, API, patterns) — in Italian
+- [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql) — applied Supabase schema
+- [`docs/Casa_Nostra_Requisiti_MVP.docx`](docs/Casa_Nostra_Requisiti_MVP.docx) — full functional requirements — in Italian
+- [`AGENTS.md`](AGENTS.md) — project conventions and development briefing — in Italian
