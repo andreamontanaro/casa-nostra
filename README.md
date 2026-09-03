@@ -101,6 +101,14 @@ npm run telegram:setup -- info                                  # inspect webhoo
 npm run telegram:setup -- delete                                # remove the webhook
 ```
 
+On Windows, `scripts/telegram-setup.ps1` walks through the whole Telegram setup in order — group id, secret, env vars to paste, deploy check, webhook registration — and reports which of the four failure causes it hit if the app isn't answering as it should:
+
+```powershell
+.\scripts\telegram-setup.ps1 -AppUrl https://<your-app>
+.\scripts\telegram-setup.ps1 -Info            # webhook status and last error
+.\scripts\telegram-setup.ps1 -RemoveWebhook
+```
+
 ## Deployment
 
 The reference deployment target is [Vercel](https://vercel.com):
