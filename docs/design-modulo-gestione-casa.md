@@ -207,9 +207,11 @@ CREATE TABLE public.chore_logs (
   area         chore_area NOT NULL,                            -- snapshot
   xp           int NOT NULL CHECK (xp >= 0),                   -- snapshot
   done_by      uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
-  done_at      timestamptz NOT NULL DEFAULT now(),
+  done_at      timestamptz NOT NULL DEFAULT now(),   -- retrodatabile
   note         text,
-  created_at   timestamptz NOT NULL DEFAULT now()
+  created_by   uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_chore_logs_done_at   ON public.chore_logs (done_at DESC);
@@ -235,6 +237,10 @@ Note di modellazione:
 * **`template_id` è nullable con `ON DELETE SET NULL`**: si può registrare una
   faccenda fuori catalogo ("smontato la tenda del balcone") e si può togliere una
   voce dal catalogo senza perdere lo storico.
+* **`done_by` e `created_by` sono distinti.** Di norma coincidono, ma registrare
+  una faccenda *per conto dell'altro* ("ha lavato lui i piatti, lo segno io") è un
+  gesto gentile e va permesso. La distinzione serve anche a decidere chi può
+  correggere una riga (vedi RLS sotto).
 * **Nessuna tabella di assegnazioni**, per il principio 5. Non c'è `assigned_to`,
   non c'è `due_date` per persona. La scadenza è derivata dalla cadenza, ed è
   della casa.
@@ -249,6 +255,90 @@ CREATE POLICY "chore_kudos_insert_other" ON public.chore_kudos FOR INSERT
     AND (SELECT done_by FROM public.chore_logs WHERE id = log_id) <> auth.uid()
   );
 ```
+
+### Personalizzazione: il catalogo è interamente modificabile
+
+Requisito esplicito: i due utenti devono poter **creare, modificare ed eliminare**
+le faccende ricorrenti, e **registrarne una in qualsiasi momento**, anche fuori
+dalla sua cadenza. Nessuna parte del catalogo è cablata nel codice: il seed della
+sezione 5 è solo il contenuto iniziale della tabella, non una costante.
+
+**Sul catalogo** (`chore_templates`), da `/casa/catalogo` raggiungibile dal menu
+del modulo:
+
+* **Creare** una voce: nome, area, XP, cadenza. La cadenza può essere lasciata
+  vuota, e in quel caso la voce nasce come *gesto* (vedi sopra): registrabile ma
+  mai attesa.
+* **Modificare** qualsiasi campo, cadenza compresa — alzare o abbassare gli XP,
+  cambiare area, trasformare una ricorrente in un gesto e viceversa.
+* **Eliminare**: **soft delete** con `active = false`, non `DELETE`. Una voce
+  disattivata sparisce dalle liste e dai conti futuri ma **lo storico resta
+  intatto**, con i suoi XP e le sue strisce. La cancellazione fisica è ammessa
+  solo per una voce che non ha mai avuto log — cioè per rimediare a un errore di
+  battitura, non per riscrivere il passato. È anche il motivo per cui `title`,
+  `area` e `xp` sono snapshot sul log: una voce eliminata continua a raccontare
+  correttamente le settimane in cui esisteva.
+
+**Sulla registrazione** (`chore_logs`):
+
+* **Fuori cadenza**: ogni faccenda attiva è registrabile in qualsiasi momento,
+  anche se non è "scaduta". La lista "Da fare" ordina per urgenza, ma è un
+  suggerimento di ordinamento, non un filtro: sotto c'è sempre il catalogo
+  completo, e dal FAB si arriva a qualsiasi voce con una ricerca. Registrare una
+  cosa in anticipo non deve costare più di registrarla in ritardo.
+* **Retrodatare**: `done_at` è modificabile. "L'ho fatto ieri e mi sono
+  dimenticato di segnarlo" è il caso più frequente in assoluto in un'app di
+  tracciamento, e se non è previsto il dato si sporca in una settimana.
+* **Fuori catalogo**: la faccenda una-tantum dal FAB (nome, area, XP), con
+  `template_id` nullo — già deciso al punto 4.
+* **Correggere ed eliminare** una registrazione: sempre possibile sulle proprie.
+
+Il permesso di correzione sta in DB, non nel client:
+
+```sql
+-- Chiunque dei due puo' registrare (anche per conto dell'altro).
+CREATE POLICY "chore_logs_insert" ON public.chore_logs FOR INSERT
+  TO authenticated
+  WITH CHECK (public.is_authorized_user() AND created_by = auth.uid());
+
+-- Ma si corregge o si cancella solo cio' che si e' fatto o che si e' scritto.
+CREATE POLICY "chore_logs_modify_own" ON public.chore_logs FOR UPDATE
+  TO authenticated
+  USING (done_by = auth.uid() OR created_by = auth.uid())
+  WITH CHECK (done_by = auth.uid() OR created_by = auth.uid());
+
+CREATE POLICY "chore_logs_delete_own" ON public.chore_logs FOR DELETE
+  TO authenticated
+  USING (done_by = auth.uid() OR created_by = auth.uid());
+```
+
+È l'unico punto in cui questo modulo è **più restrittivo** del modulo spese, dove
+entrambi gli utenti possono modificare qualsiasi riga (`expenses_all_authorized`).
+La ragione è che una spesa è un fatto contabile condiviso, mentre una riga di
+`chore_logs` dice *«questa cosa l'ho fatta io»*: poter cancellare con un tap il
+contributo registrato dall'altro è una possibilità che non deve esistere, e non
+perché qualcuno la userebbe in malafede — perché il solo fatto che sia possibile
+cambia la natura del registro.
+
+### Il rovescio della personalizzazione
+
+Un catalogo pienamente modificabile risolve un problema e ne apre un altro. La
+sezione "Chi tara il catalogo" trattava la taratura come una decisione iniziale
+da prendere insieme; se i valori sono editabili per sempre da entrambi, **quella
+decisione non si chiude mai**. Un punteggio i cui pesi possono cambiare in
+silenzio a partita in corso non è una misura di cui ci si fida.
+
+Due contromisure, entrambe economiche:
+
+1. **Gli XP sono snapshot** (già deciso): ritoccare il catalogo non riscrive
+   nemmeno un XP dello storico. Chi cambia un valore cambia il futuro, mai il
+   passato — il che rende una modifica un atto onesto invece che un sospetto.
+2. **Le modifiche al catalogo sono visibili.** Cambiare il valore di una faccenda
+   è uno dei pochi eventi che merita la notifica immediata su Telegram ("il
+   bagno ora vale 30 XP invece di 25"), insieme a obiettivo raggiunto e nuovo
+   titolo. Non è controllo: è che una modifica annunciata è una proposta, mentre
+   la stessa modifica fatta in silenzio è una furbizia — e il costo di renderla
+   visibile è una riga di codice in un punto in cui la notifica esiste già.
 
 ### Viste di calcolo
 
@@ -273,9 +363,14 @@ balcone, giardino o animali. La spesa si fa sia insieme sia da soli, **la
 lavatrice una volta a settimana**, le lenzuola ogni due. XP ≈ minuti di lavoro,
 arrotondati.
 
-**Il pranzo non è nel catalogo.** I due non pranzano quasi mai insieme, quindi il
-pranzo è una cosa che ognuno fa per sé: non è lavoro *per la casa* e non entra
-nei conti. La voce si chiama per questo "Cucinare la cena" e non "il pasto
+**Il pranzo non è nel catalogo, il pranzo *dell'altro* sì.** I due non pranzano
+quasi mai insieme, quindi il pranzo è una cosa che ognuno fa per sé: non è lavoro
+*per la casa* e non entra nei conti. Capita però che il pranzo da portare al
+lavoro il giorno dopo lo prepari l'altra persona, e quello è lavoro fatto **per
+qualcun altro**, ricorrente e finora invisibile. Da qui la voce "Preparare il
+pranzo all'altro", con la regola scritta nel nome: **si registra solo quando lo
+prepari per l'altro, mai quando te lo prepari da solo**. Con due sole persone il
+nome è già la regola, non serve modellare il destinatario nello schema. La voce si chiama per questo "Cucinare la cena" e non "il pasto
 principale" — un nome ambiguo avrebbe reso incerto cosa registrare, e
 l'incertezza su cosa vale un punto è il primo modo in cui un punteggio perde
 credibilità. Il bucato settimanale ha carichi più grossi di uno ogni tre giorni,
@@ -285,6 +380,7 @@ quindi stendere e piegare valgono di più a parità di gesto (15 e 20 invece di
 | Faccenda | Area | XP | Cadenza |
 |---|---|---:|---:|
 | Cucinare la cena | cucina | 20 | 1 g |
+| Preparare il pranzo all'altro | cucina | 8 | — |
 | Lavare i piatti a mano | cucina | 20 | 1 g |
 | Sparecchiare e riordinare la cucina | cucina | 8 | 1 g |
 | Pulire il piano cottura | cucina | 10 | 3 gg |
@@ -306,7 +402,8 @@ quindi stendere e piegare valgono di più a parità di gesto (15 e 20 invece di
 | Vetro / plastica / carta | spazzatura | 8 | 7 gg |
 | Rifare il letto | altro | 3 | 1 g |
 
-**Tetto teorico: 668 XP/settimana** su 21 voci. Distribuzione per area:
+**Tetto teorico: 668 XP/settimana** sulle 21 voci ricorrenti (il gesto a
+cadenza libera non ci entra, vedi sotto). Distribuzione per area:
 
 | Area | XP/settimana | Peso |
 |---|---:|---:|
@@ -324,6 +421,30 @@ quotidiani che insieme valgono 336 XP a settimana, più di tutto il resto messo
 insieme. Cucinare pesa il 21% del sistema, piatti + sparecchiare il 29%. Con la
 lavatrice settimanale il bucato scende al 9%, e lo sbilanciamento verso la cucina
 si accentua ancora.
+
+### I "gesti": registrabili ma mai attesi
+
+"Preparare il pranzo all'altro" ha **cadenza `NULL`**, e non per pigrizia di
+taratura. Una faccenda con cadenza finisce nella lista "Da fare" e prima o poi
+compare con scritto "da 3 giorni": su un favore, quella riga diventa *«non
+prepari il pranzo al tuo compagno da tre giorni»*, cioè il rimprovero
+automatizzato che il principio 5 esclude. Un gesto che diventa un'aspettativa
+smette di essere un gesto.
+
+Nasce così una seconda classe di voci, che lo schema già supporta senza modifiche
+(`cadence_days` è nullable):
+
+* **Faccende ricorrenti** (`cadence_days` valorizzato) — la casa se le aspetta,
+  compaiono in "Da fare", contribuiscono al tetto teorico.
+* **Gesti** (`cadence_days IS NULL`) — si registrano quando capitano, danno XP
+  come tutto il resto, ma **non compaiono mai in "Da fare"** e non hanno uno
+  stato "in ritardo". In UI stanno in una sezione a parte del FAB, non nella
+  lista principale.
+
+Conseguenza sui conti: i gesti non entrano nel tetto teorico ma entrano negli XP
+effettivi, quindi il totale di una settimana reale può superare la somma delle
+cadenze. Non è un problema, perché l'obiettivo settimanale si fissa sui dati
+raccolti in fase 1 e non sul tetto.
 
 ### Obiettivo settimanale
 
@@ -393,8 +514,10 @@ minuti in casa, non le giornate»*.
 
 ### Chi tara il catalogo
 
-Regola di processo, non tecnica, ma è la più importante del modulo: **i valori
-XP vanno concordati da entrambi prima della fase 1**, e non decisi da chi
+Regola di processo, non tecnica, ma è la più importante del modulo — e vale a
+maggior ragione ora che il catalogo è modificabile per sempre da entrambi (vedi
+"Il rovescio della personalizzazione"): **i valori XP vanno concordati da
+entrambi prima della fase 1**, e non decisi da chi
 configura l'app. Chi tocca il catalogo decide chi vince, e un punteggio tarato da
 una parte sola non è una misura, è una tesi. Nel dubbio conviene la norma
 opposta a quella istintiva: essere generosi con le faccende che fa l'altro e
@@ -440,8 +563,15 @@ il design system esistente: `Card`, `ListRow`, `Chip`, `SegmentedControl`,
 4. **"Bacheca"** — i titoli del mese dei due profili, affiancati, più i titoli di
    casa. Vuota a inizio mese, con un testo che spiega come si ottengono.
 
-Un **FAB** apre uno `Sheet` per la faccenda fuori catalogo (nome, area, XP
-suggeriti). Una **card compatta in home** mostra le 2 faccende più urgenti con il
+Un **FAB** apre uno `Sheet` con la ricerca su tutto il catalogo — così si
+registra anche una faccenda non ancora scaduta, che nella lista "Da fare" starebbe
+in fondo — più la faccenda una-tantum fuori catalogo (nome, area, XP) e il campo
+data per retrodatare.
+
+**`/casa/catalogo`**, dal menu del modulo: la gestione delle faccende ricorrenti.
+Lista per area, tap per modificare (nome, area, XP, cadenza), swipe o menu per
+disattivare, FAB per crearne una nuova. Le voci disattivate restano consultabili
+in fondo, con la possibilità di riattivarle. Una **card compatta in home** mostra le 2 faccende più urgenti con il
 tap "Fatto" diretto: è il percorso che rende davvero realistico il criterio dei 5
 secondi, perché la home è la schermata che si apre.
 
@@ -473,7 +603,9 @@ gruppo a ogni piatto lavato è spam, e soprattutto rende il punteggio l'oggetto
 costante della conversazione. Proposta:
 
 * **immediato** solo per gli eventi rari e positivi: obiettivo settimanale
-  raggiunto, nuovo titolo, striscia che si allunga;
+  raggiunto, nuovo titolo, striscia che si allunga — più la **modifica del
+  catalogo**, che non è un evento positivo ma va annunciata per la ragione
+  spiegata in "Il rovescio della personalizzazione";
 * **mai** un messaggio su ciò che *non* è stato fatto. Il bot che scrive "la
   spazzatura è lì da tre giorni" è esattamente il rimprovero automatizzato che il
   principio 5 esclude. Se in futuro si vuole un promemoria, deve essere neutro,
@@ -495,7 +627,9 @@ si verifica prima di investire.
 
 * **Fase 1 — la lista che serve davvero.** Schema (3 tabelle + viste), catalogo
   seed, rotta `/casa`, completamento in un tap con UI ottimistica, "ultima volta
-  / da quanto", card in home, voce di navigazione. **XP registrati ma nascosti**:
+  / da quanto", card in home, voce di navigazione, **gestione completa del
+  catalogo** (creare, modificare, disattivare) e registrazione fuori cadenza,
+  retrodatata o fuori catalogo. **XP registrati ma nascosti**:
   l'interfaccia non mostra punteggi. Si usa per due settimane e si guarda se le
   righe di log arrivano davvero.
 * **Fase 2 — il gioco.** Obiettivo settimanale, striscia, barra di equilibrio con
