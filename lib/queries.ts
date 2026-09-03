@@ -1,13 +1,25 @@
 import { createClient } from '@/lib/supabase/server'
 import { ATTACHMENTS_BUCKET } from '@/lib/attachments'
+import type { ServiceClient } from '@/lib/supabase/service'
 import type { Tables } from '@/types/database'
+
+/**
+ * Client Supabase da usare per la query. Di norma si omette e viene creato il
+ * client legato alla sessione dell'utente (RLS attiva). Il webhook Telegram,
+ * che non ha cookie di sessione, passa esplicitamente il client service role.
+ */
+export type QueryClient = ServiceClient
+
+async function client(override?: QueryClient) {
+  return override ?? (await createClient())
+}
 
 export type AttachmentWithUrl = Tables<'expense_attachments'> & {
   signed_url: string | null
 }
 
-export async function getOpenBalance() {
-  const supabase = await createClient()
+export async function getOpenBalance(db?: QueryClient) {
+  const supabase = await client(db)
   const { data, error } = await supabase
     .from('v_user_open_balance')
     .select('*')
@@ -35,8 +47,8 @@ export async function getRecentExpenses(limit = 5) {
   return data
 }
 
-export async function getAllExpenses() {
-  const supabase = await createClient()
+export async function getAllExpenses(db?: QueryClient) {
+  const supabase = await client(db)
   const { data, error } = await supabase
     .from('expenses')
     .select('*, paid_by_profile:profiles!expenses_paid_by_fkey(display_name)')
@@ -61,8 +73,9 @@ export async function getExpenseById(id: string) {
 
 export async function getExpenseAttachments(
   expenseId: string,
+  db?: QueryClient,
 ): Promise<AttachmentWithUrl[]> {
-  const supabase = await createClient()
+  const supabase = await client(db)
   const { data, error } = await supabase
     .from('expense_attachments')
     .select('*')
@@ -90,8 +103,19 @@ export async function getExpenseAttachments(
   }))
 }
 
-export async function getProfiles() {
-  const supabase = await createClient()
+/** Id delle spese che hanno almeno un allegato (usato dall'assistente IA). */
+export async function getExpenseIdsWithAttachments(db?: QueryClient): Promise<Set<string>> {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('expense_attachments')
+    .select('expense_id')
+
+  if (error || !data) return new Set()
+  return new Set(data.map((r) => r.expense_id))
+}
+
+export async function getProfiles(db?: QueryClient) {
+  const supabase = await client(db)
   const { data, error } = await supabase
     .from('profiles')
     .select('*')

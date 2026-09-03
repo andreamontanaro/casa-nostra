@@ -2,9 +2,10 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Check } from 'lucide-react'
+import { ArrowRight, Bell, Check } from 'lucide-react'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { registerSettlement } from '@/app/actions/settlement'
+import { requestSettlementOnTelegram } from '@/app/actions/telegram'
 import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -19,6 +20,8 @@ import type { OpenExpenseWithContribution } from '@/lib/queries'
 interface ConguaglioClientProps {
   expenses: OpenExpenseWithContribution[]
   otherUserName: string
+  /** Il bot Telegram è configurato: si può sollecitare il conguaglio nel gruppo. */
+  telegramEnabled: boolean
 }
 
 function DirectionPill({ payer, receiver }: { payer: string; receiver: string }) {
@@ -34,12 +37,14 @@ function DirectionPill({ payer, receiver }: { payer: string; receiver: string })
 export function ConguaglioClient({
   expenses,
   otherUserName,
+  telegramEnabled,
 }: ConguaglioClientProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(expenses.map((e) => e.id)),
   )
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [isRequesting, startRequest] = useTransition()
 
   const net = useMemo(() => {
     let sum = 0
@@ -72,6 +77,16 @@ export function ConguaglioClient({
     setSelectedIds((prev) =>
       prev.size === totalCount ? new Set() : new Set(expenses.map((e) => e.id)),
     )
+  }
+
+  // Manda solo un promemoria nel gruppo: il conguaglio si registra qui, dopo
+  // che il bonifico è partito.
+  function handleRequest() {
+    startRequest(async () => {
+      const result = await requestSettlementOnTelegram()
+      if (result.ok) toast.success('Richiesta inviata nel gruppo Telegram.')
+      else toast.error(result.error)
+    })
   }
 
   function handleConfirm() {
@@ -128,6 +143,17 @@ export function ConguaglioClient({
           </p>
           <AmountDisplay value={absAmount} size="display" />
           <DirectionPill payer={payer} receiver={receiver} />
+          {telegramEnabled && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRequest}
+              loading={isRequesting}
+            >
+              <Bell className="size-4" strokeWidth={2.5} />
+              Richiedi conguaglio
+            </Button>
+          )}
         </div>
       )}
 

@@ -20,5 +20,13 @@ Implementa le operazioni CRUD sulle spese condivise → `app/actions/expenses.ts
 * `deleteExpense(id)`: Recupera i percorsi di tutti gli allegati collegati alla spesa, li rimuove fisicamente dal bucket Storage `expense-attachments` e infine elimina la spesa (con cascade SQL sui metadati dell'allegato). Reindirizza allo storico → `app/actions/expenses.ts#L149`.
 
 ### Conguagli (`settlement.ts`)
-* `registerSettlement(notes?, expenseIds?)`: Invoca la funzione RPC di database `register_settlement` passando note opzionali e un array opzionale di ID spese. Invalida la cache delle pagine di riepilogo e reindirizza alla home con un parametro di successo → `app/actions/settlement.ts#L7`.
+* `registerSettlement(notes?, expenseIds?)`: Invoca la funzione RPC di database `register_settlement` passando note opzionali e un array opzionale di ID spese. Invalida la cache delle pagine di riepilogo, accoda la notifica Telegram del conguaglio e reindirizza alla home con un parametro di successo → `app/actions/settlement.ts`.
+
+### Telegram (`telegram.ts`)
+Azioni di supporto all'integrazione con il gruppo Telegram → `app/actions/telegram.ts`:
+* `linkTelegramAccount(_prev, formData)`: Collega (o scollega, con campo vuoto) l'id Telegram al profilo di chi è loggato. Valida che sia un intero positivo e traduce la violazione di unicità in un messaggio comprensibile ("già collegato all'altro profilo"). La policy `profiles_update_own` garantisce che ciascuno possa modificare solo la propria riga.
+* `requestSettlementOnTelegram()`: Pubblica nel gruppo il promemoria «X ha richiesto un conguaglio» con il saldo corrente. Non scrive nulla sul database: il conguaglio vero resta un'azione dell'app, da fare dopo il bonifico. Qui l'invio è atteso (non differito) perché l'esito serve a mostrare il toast all'utente.
+
+### Notifiche Telegram delle mutazioni
+Le action su spese e conguagli, dopo la mutazione, leggono nomi e saldo aggiornato e accodano il messaggio con `after()` di Next.js: la chiamata a Telegram avviene dopo la risposta HTTP, non rallenta il salvataggio e non può farlo fallire → `app/actions/expenses.ts`, `lib/telegram/notify.ts`. Se l'integrazione non è configurata, le funzioni escono subito senza effetti.
 

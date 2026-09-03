@@ -12,6 +12,7 @@ I documenti di riferimento e le guide del progetto sono:
 - `docs/Casa_Nostra_Requisiti_MVP.docx` — requisiti funzionali completi
 - `docs/casa_nostra_schema.sql` — schema Supabase definito e applicato
 - `docs/wiki/00-index.md` — Wiki dello Sviluppatore (Architettura, Modelli, Servizi, API, Accesso Dati, Pattern)
+- `docs/telegram-setup.md` — guida alla configurazione del bot Telegram (notifiche e assistente nel gruppo)
 
 Leggili prima di iniziare. Questo file riassume le cose più importanti e aggiunge convenzioni tecniche e raccomandazioni pratiche.
 
@@ -102,7 +103,7 @@ Queste sono scritte come lista apposta perché sono il tipo di errore che è fac
 - Non ricalcolare il saldo lato client: usa `v_user_open_balance`
 - Non scrivere logica custom per il conguaglio: chiama la RPC `register_settlement`
 - Non creare una pagina di signup pubblica: i due utenti sono gestiti manualmente
-- Non aggiungere funzionalità fuori scope MVP (notifiche, grafici, export CSV, foto scontrini, budget mensili, spese ricorrenti automatiche): la sezione 8 dei requisiti le elenca esplicitamente come evoluzioni future
+- Non aggiungere funzionalità fuori scope MVP (grafici, export CSV, budget mensili, spese ricorrenti automatiche): la sezione 8 dei requisiti le elenca esplicitamente come evoluzioni future. Le notifiche e le foto degli scontrini erano in quell'elenco ma sono state realizzate su richiesta esplicita: vedi "Integrazione Telegram" qui sotto
 - Non modificare lo schema SQL senza aggiornare anche `casa_nostra_schema.sql`
 - Non duplicare le policy RLS con controlli client-side come se fossero sicurezza: la sicurezza è in DB
 
@@ -113,6 +114,18 @@ Giusto una manciata per tenere le cose consistenti. File e cartelle in `kebab-ca
 ## Criteri di successo
 
 Dai requisiti, in ordine di importanza: inserire una spesa in meno di 30 secondi, saldo sempre coerente e aggiornato in tempo reale, conguaglio completo in meno di un minuto, storico fluido con decine di voci, e — il più importante — i due utenti la usano davvero nella vita di tutti i giorni. L'ultimo non dipende dal codice; i primi quattro sì, quindi tienili a mente mentre implementi.
+
+## Integrazione Telegram
+
+Un bot Telegram opzionale collega l'app al gruppo dei due conviventi. Fa due cose: **notifica** ogni movimento (spesa creata/modificata/eliminata, conguaglio registrato o richiesto) con il saldo aggiornato, e **risponde** nel gruppo con lo stesso assistente IA della chat interna, potendo quindi registrare spese o fare riepiloghi da Telegram.
+
+Cose da sapere prima di metterci mano:
+
+- **Il motore dell'assistente è condiviso**: sta in `lib/assistant/` (tool, system instruction, ciclo di tool calling) e accetta un client Supabase esplicito. `app/api/assistant/route.ts` e `app/api/telegram/webhook/route.ts` sono due gusci sottili sopra `runAssistant`. Se aggiungi un tool o cambi il prompt, lo fai una volta sola lì — non duplicare la logica in un canale solo.
+- **Il webhook non ha sessione**: usa il client service role (`lib/supabase/service.ts`), che bypassa RLS. L'autorizzazione la fanno il secret dell'update e il collegamento `profiles.telegram_user_id`. Non usare quel client altrove e non esporre mai `SUPABASE_SERVICE_ROLE_KEY` al browser.
+- **Le notifiche non stanno nel percorso critico**: si preparano nella Server Action e si inviano con `after()`. Non aggiungere `await` su Telegram prima di rispondere all'utente (l'unica eccezione voluta è `requestSettlementOnTelegram`, dove l'esito serve per il toast).
+- **L'integrazione è spegnibile**: senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` tutto il codice Telegram esce subito e l'app si comporta come prima. Mantieni questa proprietà.
+- **Configurazione e troubleshooting**: `docs/telegram-setup.md`. Schema: sezione 10 di `casa_nostra_schema.sql` e `docs/migrations/2026-09-03_telegram.sql`.
 
 ## Workflow di fine sessione
 

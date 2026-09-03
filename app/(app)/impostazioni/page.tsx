@@ -2,8 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { isTelegramConfigured } from '@/lib/telegram/config'
 import { ProfileForm } from './ProfileForm'
 import { PasswordForm } from './PasswordForm'
+import { TelegramForm } from './TelegramForm'
 import { LogoutButton } from './LogoutButton'
 
 export default async function ImpostazioniPage() {
@@ -13,7 +15,7 @@ export default async function ImpostazioniPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name')
+    .select('display_name, telegram_user_id')
     .eq('id', user.id)
     .single()
 
@@ -25,6 +27,13 @@ export default async function ImpostazioniPage() {
         <ProfileForm
           currentDisplayName={profile?.display_name ?? ''}
           email={user.email ?? ''}
+        />
+      </Section>
+
+      <Section title="Telegram">
+        <TelegramForm
+          currentTelegramId={profile?.telegram_user_id ?? null}
+          configured={isTelegramConfigured()}
         />
       </Section>
 
