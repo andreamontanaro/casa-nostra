@@ -13,6 +13,8 @@ L'applicazione gestisce le spese domestiche condivise: riservata a esattamente d
 
 È integrato un **Assistente IA** multimodale basato sul modello Google Gemini che permette di inserire spese a linguaggio naturale, analizzare scontrini e consultare lo storico.
 
+Un'integrazione **Telegram** opzionale porta l'app nel gruppo dei due conviventi: notifica ogni movimento (spesa aggiunta, modificata, eliminata, conguaglio) con il saldo aggiornato, e mette a disposizione lo stesso assistente IA direttamente in chat. Configurazione in `docs/telegram-setup.md`.
+
 ---
 
 ## Indice della Wiki
@@ -22,9 +24,9 @@ Seleziona una sezione per approfondire i dettagli tecnici:
 * **[01. Architettura](01-architecture.md)**: Struttura delle directory, routing Next.js App Router, middleware di autenticazione (`proxy.ts`) e flusso delle dipendenze.
 * **[02. Modelli di Dominio](02-domain-models.md)**: Schema del database, entità di dominio (Profiles, Expenses, Settlements, Attachments) e vincoli di integrità.
 * **[03. Servizi e Logica Applicativa](03-services.md)**: Server Actions per le mutazioni e calcoli del dominio (calcolo consumi pieno-a-pieno, ripartizione chilometrica).
-* **[04. Superficie delle API](04-api-surface.md)**: Route handler dell'Assistente IA (`/api/assistant`), dichiarazioni dei tool di Gemini, prompt e streaming payload.
+* **[04. Superficie delle API](04-api-surface.md)**: Route handler dell'Assistente IA (`/api/assistant`) e webhook del bot Telegram (`/api/telegram/webhook`), motore condiviso, dichiarazioni dei tool di Gemini, prompt e streaming payload.
 * **[05. Accesso ai Dati](05-data-access.md)**: Integrazione client Supabase (Browser/Server), query e viste SQL di calcolo saldo (`v_user_open_balance`), funzioni transazionali Postgres.
 * **[06. Configurazione ed Environment](06-configuration.md)**: Variabili d'ambiente, configurazioni locali e limiti applicativi (dimensioni file, MIME accettati).
-* **[07. Integrazioni Esterne](07-integrations.md)**: Servizi di terze parti (Supabase Auth/Database/Storage, Google Gemini API via `@google/genai`).
+* **[07. Integrazioni Esterne](07-integrations.md)**: Servizi di terze parti (Supabase Auth/Database/Storage, Google Gemini API via `@google/genai`, Bot API di Telegram).
 * **[08. Design System e Pattern di UI](08-patterns.md)**: Implementazione di Material Design 3, Tailwind CSS v4, Safe Area mobile e pattern interattivi (optimistic UI, transizioni di pagina).
 * **[09. Decisioni Architetturali](09-decisions.md)**: Logica e motivazioni dietro alle scelte tecnologiche ed architetturali principali (Next.js 16, RLS, calcolo saldo sul DB, ecc.).

@@ -17,6 +17,12 @@ Utilizzato nei Server Component, nelle Server Actions e nelle API Route Handlers
 * Inizializza il client con `createServerClient` e acquisisce i cookie tramite `cookies()` di Next.js.
 * **Refresh dei Cookie**: La logica di scrittura dei cookie (`setAll`) è avvolta in un blocco `try-catch` → `lib/supabase/server.ts#L17-L24`. Se il client viene invocato durante il rendering di un Server Component (fase in cui Next.js vieta la scrittura degli header), l'errore viene ignorato. Il refresh effettivo dei cookie di sessione è delegato a monte al middleware `proxy.ts`.
 
+### 3. Client Service Role (`service.ts`)
+Utilizzato **esclusivamente** dal webhook Telegram → `lib/supabase/service.ts`:
+* Inizializza il client con `SUPABASE_SERVICE_ROLE_KEY` e senza persistenza di sessione: gli update di Telegram arrivano senza cookie, quindi non esiste una sessione da cui derivare i permessi.
+* Questa chiave **bypassa RLS**: l'autorizzazione, in quel percorso, la fa il webhook verificando il secret dell'update e il collegamento `profiles.telegram_user_id`.
+* Le funzioni di `lib/queries.ts` accettano un parametro opzionale `db` proprio per essere riusate con questo client (omesso, usano il client di sessione con RLS attiva).
+
 ---
 
 ## Query Core dell'Applicazione
@@ -28,7 +34,8 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 * `getRecentExpenses(limit)` & `getAllExpenses()` → `lib/queries.ts#L25,L38`: Recuperano le spese eseguendo un join esplicito sulla chiave esterna (`profiles!expenses_paid_by_fkey(display_name)`) per ricavare il nome visualizzato del pagatore.
 * `getExpenseAttachments(expenseId)` → `lib/queries.ts#L62`: Recupera le righe degli allegati dal DB. Per ogni allegato, genera un URL firmato temporaneo (della durata di 1 ora) chiamando `supabase.storage.createSignedUrls()` sul bucket, consentendo la visualizzazione dei file privati sia nella UI che all'assistente IA.
 * `getOpenExpensesWithContribution(userId)` → `lib/queries.ts#L107`: Calcola il contributo netto individuale ($Anticipato - Quota$) per ciascuna spesa aperta per l'utente corrente. Viene utilizzato nella schermata di conguaglio per mostrare come ogni singola spesa contribuisce al saldo finale.
-* `getFrequentDescriptions(limit)` → `lib/queries.ts#L154`: Recupera le ultime 200 descrizioni inserite ed effettua un conteggio delle frequenze in memoria sul server. Evita l'esposizione di funzioni RPC aggiuntive e fornisce i suggerimenti rapidi per il form.
+* `getExpenseIdsWithAttachments()` → `lib/queries.ts`: Restituisce l'insieme degli id di spesa che hanno almeno un allegato; l'assistente lo usa per marcare le spese con 📎scontrino nel contesto.
+* `getFrequentDescriptions(limit)` → `lib/queries.ts`: Recupera le ultime 200 descrizioni inserite ed effettua un conteggio delle frequenze in memoria sul server. Evita l'esposizione di funzioni RPC aggiuntive e fornisce i suggerimenti rapidi per il form.
 
 ---
 

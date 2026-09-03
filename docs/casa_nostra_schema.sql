@@ -34,11 +34,12 @@ CREATE TYPE split_rule AS ENUM (
 -- ============================================================
 
 CREATE TABLE public.profiles (
-  id             uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  display_name   text NOT NULL CHECK (length(trim(display_name)) > 0),
-  higher_income  boolean NOT NULL DEFAULT false,
-  created_at     timestamptz NOT NULL DEFAULT now(),
-  updated_at     timestamptz NOT NULL DEFAULT now()
+  id               uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name     text NOT NULL CHECK (length(trim(display_name)) > 0),
+  higher_income    boolean NOT NULL DEFAULT false,
+  telegram_user_id bigint UNIQUE,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE public.profiles IS
@@ -46,6 +47,9 @@ COMMENT ON TABLE public.profiles IS
 
 COMMENT ON COLUMN public.profiles.higher_income IS
   'True per il partner con reddito maggiore (paga 60% nella regola 60/40). Al massimo uno dei due profili puo'' avere true.';
+
+COMMENT ON COLUMN public.profiles.telegram_user_id IS
+  'Id numerico dell''account Telegram collegato al profilo (vedi sezione 10). NULL = account non collegato.';
 
 -- Vincolo: al massimo un profilo con higher_income = true
 CREATE UNIQUE INDEX profiles_only_one_higher_income
@@ -410,6 +414,51 @@ GRANT EXECUTE ON FUNCTION public.register_settlement(text, uuid[]) TO authentica
 -- INSERT INTO public.profiles (id, display_name, higher_income) VALUES
 --   ('00000000-0000-0000-0000-000000000001', 'Alice', true),
 --   ('00000000-0000-0000-0000-000000000002', 'Bob',   false);
+
+
+-- ============================================================
+-- 10. INTEGRAZIONE TELEGRAM (notifiche + assistente nel gruppo)
+-- ------------------------------------------------------------
+-- Il bot Telegram scrive nel gruppo dei due conviventi a ogni movimento
+-- (spesa aggiunta/modificata/eliminata, conguaglio) e risponde nel gruppo
+-- interrogando l'assistente IA. Il webhook gira senza sessione utente e usa
+-- la service role key: il collegamento tra chi scrive su Telegram e il profilo
+-- applicativo passa da profiles.telegram_user_id (sezione 2).
+-- ============================================================
+
+-- Memoria della conversazione con il bot: il webhook e' stateless, quindi la
+-- cronologia necessaria all'assistente per i dialoghi a piu' turni (es. la
+-- conferma prima di registrare una spesa) vive qui. Vengono salvati solo i
+-- messaggi che coinvolgono il bot, non le chiacchiere tra i due utenti.
+CREATE TABLE public.telegram_messages (
+  id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  chat_id      bigint NOT NULL,
+  update_id    bigint UNIQUE,
+  role         text NOT NULL CHECK (role IN ('user', 'model')),
+  sender_name  text,
+  content      text NOT NULL,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.telegram_messages IS
+  'Cronologia dei messaggi scambiati con il bot Telegram, usata come memoria conversazionale dall''assistente IA.';
+COMMENT ON COLUMN public.telegram_messages.update_id IS
+  'update_id dell''aggiornamento Telegram che ha generato la riga (solo per i messaggi in arrivo). UNIQUE: rende idempotenti i retry del webhook.';
+COMMENT ON COLUMN public.telegram_messages.sender_name IS
+  'Nome di chi ha scritto il messaggio: nelle chat di gruppo serve all''assistente per capire chi dice "io".';
+
+CREATE INDEX idx_telegram_messages_chat_created
+  ON public.telegram_messages (chat_id, created_at DESC);
+
+-- RLS: la tabella e' scritta e letta dal webhook con la service role key, che
+-- bypassa RLS. La policy serve solo a consentire la lettura dall'app ai due
+-- utenti autorizzati, coerentemente con il resto dello schema.
+ALTER TABLE public.telegram_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "telegram_messages_select_authorized"
+  ON public.telegram_messages FOR SELECT
+  TO authenticated
+  USING (public.is_authorized_user());
 
 
 -- ============================================================

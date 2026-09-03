@@ -184,6 +184,7 @@ export type Database = {
           display_name: string
           higher_income: boolean
           id: string
+          telegram_user_id: number | null
           updated_at: string
         }
         Insert: {
@@ -191,6 +192,7 @@ export type Database = {
           display_name: string
           higher_income?: boolean
           id: string
+          telegram_user_id?: number | null
           updated_at?: string
         }
         Update: {
@@ -198,6 +200,7 @@ export type Database = {
           display_name?: string
           higher_income?: boolean
           id?: string
+          telegram_user_id?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -298,6 +301,36 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      telegram_messages: {
+        Row: {
+          chat_id: number
+          content: string
+          created_at: string
+          id: number
+          role: string
+          sender_name: string | null
+          update_id: number | null
+        }
+        Insert: {
+          chat_id: number
+          content: string
+          created_at?: string
+          id?: never
+          role: string
+          sender_name?: string | null
+          update_id?: number | null
+        }
+        Update: {
+          chat_id?: number
+          content?: string
+          created_at?: string
+          id?: never
+          role?: string
+          sender_name?: string | null
+          update_id?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {

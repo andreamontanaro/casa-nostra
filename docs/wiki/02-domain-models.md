@@ -33,6 +33,7 @@ Rappresenta uno dei due conviventi. Estende la tabella nativa `auth.users` di Su
   * `id` (`uuid`, PK): Collegato a `auth.users(id)` con eliminazione a cascata.
   * `display_name` (`text`): Nome visualizzato dell'utente (non vuoto).
   * `higher_income` (`boolean`): Identifica il partner con reddito superiore.
+  * `telegram_user_id` (`bigint`, UNIQUE, nullable): Id dell'account Telegram collegato al profilo. È ciò che permette al bot di riconoscere chi scrive nel gruppo; `NULL` significa account non collegato → sezione 10 dello schema.
 * **Invariante**: Al massimo **un solo utente** può avere `higher_income = true` → `docs/casa_nostra_schema.sql#L50-L53`.
 
 ### 2. Spesa (`expenses`)
@@ -71,3 +72,15 @@ Associa i metadati di scontrini o ricevute PDF/immagini ad una spesa → `docs/c
   * `mime_type` (`text`): Tipo MIME (es. `image/jpeg`, `application/pdf`).
   * `size_bytes` (`bigint`): Dimensione file in byte (CHECK > 0).
   * `uploaded_by` (`uuid`): Riferimento al caricatore.
+
+### 5. Messaggio Telegram (`telegram_messages`)
+Memoria conversazionale del bot Telegram → sezione 10 dello schema. Il webhook è stateless, quindi la cronologia necessaria all'assistente per i dialoghi a più turni (es. la conferma prima di registrare una spesa) è persistita qui. Non è un'entità di dominio: è stato di supporto all'integrazione.
+* **Proprietà**:
+  * `id` (`bigint`, PK, identity).
+  * `chat_id` (`bigint`): Chat Telegram di provenienza.
+  * `update_id` (`bigint`, UNIQUE, nullable): `update_id` dell'aggiornamento in arrivo. L'unicità rende idempotenti le riconsegne di Telegram; è `NULL` sulle risposte del bot.
+  * `role` (`text`): `user` oppure `model`, come i turni di Gemini.
+  * `sender_name` (`text`, nullable): Nome di chi ha scritto, necessario nel gruppo per capire chi dice "io".
+  * `content` (`text`): Testo del messaggio.
+  * `created_at` (`timestamptz`).
+* **Ritenzione**: Le righe più vecchie di 30 giorni vengono eliminate dal webhook → `lib/telegram/conversation.ts`.

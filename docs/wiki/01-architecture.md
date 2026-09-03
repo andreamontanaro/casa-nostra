@@ -55,13 +55,15 @@ La struttura del progetto segue la convenzione standard di Next.js:
 * `app/` → `app/`: Contiene le rotte, i layout e le Server Actions.
   * `(app)/` → `app/(app)/`: Rotte private protette da autenticazione (home, spese, conguaglio, impostazioni, statistiche).
   * `actions/` → `app/actions/`: Server Actions per le mutazioni dei dati (es. `expenses.ts`, `auth.ts`).
-  * `api/` → `app/api/`: Endpoint API serverless (l'assistente IA).
+  * `api/` → `app/api/`: Endpoint API serverless (l'assistente IA e il webhook del bot Telegram).
   * `landing/` → `app/landing/`: Landing page pubblica per utenti non autenticati.
   * `login/` → `app/login/`: Pagina di login.
 * `components/` → `components/`: Componenti React riutilizzabili.
   * `ui/` → `components/ui/`: Elementi UI di base (Card, Button, Dialog, ecc.).
 * `lib/` → `lib/`: Utility di formattazione, funzioni di calcolo e client Supabase.
-  * `supabase/` → `lib/supabase/`: Inizializzazione dei client Supabase per browser e server.
+  * `supabase/` → `lib/supabase/`: Inizializzazione dei client Supabase per browser, server e service role.
+  * `assistant/` → `lib/assistant/`: Motore condiviso dell'assistente IA (tool, system instruction, ciclo di tool calling), usato sia dalla chat nell'app sia dal bot Telegram.
+  * `telegram/` → `lib/telegram/`: Configurazione, client dell'API Bot, formattazione dei messaggi, memoria conversazionale e testi delle notifiche.
 * `types/` → `types/`: Tipi TypeScript generati dal DB e costanti dell'applicazione.
 * `docs/` → `docs/`: Documentazione di progetto (schema SQL, log delle modifiche, requisiti).
 
@@ -70,6 +72,10 @@ La struttura del progetto segue la convenzione standard di Next.js:
 ## Routing e Ciclo di Vita delle Pagine
 
 L'applicazione definisce rotte pubbliche e rotte private.
+
+### Rotte di Servizio
+* `/api/assistant` → `app/api/assistant/route.ts`: Chat con l'assistente IA (richiede sessione).
+* `/api/telegram/webhook` → `app/api/telegram/webhook/route.ts`: Riceve gli update del bot Telegram; si autentica con il secret condiviso, non con la sessione.
 
 ### Rotte Pubbliche
 * `/landing` → `app/landing/page.tsx`: Vetrina del servizio ed esposizione delle feature.
@@ -81,7 +87,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/spese/[id]` → `app/(app)/spese/[id]/page.tsx`: Dettaglio e modifica/eliminazione di una singola spesa.
 * `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio.
 * `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa.
-* `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password).
+* `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password, collegamento dell'account Telegram).
 
 ---
 
@@ -90,6 +96,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 A causa dell'utilizzo di **Next.js 16**, il file standard `middleware.ts` è deprecato e sostituito da `proxy.ts` nella root del progetto → `proxy.ts`.
 
 La funzione `proxy(request)` intercetta tutte le richieste HTTP corrispondenti al matcher ed esegue i seguenti passaggi di sicurezza:
+0. **Esclusione del webhook Telegram**: le richieste su `/api/telegram/*` proseguono senza controlli, perché arrivano dai server di Telegram e non hanno cookie di sessione: verrebbero altrimenti redirette a `/landing`. Quel percorso si autentica da solo con il secret condiviso → `proxy.ts`.
 1. **Refresh della Sessione**: Recupera la sessione utente tramite `supabase.auth.getUser()` ed aggiorna i cookie di sessione per mantenere l'autenticazione attiva → `proxy.ts#L26`.
 2. **Controllo Autenticazione & Redirect**:
    * Se l'utente **non è autenticato** e richiede una risorsa privata (qualsiasi rotta tranne `/landing` e `/login`), viene reindirizzato a `/landing` → `proxy.ts#L33`.

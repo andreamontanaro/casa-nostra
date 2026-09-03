@@ -11,6 +11,8 @@ const MESSAGES: Record<string, { type: 'success' | 'error' | 'info'; text: strin
   'settlement-registered': { type: 'success', text: 'Conguaglio registrato.' },
   'profile-updated': { type: 'success', text: 'Profilo aggiornato.' },
   'password-updated': { type: 'success', text: 'Password aggiornata.' },
+  'telegram-linked': { type: 'success', text: 'Account Telegram collegato.' },
+  'telegram-unlinked': { type: 'success', text: 'Account Telegram scollegato.' },
 }
 
 export function FlashToast() {

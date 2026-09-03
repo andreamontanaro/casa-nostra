@@ -5,6 +5,13 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Database } from '@/types/database'
 import { ATTACHMENTS_BUCKET } from '@/lib/attachments'
+import { isTelegramConfigured } from '@/lib/telegram/config'
+import {
+  expenseCreatedMessage,
+  expenseDeletedMessage,
+  expenseUpdatedMessage,
+  notifyTelegram,
+} from '@/lib/telegram/notify'
 
 type ExpenseCategory = Database['public']['Enums']['expense_category']
 type SplitRule = Database['public']['Enums']['split_rule']
@@ -86,6 +93,17 @@ export async function createExpense(
   revalidatePath('/')
   revalidatePath('/spese')
 
+  await notifyExpenseChange(supabase, 'created', {
+    actorId: user.id,
+    expenseId: inserted.id,
+    amount,
+    description,
+    category,
+    splitRule,
+    paidBy,
+    expenseDate,
+  })
+
   // Con allegati: niente redirect, il client carica i file e poi naviga.
   if (hasAttachments) {
     return { ok: true, expenseId: inserted.id }
@@ -154,11 +172,31 @@ export async function updateExpense(
   revalidatePath('/')
   revalidatePath('/spese')
   revalidatePath(`/spese/${id}`)
+
+  await notifyExpenseChange(supabase, 'updated', {
+    actorId: user.id,
+    expenseId: id,
+    amount,
+    description,
+    category,
+    splitRule,
+    paidBy,
+    expenseDate,
+  })
+
   redirect('/spese?ok=expense-updated')
 }
 
 export async function deleteExpense(id: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // I dati della spesa servono per la notifica: vanno letti finché esiste.
+  const { data: expense } = await supabase
+    .from('expenses')
+    .select('amount, description, category, split_rule, paid_by, expense_date')
+    .eq('id', id)
+    .single()
 
   // La FK ON DELETE CASCADE rimuove le righe expense_attachments, ma non i
   // file su Storage: vanno rimossi a mano prima di eliminare la spesa.
@@ -177,5 +215,80 @@ export async function deleteExpense(id: string) {
 
   revalidatePath('/')
   revalidatePath('/spese')
+
+  if (user && expense) {
+    await notifyExpenseChange(supabase, 'deleted', {
+      actorId: user.id,
+      expenseId: id,
+      amount: expense.amount,
+      description: expense.description,
+      category: expense.category,
+      splitRule: expense.split_rule,
+      paidBy: expense.paid_by,
+      expenseDate: expense.expense_date,
+    })
+  }
+
   redirect('/spese?ok=expense-deleted')
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
+interface ExpenseSnapshot {
+  actorId: string
+  expenseId: string
+  amount: number
+  description: string
+  category: string
+  splitRule: string
+  paidBy: string
+  expenseDate: string
+}
+
+/**
+ * Avvisa il gruppo Telegram di un movimento sulle spese. Il saldo aggiornato e i
+ * nomi vengono letti prima di rispondere (dentro `after()` la sessione non è più
+ * garantita), mentre la chiamata a Telegram parte dopo la risposta.
+ * Non solleva mai: una notifica persa non deve far fallire il salvataggio.
+ */
+async function notifyExpenseChange(
+  supabase: SupabaseServerClient,
+  kind: 'created' | 'updated' | 'deleted',
+  data: ExpenseSnapshot,
+) {
+  if (!isTelegramConfigured()) return
+
+  try {
+    const [profilesRes, balanceRes] = await Promise.all([
+      supabase.from('profiles').select('id, display_name'),
+      supabase.from('v_user_open_balance').select('*'),
+    ])
+
+    const profiles = profilesRes.data ?? []
+    const nameOf = (id: string) =>
+      profiles.find((p) => p.id === id)?.display_name ?? 'Qualcuno'
+
+    const payload = {
+      actorName: nameOf(data.actorId),
+      expenseId: data.expenseId,
+      amount: data.amount,
+      description: data.description,
+      category: data.category,
+      splitRule: data.splitRule,
+      payerName: nameOf(data.paidBy),
+      expenseDate: data.expenseDate,
+      balance: balanceRes.data ?? [],
+    }
+
+    const html =
+      kind === 'created'
+        ? expenseCreatedMessage(payload)
+        : kind === 'updated'
+          ? expenseUpdatedMessage(payload)
+          : expenseDeletedMessage(payload)
+
+    notifyTelegram(html)
+  } catch (e) {
+    console.error('[telegram] notifica spesa non preparata:', e)
+  }
 }

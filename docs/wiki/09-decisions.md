@@ -35,7 +35,7 @@ Questa pagina riassume le scelte tecnologiche e architetturali principali effett
 * **Motivazione**: Trattandosi di un'app per due conviventi, la quantità totale dei record (qualche centinaio o migliaio di spese) rientra ampiamente all'interno della finestra di contesto del modello (1M+ token per Gemini 3.5 Flash). Questo elimina la necessità di implementare architetture RAG (Vector Search) o database vettoriali, garantendo all'assistente IA una visibilità matematica esatta e deterministica del 100% dei dati storici senza rischi di perdita di informazioni.
 
 ### Sentinelle NUL Stream per la Sincronizzazione Client/Server
-* **Scelta**: Utilizzo dei caratteri di controllo speciali `\x00REFRESH\x00` e `\x00ACTION\x00` per veicolare eventi invisibili all'interno dello stream testuale dell'assistente IA → `app/api/assistant/route.ts#L30-L40`.
+* **Scelta**: Utilizzo dei caratteri di controllo speciali `\x00REFRESH\x00` e `\x00ACTION\x00` per veicolare eventi invisibili all'interno dello stream testuale dell'assistente IA → `app/api/assistant/route.ts`.
 * **Motivazione**: Evita la complessità di stabilire connessioni WebSocket bidirezionali parallele o meccanismi di polling continuo. Il frontend analizza i frammenti di testo dello stream man mano che arrivano: se trova una sentinella esegue un'operazione client-side (es. mostra il loader dinamico o rinfresca la cache della pagina in background) ripulendo il buffer prima che il testo venga mostrato all'utente in chat.
 
 ---
@@ -45,3 +45,25 @@ Questa pagina riassume le scelte tecnologiche e architetturali principali effett
 ### Modulo Spese (Shared)
 * **Scelta**: Policy basate sulla funzione `is_authorized_user()`. Entrambi gli utenti autorizzati vedono tutte le spese, gli allegati ed i conguagli registrati nel sistema → `docs/casa_nostra_schema.sql#L218-L294`.
 * **Motivazione**: L'app è pensata per la trasparenza totale sulla gestione del budget della casa tra i due conviventi.
+
+---
+
+## Integrazione Telegram
+
+### Service Role sul webhook invece di una sessione applicativa
+* **Contesto**: Gli update di Telegram arrivano dai server di Telegram, senza cookie: non esiste una sessione Supabase da cui derivare i permessi, e RLS bloccherebbe qualunque lettura.
+* **Scelta**: Il webhook usa un client con `SUPABASE_SERVICE_ROLE_KEY`, che bypassa RLS → `lib/supabase/service.ts`.
+* **Motivazione**: L'alternativa (creare sessioni applicative per il bot, o allentare le policy RLS) avrebbe indebolito il modello di sicurezza dell'app per servire un canale secondario. Il confine si sposta invece sul webhook, che accetta solo update col secret corretto, solo dalla chat configurata e solo da account Telegram collegati a un profilo: chi non è collegato non ottiene dati.
+
+### Notifiche differite con `after()`
+* **Scelta**: Le Server Action preparano il messaggio (nomi e saldo letti mentre la sessione è ancora disponibile) e ne accodano l'invio con `after()` di Next.js → `lib/telegram/notify.ts`.
+* **Motivazione**: Salvare una spesa deve restare istantaneo. Una chiamata di rete a Telegram nel percorso critico aggiungerebbe latenza e, peggio, un suo fallimento rischierebbe di apparire all'utente come un errore di salvataggio. Con `after()` la notifica è best-effort e gli errori finiscono solo nei log.
+
+### `update_id` UNIQUE come lucchetto di idempotenza
+* **Contesto**: Telegram riconsegna un update se il webhook non risponde in fretta, e l'assistente può registrare spese: un doppione significherebbe una spesa scritta due volte.
+* **Scelta**: Il messaggio in arrivo viene inserito in `telegram_messages` con `update_id` UNIQUE prima di qualsiasi elaborazione; se l'insert fallisce per violazione di unicità, l'update è già stato gestito e si esce → `lib/telegram/conversation.ts`.
+* **Motivazione**: Il vincolo di database è l'unico punto di serializzazione affidabile in un ambiente serverless, dove non esiste stato condiviso in memoria tra invocazioni.
+
+### Il bot risponde solo se interpellato
+* **Scelta**: Nel gruppo l'assistente interviene su comandi, menzioni e risposte ai suoi messaggi; `TELEGRAM_REPLY_MODE=all` è opt-in → `app/api/telegram/webhook/route.ts`.
+* **Motivazione**: Il gruppo è anche una chat fra due persone. Rispondere a tutto lo renderebbe inutilizzabile per la conversazione normale e moltiplicherebbe le chiamate a Gemini senza che nessuno le abbia chieste.

@@ -2,6 +2,13 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  // Il webhook di Telegram arriva dai server di Telegram, senza cookie di
+  // sessione: si autentica da solo con il secret condiviso, quindi va escluso
+  // dal controllo di autenticazione (altrimenti verrebbe rediretto a /landing).
+  if (request.nextUrl.pathname.startsWith('/api/telegram/')) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
