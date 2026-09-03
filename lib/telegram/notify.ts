@@ -136,6 +136,21 @@ export function settlementRequestedMessage(actorName: string, balance: BalanceRo
   return lines.join('\n')
 }
 
+/**
+ * Una tacca della bottiglia settimanale si è appena riempita — evento raro e
+ * positivo condiviso, mai un confronto tra i due (docs/design-modulo-gestione-casa.md
+ * §9 "Cose da NON fare"): nessun nome, nessun "chi ha fatto di più".
+ */
+export function choreNotchFilledMessage(filledNotches: number, maxNotches: number, goalReached: boolean): string {
+  const lines = goalReached
+    ? ['🎉 <b>Bottiglia piena!</b>', '', `${filledNotches}/${maxNotches} — obiettivo della settimana raggiunto.`]
+    : ['🍾 <b>Tacca riempita!</b>', '', `${filledNotches}/${maxNotches} questa settimana, avanti così.`]
+
+  const link = appLink('/casa', 'Apri Gestione casa')
+  if (link) lines.push('', link)
+  return lines.join('\n')
+}
+
 function balanceLine(balance: BalanceRow[]): string {
   const summary = describeBalance(balance)
   return summary.creditor && summary.debtor
