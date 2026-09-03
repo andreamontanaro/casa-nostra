@@ -42,9 +42,9 @@ export function ChoreWelcomeHeader({ displayName }: ChoreWelcomeHeaderProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={springSoft}
+      initial={{ opacity: 0, y: -12, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ ...springSoft, bounce: 0.4 }}
       className="px-1 pt-1"
     >
       {/* Il saluto dipende dall'ora locale: server (UTC) e client (Europe/Rome)
@@ -52,12 +52,19 @@ export function ChoreWelcomeHeader({ displayName }: ChoreWelcomeHeaderProps) {
           suppressHydrationWarning è l'escape hatch corretto per un testo che
           si accetta possa differire fra le due renderizzazioni. */}
       <h1
-        className="text-xl font-bold tracking-[-0.01em] text-foreground"
+        className="text-2xl font-black tracking-[-0.01em] text-foreground"
         suppressHydrationWarning
       >
-        {greeting}, {firstName(displayName)} 👋
+        {greeting}, {firstName(displayName)}{' '}
+        <motion.span
+          className="inline-block"
+          animate={{ rotate: [0, 18, -12, 18, -4, 0] }}
+          transition={{ duration: 1.4, delay: 0.3, ease: 'easeInOut' }}
+        >
+          👋
+        </motion.span>
       </h1>
-      <p className="mt-0.5 text-sm text-muted">{subtitle}</p>
+      <p className="mt-0.5 text-sm font-medium text-muted">{subtitle}</p>
     </motion.div>
   )
 }

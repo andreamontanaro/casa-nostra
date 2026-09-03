@@ -55,8 +55,8 @@ export function ChoreLogRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <div className="truncate text-sm font-medium text-foreground">{title}</div>
-            <span className="shrink-0 rounded-full bg-positive-muted px-1.5 py-0.5 text-[10px] font-semibold text-positive-soft">
-              +{xp} XP
+            <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-chore-gold-muted px-1.5 py-0.5 text-[10px] font-bold text-chore-gold-soft">
+              <span aria-hidden>🪙</span>+{xp}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-muted">

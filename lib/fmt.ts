@@ -165,19 +165,6 @@ export const CHORE_AREA_ICON: Record<string, string> = {
   altro: '✨',
 }
 
-// Stessa tecnica di CATEGORY_VISUAL: tinta ~15% per il tondo dietro l'emoji.
-// Palette distinta da quella delle spese per non confondere i due moduli.
-export const CHORE_AREA_CONTAINER: Record<string, string> = {
-  cucina: 'bg-[#eb6834]/15 dark:bg-[#dd5c2a]/20',
-  bagno: 'bg-[#2a78d6]/15 dark:bg-[#2a78d6]/20',
-  pulizie: 'bg-[#1baf7a]/15 dark:bg-[#1baf7a]/20',
-  spazzatura: 'bg-[#71717a]/15 dark:bg-[#8b8b93]/20',
-  bucato: 'bg-[#4a3aa7]/15 dark:bg-[#8b76e8]/20',
-  spesa: 'bg-[#eda100]/15 dark:bg-[#c48300]/25',
-  manutenzione: 'bg-[#e87ba4]/15 dark:bg-[#d5628f]/20',
-  altro: 'bg-[#71717a]/15 dark:bg-[#8b8b93]/20',
-}
-
 /**
  * Testo neutro sull'ultimo completamento di una faccenda. Non usa mai parole
  * come "in ritardo" o "scaduta" (principio 7 del modulo): l'ordinamento della

@@ -42,7 +42,7 @@ export function CatalogoClient({ templates }: CatalogoClientProps) {
           <h2 className="mb-3 px-1 text-label font-semibold uppercase tracking-wide text-muted">
             {CHORE_AREA_LABELS[area] ?? area}
           </h2>
-          <Card className="divide-y divide-border overflow-hidden p-0">
+          <Card className="divide-y divide-border overflow-hidden rounded-3xl border-2 p-0">
             {items.map((t) => (
               <ListRow
                 key={t.id}
@@ -61,7 +61,7 @@ export function CatalogoClient({ templates }: CatalogoClientProps) {
           <h2 className="mb-3 px-1 text-label font-semibold uppercase tracking-wide text-muted">
             Disattivate
           </h2>
-          <Card className="divide-y divide-border overflow-hidden p-0">
+          <Card className="divide-y divide-border overflow-hidden rounded-3xl border-2 p-0">
             {inactive.map((t) => (
               <ListRow
                 key={t.id}
@@ -83,11 +83,12 @@ export function CatalogoClient({ templates }: CatalogoClientProps) {
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ ...springSnappy, delay: 0.1 }}
-        whileTap={{ scale: 0.92 }}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.9, rotate: -8 }}
         className={cn(
-          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30',
+          'chore-fab-glow fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30',
           'flex size-14 items-center justify-center rounded-full',
-          'bg-accent text-accent-foreground shadow-fab',
+          'bg-gradient-to-br from-accent to-accent-soft text-accent-foreground shadow-fab',
         )}
       >
         <Plus className="size-6" strokeWidth={2.5} />

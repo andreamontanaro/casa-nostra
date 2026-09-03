@@ -257,7 +257,7 @@ export function ChoreShell({
       <section>
         <div className="mb-3 flex items-center justify-between px-1">
           <h2 className="text-label font-semibold uppercase tracking-wide text-muted">
-            Da fare
+            🎯 Da fare
           </h2>
         </div>
 
@@ -293,7 +293,7 @@ export function ChoreShell({
             {visibleAreaGroups.map(([area, rows]) => {
               const collapsed = collapsedAreas.has(area)
               return (
-                <Card key={area} className="overflow-hidden p-0">
+                <Card key={area} className="overflow-hidden rounded-3xl border-2 p-0">
                   <button
                     type="button"
                     onClick={() => toggleAreaCollapsed(area)}
@@ -359,9 +359,9 @@ export function ChoreShell({
       {gesti.length > 0 && (
         <section>
           <h2 className="mb-3 px-1 text-label font-semibold uppercase tracking-wide text-muted">
-            Gesti
+            🎁 Gesti
           </h2>
-          <Card className="divide-y divide-border overflow-hidden p-0">
+          <Card className="divide-y divide-border overflow-hidden rounded-3xl border-2 p-0">
             {gesti.map((row) => (
               <ChoreRow
                 key={row.id}
@@ -383,7 +383,7 @@ export function ChoreShell({
 
       <section>
         <h2 className="mb-3 px-1 text-label font-semibold uppercase tracking-wide text-muted">
-          Fatto di recente
+          🏆 Fatto di recente
         </h2>
         {combinedLogs.length === 0 ? (
           <Card>
@@ -398,7 +398,7 @@ export function ChoreShell({
                 <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">
                   {formatChoreDayLabel(dayKey)}
                 </p>
-                <Card className="divide-y divide-border overflow-hidden p-0">
+                <Card className="divide-y divide-border overflow-hidden rounded-3xl border-2 p-0">
                   <AnimatePresence initial={false}>
                     {logs.map((log: FeedEntry) => {
                       const isOpt = '__optimistic' in log
@@ -456,11 +456,12 @@ export function ChoreShell({
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ ...springSnappy, delay: 0.1 }}
-        whileTap={{ scale: 0.92 }}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.9, rotate: -8 }}
         className={cn(
-          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30',
+          'chore-fab-glow fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30',
           'flex size-14 items-center justify-center rounded-full',
-          'bg-accent text-accent-foreground shadow-fab',
+          'bg-gradient-to-br from-accent to-accent-soft text-accent-foreground shadow-fab',
         )}
       >
         <Plus className="size-6" strokeWidth={2.5} />
