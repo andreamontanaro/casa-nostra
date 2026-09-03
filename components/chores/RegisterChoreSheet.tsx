@@ -150,7 +150,7 @@ export function RegisterChoreSheet({
                 key={t.id}
                 leading={<ChoreIcon area={t.area ?? 'altro'} size="sm" />}
                 title={t.name ?? ''}
-                subtitle={CHORE_AREA_LABELS[t.area ?? 'altro']}
+                subtitle={`${CHORE_AREA_LABELS[t.area ?? 'altro']} · ${t.effort_xp ?? 0} XP`}
                 onClick={() => handlePick(t.id!)}
                 trailing={pendingId === t.id ? <Spinner size="sm" /> : undefined}
               />

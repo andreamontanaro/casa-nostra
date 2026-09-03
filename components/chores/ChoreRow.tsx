@@ -12,6 +12,7 @@ interface ChoreRowProps {
   area: string
   title: string
   subtitle: string
+  xp: number
   onComplete: () => void
   pending?: boolean
   className?: string
@@ -26,6 +27,7 @@ export function ChoreRow({
   area,
   title,
   subtitle,
+  xp,
   onComplete,
   pending = false,
   className,
@@ -48,6 +50,9 @@ export function ChoreRow({
         <div className="truncate text-sm font-medium text-foreground">{title}</div>
         <div className="mt-0.5 truncate text-xs text-muted">{subtitle}</div>
       </div>
+      <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] font-medium text-muted">
+        {xp} XP
+      </span>
       <div className="relative shrink-0">
         <Button
           type="button"

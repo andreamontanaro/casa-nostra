@@ -8,7 +8,7 @@ import { springSoft } from '@/lib/motion'
 const SUBTITLES = [
   'Ci pensate insieme, un tap alla volta.',
   'Ogni faccenda registrata conta per la casa.',
-  'Prendi quello che fai, senza aspettare un turno.',
+  'Cosa farai oggi?',
   'Nessun punteggio da difendere: solo cose fatte.',
 ]
 

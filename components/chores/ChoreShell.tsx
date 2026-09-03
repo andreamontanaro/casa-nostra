@@ -2,14 +2,15 @@
 
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Plus } from 'lucide-react'
+import { Plus, ChevronDown } from 'lucide-react'
 import { ChoreRow } from '@/components/chores/ChoreRow'
 import { ChoreLogRow } from '@/components/chores/ChoreLogRow'
 import { ChoreWelcomeHeader } from '@/components/chores/ChoreWelcomeHeader'
 import { RegisterChoreSheet } from '@/components/chores/RegisterChoreSheet'
 import { WeekGoalCard } from '@/components/chores/WeekGoalCard'
 import { Card } from '@/components/ui/Card'
-import { springSnappy } from '@/lib/motion'
+import { Chip } from '@/components/ui/Chip'
+import { springSnappy, springSoft } from '@/lib/motion'
 import { completeChore, undoChoreLog, setChoreKudos, removeChoreKudos } from '@/app/actions/chores'
 import { toast } from '@/lib/toast'
 import {
@@ -36,6 +37,7 @@ interface OptimisticLog {
   id: string
   title: string
   area: string
+  xp: number
   doneByName: string
   __optimistic: true
 }
@@ -105,6 +107,18 @@ export function ChoreShell({
   const [kudosOverrides, setKudosOverrides] = useState<Map<string, string | null>>(new Map())
   const [kudosOverrideBaseKey, setKudosOverrideBaseKey] = useState('')
 
+  const [collapsedAreas, setCollapsedAreas] = useState<Set<string>>(new Set())
+  const [areaFilter, setAreaFilter] = useState<string>('tutte')
+
+  function toggleAreaCollapsed(area: string) {
+    setCollapsedAreas((prev) => {
+      const next = new Set(prev)
+      if (next.has(area)) next.delete(area)
+      else next.add(area)
+      return next
+    })
+  }
+
   const statusKey = statusRows.map((r) => `${r.id}:${r.last_done_at}`).join('|')
   const stale = optimisticBaseKey !== statusKey
   const visibleHidden = stale ? new Set<string>() : hiddenIds
@@ -119,6 +133,11 @@ export function ChoreShell({
   const combinedLogs = [...visibleOptimisticLogs, ...recentLogs].slice(0, 15)
 
   const recurringByArea = groupByKey(recurring, (r) => r.area ?? 'altro')
+  const areaFilterOptions = recurringByArea.map(([area]) => area)
+  const visibleAreaGroups =
+    areaFilter === 'tutte'
+      ? recurringByArea
+      : recurringByArea.filter(([area]) => area === areaFilter)
   const todayKey = romeDateKey(new Date().toISOString())
   const logsByDay = groupByKey(combinedLogs, (log) =>
     '__optimistic' in log ? todayKey : romeDateKey(log.done_at),
@@ -192,6 +211,7 @@ export function ChoreShell({
         id: logId,
         title: row.name ?? '',
         area: row.area ?? 'altro',
+        xp: row.effort_xp ?? 0,
         doneByName: currentUserDisplayName,
         __optimistic: true,
       },
@@ -235,48 +255,103 @@ export function ChoreShell({
       />
 
       <section>
-        <h2 className="mb-3 px-1 text-label font-semibold uppercase tracking-wide text-muted">
-          Da fare
-        </h2>
+        <div className="mb-3 flex items-center justify-between px-1">
+          <h2 className="text-label font-semibold uppercase tracking-wide text-muted">
+            Da fare
+          </h2>
+        </div>
+
+        {areaFilterOptions.length > 1 && (
+          <div
+            className="-mx-4 mb-3 overflow-x-auto no-scrollbar"
+            style={{ touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}
+          >
+            <div className="flex items-center gap-2 px-4">
+              <Chip variant="filter" active={areaFilter === 'tutte'} onClick={() => setAreaFilter('tutte')}>
+                Tutte
+              </Chip>
+              {areaFilterOptions.map((area) => (
+                <Chip
+                  key={area}
+                  variant="filter"
+                  active={areaFilter === area}
+                  onClick={() => setAreaFilter(area)}
+                >
+                  {CHORE_AREA_ICON[area] ?? '✨'} {CHORE_AREA_LABELS[area] ?? area}
+                </Chip>
+              ))}
+            </div>
+          </div>
+        )}
+
         {recurring.length === 0 ? (
           <Card>
             <p className="px-4 py-8 text-center text-sm text-muted">Tutto fatto, per ora.</p>
           </Card>
         ) : (
           <div className="flex flex-col gap-3">
-            {recurringByArea.map(([area, rows]) => (
-              <Card key={area} className="overflow-hidden p-0">
-                <div className="flex items-center gap-2 border-b border-border bg-surface-sunken/60 px-4 py-2">
-                  <span aria-hidden>{CHORE_AREA_ICON[area] ?? '✨'}</span>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-                    {CHORE_AREA_LABELS[area] ?? area}
-                  </span>
-                </div>
-                <div className="divide-y divide-border">
+            {visibleAreaGroups.map(([area, rows]) => {
+              const collapsed = collapsedAreas.has(area)
+              return (
+                <Card key={area} className="overflow-hidden p-0">
+                  <button
+                    type="button"
+                    onClick={() => toggleAreaCollapsed(area)}
+                    aria-expanded={!collapsed}
+                    className="flex w-full items-center gap-2 border-b border-border bg-surface-sunken/60 px-4 py-2 text-left"
+                  >
+                    <span aria-hidden>{CHORE_AREA_ICON[area] ?? '✨'}</span>
+                    <span className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                      {CHORE_AREA_LABELS[area] ?? area}
+                    </span>
+                    <span className="text-xs text-muted">{rows.length}</span>
+                    <motion.span
+                      animate={{ rotate: collapsed ? -90 : 0 }}
+                      transition={springSnappy}
+                      className="text-muted"
+                    >
+                      <ChevronDown className="size-4" />
+                    </motion.span>
+                  </button>
                   <AnimatePresence initial={false}>
-                    {rows.map((row) => (
+                    {!collapsed && (
                       <motion.div
-                        key={row.id}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
+                        initial={{ height: 0 }}
+                        animate={{ height: 'auto' }}
+                        exit={{ height: 0 }}
+                        transition={springSoft}
+                        className="overflow-hidden"
                       >
-                        <ChoreRow
-                          area={row.area ?? 'altro'}
-                          title={row.name ?? ''}
-                          subtitle={
-                            row.last_done_by_name
-                              ? `${formatChoreRecency(row.days_since)} · ${row.last_done_by_name}`
-                              : formatChoreRecency(row.days_since)
-                          }
-                          onComplete={() => handleComplete(row)}
-                          pending={pendingIds.has(row.id!)}
-                        />
+                        <div className="divide-y divide-border">
+                          <AnimatePresence initial={false}>
+                            {rows.map((row) => (
+                              <motion.div
+                                key={row.id}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <ChoreRow
+                                  area={row.area ?? 'altro'}
+                                  title={row.name ?? ''}
+                                  subtitle={
+                                    row.last_done_by_name
+                                      ? `${formatChoreRecency(row.days_since)} · ${row.last_done_by_name}`
+                                      : formatChoreRecency(row.days_since)
+                                  }
+                                  xp={row.effort_xp ?? 0}
+                                  onComplete={() => handleComplete(row)}
+                                  pending={pendingIds.has(row.id!)}
+                                />
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
                       </motion.div>
-                    ))}
+                    )}
                   </AnimatePresence>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              )
+            })}
           </div>
         )}
       </section>
@@ -297,6 +372,7 @@ export function ChoreShell({
                     ? `${formatChoreRecency(row.days_since)} · ${row.last_done_by_name}`
                     : 'Mai registrato'
                 }
+                xp={row.effort_xp ?? 0}
                 onComplete={() => handleComplete(row)}
                 pending={pendingIds.has(row.id!)}
               />
@@ -344,6 +420,7 @@ export function ChoreShell({
                           <ChoreLogRow
                             area={log.area}
                             title={log.title}
+                            xp={log.xp}
                             doneByName={
                               isOpt ? log.doneByName : (log.done_by_profile?.display_name ?? '—')
                             }
