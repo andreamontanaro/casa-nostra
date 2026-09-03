@@ -35,6 +35,38 @@ Il bot **non risponderà ancora**: perché risponda serve l'app online e il webh
 
 I tipi in `types/database.ts` sono già allineati.
 
+## Scorciatoia: lo script guidato (Windows)
+
+`scripts/telegram-setup.ps1` fa da solo i passi 4, 5 e 6 nell'ordine giusto — id del gruppo, secret, variabili da incollare, controllo del deploy, registrazione del webhook — e alla fine dice cosa resta da fare a mano:
+
+```powershell
+.\scripts\telegram-setup.ps1 -AppUrl https://casanostra.andreamontanaro.it
+```
+
+Se Windows blocca gli script: `powershell -ExecutionPolicy Bypass -File .\scripts\telegram-setup.ps1 -AppUrl https://...`
+
+Altri usi:
+
+```powershell
+.\scripts\telegram-setup.ps1 -Info            # stato del webhook e ultimo errore
+.\scripts\telegram-setup.ps1 -RemoveWebhook   # lo rimuove
+.\scripts\telegram-setup.ps1 -Secret <valore> # se il secret su Vercel esiste gia'
+```
+
+Prima di registrare il webhook lo script interroga l'app senza secret: la risposta dice in che stato e' il deploy, e conviene conoscerne la tabella perche' e' la stessa diagnosi che serve leggendo `getWebhookInfo`.
+
+| Risposta | Significato |
+|---|---|
+| `403` | Tutto a posto: codice online, token e secret configurati |
+| `500` | Manca `TELEGRAM_WEBHOOK_SECRET` nell'ambiente del deploy |
+| `200` | Il codice c'è ma manca `TELEGRAM_BOT_TOKEN` |
+| `404` | Quel deploy non contiene il codice del bot |
+| nessuna | Url irraggiungibile o deploy non pronto |
+
+I passi qui sotto sono la stessa cosa fatta a mano, utile su macOS e Linux (dove c'è `npm run telegram:setup`) o quando qualcosa va storto.
+
+---
+
 ## 4. Scoprire l'id del gruppo
 
 Ti serve per `TELEGRAM_CHAT_ID`. Con il token già in `.env.local`:
