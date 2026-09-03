@@ -2,14 +2,57 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { WEEKLY_GOAL_XP, KUDOS_XP } from '@/lib/chores/config'
+import { computeFilledNotches } from '@/lib/chores/weekly'
+import { isTelegramConfigured } from '@/lib/telegram/config'
+import { choreNotchFilledMessage, notifyTelegram } from '@/lib/telegram/notify'
 import type { Database } from '@/types/database'
 
 type ChoreArea = Database['public']['Enums']['chore_area']
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
 function revalidateChores() {
   revalidatePath('/casa')
   revalidatePath('/casa/catalogo')
   revalidatePath('/')
+}
+
+/** XP di casa della settimana corrente: stesso dato di `v_chore_week` + `v_chore_kudos_week`
+ *  che alimenta obiettivo, striscia e bottiglia — non attribuito a nessun utente. */
+async function currentWeekHouseholdXp(supabase: SupabaseServerClient): Promise<number> {
+  const { data: weekStart, error: weekError } = await supabase.rpc('current_chore_week_start')
+  if (weekError || !weekStart) return 0
+
+  const [choreRes, kudosRes] = await Promise.all([
+    supabase.from('v_chore_week').select('xp').eq('week_start', weekStart),
+    supabase.from('v_chore_kudos_week').select('kudos_count').eq('week_start', weekStart),
+  ])
+
+  const choreXp = (choreRes.data ?? []).reduce((sum, r) => sum + (r.xp ?? 0), 0)
+  const kudosXp = (kudosRes.data ?? []).reduce((sum, r) => sum + (r.kudos_count ?? 0), 0) * KUDOS_XP
+  return choreXp + kudosXp
+}
+
+/**
+ * Avvisa il gruppo Telegram quando un'azione fa scattare una nuova tacca
+ * della bottiglia settimanale. Mai un confronto tra i due (solo il numero di
+ * tacche di casa), e mai sulle tacche che si svuotano: si notifica solo
+ * quando se ne riempie una in più. Non solleva mai: una notifica persa non
+ * deve far fallire il salvataggio.
+ */
+async function notifyChoreNotchProgress(supabase: SupabaseServerClient, beforeXp: number) {
+  if (!isTelegramConfigured()) return
+
+  try {
+    const afterXp = await currentWeekHouseholdXp(supabase)
+    const filledBefore = computeFilledNotches(beforeXp, WEEKLY_GOAL_XP)
+    const filledAfter = computeFilledNotches(afterXp, WEEKLY_GOAL_XP)
+    if (filledAfter <= filledBefore) return
+
+    notifyTelegram(choreNotchFilledMessage(filledAfter, 5, filledAfter >= 5))
+  } catch (e) {
+    console.error('[telegram] notifica bottiglia non preparata:', e)
+  }
 }
 
 export type ActionState = { error?: string; ok?: boolean }
@@ -27,6 +70,9 @@ export async function completeChore(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non autenticato.' }
+
+  const telegramOn = isTelegramConfigured()
+  const beforeXp = telegramOn ? await currentWeekHouseholdXp(supabase) : 0
 
   const { data: template, error: templateError } = await supabase
     .from('chore_templates')
@@ -53,6 +99,7 @@ export async function completeChore(
   if (error || !inserted) return { error: 'Errore durante il salvataggio. Riprova.' }
 
   revalidateChores()
+  if (telegramOn) await notifyChoreNotchProgress(supabase, beforeXp)
   return { logId: inserted.id }
 }
 
@@ -73,6 +120,9 @@ export async function completeOneOffChore(params: {
     return { error: 'XP non valido.' }
   }
 
+  const telegramOn = isTelegramConfigured()
+  const beforeXp = telegramOn ? await currentWeekHouseholdXp(supabase) : 0
+
   const { data: inserted, error } = await supabase
     .from('chore_logs')
     .insert({
@@ -90,6 +140,7 @@ export async function completeOneOffChore(params: {
   if (error || !inserted) return { error: 'Errore durante il salvataggio. Riprova.' }
 
   revalidateChores()
+  if (telegramOn) await notifyChoreNotchProgress(supabase, beforeXp)
   return { logId: inserted.id }
 }
 
@@ -119,6 +170,9 @@ export async function setChoreKudos(logId: string, emoji: string): Promise<Actio
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non autenticato.' }
 
+  const telegramOn = isTelegramConfigured()
+  const beforeXp = telegramOn ? await currentWeekHouseholdXp(supabase) : 0
+
   const { error } = await supabase
     .from('chore_kudos')
     .upsert({ log_id: logId, from_user_id: user.id, emoji }, { onConflict: 'log_id,from_user_id' })
@@ -126,6 +180,7 @@ export async function setChoreKudos(logId: string, emoji: string): Promise<Actio
   if (error) return { error: 'Errore durante il salvataggio.' }
 
   revalidateChores()
+  if (telegramOn) await notifyChoreNotchProgress(supabase, beforeXp)
   return { ok: true }
 }
 

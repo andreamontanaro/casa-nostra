@@ -5,13 +5,19 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Flame, PartyPopper, Target } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { CelebrationBurst } from '@/components/chores/CelebrationBurst'
+import { GoalBottle } from '@/components/chores/GoalBottle'
 import { useGamificationEnabled } from '@/lib/chores/gamification'
 import { WEEKLY_GOAL_XP } from '@/lib/chores/config'
-import { summarizeWeeks, summarizeWeekAreas, computeStreak, computeBalance } from '@/lib/chores/weekly'
+import {
+  summarizeWeeks,
+  summarizeWeekAreas,
+  computeStreak,
+  computeBalance,
+  computeFilledNotches,
+} from '@/lib/chores/weekly'
 import { springSnappy, springSoft } from '@/lib/motion'
 import { CHORE_AREA_ICON, CHORE_AREA_LABELS } from '@/lib/fmt'
 import { choreAreaSolid } from '@/lib/chores/areaTheme'
-import { cn } from '@/lib/utils'
 import type { ChoreWeekRow, ChoreKudosWeekRow, ChoreWeekAreaRow } from '@/lib/queries'
 import type { Tables } from '@/types/database'
 
@@ -67,6 +73,7 @@ export function WeekGoalCard({
   const pastStreak = computeStreak(weeks, currentWeekStart, WEEKLY_GOAL_XP)
   const streak = reachedThisWeek ? pastStreak + 1 : pastStreak
   const progressPercent = Math.min(100, Math.round((current.totalXp / WEEKLY_GOAL_XP) * 100))
+  const filledNotches = computeFilledNotches(current.totalXp, WEEKLY_GOAL_XP)
 
   const balance = computeBalance(current.choreXpByUser, currentUserId, other.id)
   const leaderName =
@@ -101,29 +108,23 @@ export function WeekGoalCard({
         </AnimatePresence>
       </div>
 
-      <div className="mt-2 flex items-baseline gap-1.5">
-        <motion.span
-          key={current.totalXp}
-          initial={{ scale: 1.15 }}
-          animate={{ scale: 1 }}
-          transition={springSnappy}
-          className="text-display-sm font-black tracking-[-0.02em] text-foreground"
-        >
-          {current.totalXp}
-        </motion.span>
-        <span className="text-base font-semibold text-muted">/ {WEEKLY_GOAL_XP} 🪙</span>
-      </div>
-
-      <div className="relative mt-2 h-4 w-full overflow-hidden rounded-full bg-surface-sunken">
-        <motion.div
-          className={cn(
-            'relative h-full overflow-hidden rounded-full bg-gradient-to-r from-accent to-chore-gold',
-            progressPercent > 0 && 'chore-shine',
-          )}
-          initial={{ width: 0 }}
-          animate={{ width: `${progressPercent}%` }}
-          transition={{ ...springSoft, bounce: 0.35 }}
-        />
+      <div className="mt-2 flex items-center gap-4">
+        <GoalBottle progressPercent={progressPercent} filledNotches={filledNotches} />
+        <div>
+          <div className="flex items-baseline gap-1.5">
+            <motion.span
+              key={current.totalXp}
+              initial={{ scale: 1.15 }}
+              animate={{ scale: 1 }}
+              transition={springSnappy}
+              className="text-display-sm font-black tracking-[-0.02em] text-foreground"
+            >
+              {current.totalXp}
+            </motion.span>
+            <span className="text-base font-semibold text-muted">/ {WEEKLY_GOAL_XP} 🪙</span>
+          </div>
+          <p className="mt-1 text-xs font-medium text-muted">{filledNotches}/5 tacche questa settimana</p>
+        </div>
       </div>
 
       <AnimatePresence>

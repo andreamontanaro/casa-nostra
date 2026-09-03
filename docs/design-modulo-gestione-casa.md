@@ -608,9 +608,11 @@ gruppo a ogni piatto lavato è spam, e soprattutto rende il punteggio l'oggetto
 costante della conversazione. Proposta:
 
 * **immediato** solo per gli eventi rari e positivi: obiettivo settimanale
-  raggiunto, nuovo titolo, striscia che si allunga — più la **modifica del
-  catalogo**, che non è un evento positivo ma va annunciata per la ragione
-  spiegata in "Il rovescio della personalizzazione";
+  raggiunto, nuovo titolo, striscia che si allunga, **una tacca della
+  bottiglia settimanale che si riempie** (implementato in anticipo sulla fase
+  3, vedi decisione 8) — più la **modifica del catalogo**, che non è un
+  evento positivo ma va annunciata per la ragione spiegata in "Il rovescio
+  della personalizzazione";
 * **mai** un messaggio su ciò che *non* è stato fatto. Il bot che scrive "la
   spazzatura è lì da tre giorni" è esattamente il rimprovero automatizzato che il
   principio 5 esclude. Se in futuro si vuole un promemoria, deve essere neutro,
@@ -645,9 +647,14 @@ si verifica prima di investire.
   valore provvisorio (`WEEKLY_GOAL_XP = 475`, sezione 5) invece che sulla
   mediana d'uso: da ritarare sui dati reali del primo mese. È il compromesso
   fatto per non tenere il modulo fermo in attesa di un dato che, essendo appena
-  stato pubblicato, non esisteva ancora.
+  stato pubblicato, non esisteva ancora. La barra di progresso verso
+  l'obiettivo si legge anche come **bottiglia a 5 tacche** (stesso
+  `WEEKLY_GOAL_XP`, nessun dato nuovo — vedi decisione 8), e riempire una
+  tacca è il primo evento Telegram "raro e positivo" della fase 3 spedito in
+  anticipo, con lo stesso spirito di kudos in fase 2.
 * **Fase 3 — i titoli e i canali.** Bacheca mensile, tool dell'assistente,
-  notifiche Telegram sui soli eventi rari.
+  resto delle notifiche Telegram sugli eventi rari (obiettivo raggiunto,
+  nuovo titolo, striscia, modifica catalogo).
 
 Ogni fase è rilasciabile e reversibile: se la fase 2 rende l'atmosfera peggiore
 invece che migliore, si torna alla fase 1 spegnendo un interruttore, senza toccare
@@ -711,6 +718,19 @@ Nello spirito della lista in `AGENTS.md`:
    banner quando si raggiunge l'obiettivo settimanale) e un header di
    benvenuto: nessuna delle due tocca il principio anti-confronto, sono pura
    sostanza di gioco senza punteggio personale.
+8. **"Bottiglia" con tacche, proposta via messaggio vocale** — richiesta
+   iniziale: una bottiglia a 5 tacche riempita dai task fatti, con una
+   notifica quando un partner "resta indietro rispetto all'altro". In
+   tensione diretta con i principi 1/3/6/7 e con la decisione 7 appena sopra
+   (già chiusa sulla stessa identica tensione). Segnalato il conflitto prima
+   di scrivere codice; risolto reimpostando l'idea come **bottiglia di casa
+   condivisa**: le 5 tacche sono soglie del 20% dello stesso `WEEKLY_GOAL_XP`
+   già esistente (nessuna tabella nuova, nessuna colonna per utente), si
+   svuota da sola a ogni nuova settimana insieme al resto, e la notifica
+   Telegram segnala solo "una tacca in più" o "bottiglia piena" — mai un
+   confronto o un "sei indietro". Vedi `components/chores/GoalBottle.tsx`,
+   `computeFilledNotches` in `lib/chores/weekly.ts` e
+   `choreNotchFilledMessage` in `lib/telegram/notify.ts`.
 
 ### Aperte
 

@@ -80,6 +80,18 @@ export function summarizeWeeks(
   return byWeek
 }
 
+/**
+ * Quante tacche della bottiglia settimanale sono piene: soglie regolari di
+ * `goalXp / maxNotches`, arrotondate per difetto. Bottiglia di casa (stesso
+ * `totalXp` che alimenta obiettivo e striscia), non una a testa — si azzera
+ * da sola a ogni nuova settimana perché `totalXp` è già scoped alla
+ * settimana corrente (vedi `summarizeWeeks`).
+ */
+export function computeFilledNotches(totalXp: number, goalXp: number, maxNotches = 5): number {
+  if (goalXp <= 0) return 0
+  return Math.min(maxNotches, Math.floor((totalXp / goalXp) * maxNotches))
+}
+
 /** Sposta una data 'YYYY-MM-DD' di N settimane (aritmetica pura su date UTC). */
 export function shiftWeek(weekStart: string, deltaWeeks: number): string {
   const d = new Date(`${weekStart}T00:00:00Z`)
