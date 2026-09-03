@@ -7,16 +7,19 @@ import {
   Home,
   List,
   ArrowLeftRight,
-  BarChart3,
+  Sparkles,
 } from 'lucide-react'
 import { springLayout, springSnappy } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
+// Statistiche vive nel menu dell'header (AppHeader), non qui: le faccende
+// sono l'interazione più frequente dell'app, il conguaglio la più rara — la
+// barra riflette la frequenza d'uso (docs/design-modulo-gestione-casa.md § 6).
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/spese', label: 'Storico', icon: List },
+  { href: '/casa', label: 'Casa', icon: Sparkles },
   { href: '/conguaglio', label: 'Conguaglio', icon: ArrowLeftRight },
-  { href: '/statistiche', label: 'Statistiche', icon: BarChart3 },
 ]
 
 export function BottomNav() {

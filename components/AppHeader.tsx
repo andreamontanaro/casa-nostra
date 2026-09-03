@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, Settings, ChevronRight } from 'lucide-react'
+import { Menu, Settings, ChevronRight, BarChart3, ListChecks } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { cn } from '@/lib/utils'
@@ -39,6 +39,36 @@ export function AppHeader() {
 
       <Sheet open={open} onOpenChange={setOpen} title="Menu">
         <nav className="flex flex-col gap-1.5 px-4 pb-4 pt-2">
+          <Link
+            href="/statistiche"
+            onClick={() => setOpen(false)}
+            className={cn(
+              'flex items-center gap-3 rounded-2xl px-3 py-2.5',
+              'text-sm font-medium text-foreground',
+              'transition-colors duration-150 hover:bg-surface-raised',
+            )}
+          >
+            <BarChart3 className="size-5 text-muted" />
+            <span className="flex-1">Statistiche</span>
+            <ChevronRight className="size-4 text-muted" />
+          </Link>
+
+          <Link
+            href="/casa/catalogo"
+            onClick={() => setOpen(false)}
+            className={cn(
+              'flex items-center gap-3 rounded-2xl px-3 py-2.5',
+              'text-sm font-medium text-foreground',
+              'transition-colors duration-150 hover:bg-surface-raised',
+            )}
+          >
+            <ListChecks className="size-5 text-muted" />
+            <span className="flex-1">Catalogo faccende</span>
+            <ChevronRight className="size-4 text-muted" />
+          </Link>
+
+          <div className="my-1.5 h-px bg-border" />
+
           <Link
             href="/impostazioni"
             onClick={() => setOpen(false)}

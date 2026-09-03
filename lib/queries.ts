@@ -198,3 +198,51 @@ export async function getFrequentDescriptions(limit = 5): Promise<string[]> {
     .slice(0, limit)
     .map(([d]) => d)
 }
+
+// ------------------------------------------------------------
+// Modulo "Gestione casa" — faccende domestiche
+// ------------------------------------------------------------
+
+export type ChoreStatusRow = Tables<'v_chore_status'>
+export type ChoreTemplate = Tables<'chore_templates'>
+export type ChoreLog = Tables<'chore_logs'> & {
+  done_by_profile: { display_name: string } | null
+}
+
+/** Stato di tutte le faccende attive, ordinate per urgenza (piu' scadute prima). */
+export async function getChoreStatus(db?: QueryClient) {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('v_chore_status')
+    .select('*')
+    .order('due_in_days', { ascending: true, nullsFirst: false })
+    .order('sort_order', { ascending: true })
+
+  if (error) throw error
+  return data
+}
+
+/** Intero catalogo, incluse le voci disattivate: alimenta /casa/catalogo. */
+export async function getChoreTemplates(db?: QueryClient) {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('chore_templates')
+    .select('*')
+    .order('area', { ascending: true })
+    .order('sort_order', { ascending: true })
+
+  if (error) throw error
+  return data
+}
+
+export async function getRecentChoreLogs(limit = 15, db?: QueryClient) {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('chore_logs')
+    .select('*, done_by_profile:profiles!chore_logs_done_by_fkey(display_name)')
+    .order('done_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return data
+}
