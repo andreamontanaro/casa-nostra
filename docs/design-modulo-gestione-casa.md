@@ -121,26 +121,22 @@ chi le ha fatte l'ultima volta**, che deve essere utile da sola. Questo è anche
 il test di progettazione: se il modulo senza punteggio non serve a niente,
 allora il punteggio sta compensando un prodotto debole.
 
-### L'equilibrio, e come si mostra
+### L'equilibrio: provato e rimosso (decisione 9)
 
-Il dato "chi ha fatto quanto questa settimana" esiste ed è legittimo: è il motivo
-per cui si costruisce il modulo. Il punto è **come** si mostra.
+Per la fase 2 esisteva qui una barra di equilibrio — un dato "chi ha fatto
+quanto questa settimana", con una zona morta ampia (30–70% etichettato "in
+equilibrio", senza percentuali) e un testo neutro fuori da quella zona
+("questa settimana ha spinto soprattutto Andrea"). Era già, di suo, un
+compromesso rispetto a un confronto esplicito.
 
-* Una sola barra orizzontale, due segmenti con i colori dei due profili, senza
-  numeri sopra.
-* **Zona morta ampia**: qualsiasi ripartizione fra **30% e 70%** viene
-  etichettata "in equilibrio", senza percentuali e senza evidenziare nessuno dei
-  due. Le settimane normali devono quindi apparire *tutte uguali*. La soglia è
-  volutamente generosa e vive in una costante di configurazione: vedi la
-  simulazione in sezione 5, che la fa scattare da 35–65% a 30–70% prima ancora
-  del primo rilascio.
-* Le percentuali compaiono solo fuori dalla zona morta, e con un testo neutro e
-  orientato al futuro ("questa settimana ha spinto soprattutto Andrea"), mai
-  accusatorio verso chi ha fatto meno.
-* La barra si riferisce **sempre e solo alla settimana corrente**. Non esiste una
-  vista "equilibrio storico degli ultimi 6 mesi": sarebbe l'arma da rinfaccio
-  definitiva. Lo storico serve a ricordare *quando* è stata pulita l'ultima
-  volta una cosa, non chi è in credito di fatica.
+**Rimossa.** Richiesta diretta: anche quel compromesso resta un confronto —
+la barra è due segmenti colorati per persona, il testo nomina esplicitamente
+chi ha fatto di più. Non serve una zona morta più ampia o un tono più
+neutro: il principio 1 ("l'obiettivo primario è condiviso, non
+individuale") non ammette eccezioni nemmeno attenuate. Vedi decisione 9.
+Nessun dato per persona resta nella card "La nostra settimana": né la barra
+di equilibrio né il calcolo che la alimentava (`computeBalance`, rimossa da
+`lib/chores/weekly.ts`).
 
 ---
 
@@ -352,7 +348,10 @@ client, nell'assistente e nel bot Telegram, che divergerebbero al primo refactor
   materializzato. Niente cron, niente righe fantasma da pulire.
 * `v_chore_week` — XP e conteggi per utente per settimana ISO
   (`date_trunc('week', done_at)`), inclusi gli XP da kudos attribuiti alla casa.
-  Alimenta obiettivo, barra di equilibrio e striscia.
+  Alimenta obiettivo, bottiglia e striscia — tutti aggregati a livello di casa
+  (la scomposizione per utente che la vista restituisce non ha più un
+  consumatore lato client dopo la decisione 9, che ha rimosso la barra di
+  equilibrio).
 * `v_chore_month` — gli stessi aggregati per mese, più il conteggio di aree
   distinte e la lunghezza delle serie per template: è l'input dei titoli.
 
@@ -714,6 +713,9 @@ Nello spirito della lista in `AGENTS.md`:
    nessuna colonna nella UI — vedi `v_chore_week_area` in
    `docs/wiki/05-data-access.md`). Mai due numeri Tu/Lui-Lei fianco a fianco
    fuori dalla barra di equilibrio, che resta muta dentro la zona morta.
+   **La barra di equilibrio stessa è stata rimossa dopo questa decisione**,
+   vedi decisione 9: anche un confronto attenuato da una zona morta resta un
+   confronto.
    Aggiunte anche animazioni di feedback (un piccolo "pop" al tap "Fatto", un
    banner quando si raggiunge l'obiettivo settimanale) e un header di
    benvenuto: nessuna delle due tocca il principio anti-confronto, sono pura
@@ -731,6 +733,21 @@ Nello spirito della lista in `AGENTS.md`:
    confronto o un "sei indietro". Vedi `components/chores/GoalBottle.tsx`,
    `computeFilledNotches` in `lib/chores/weekly.ts` e
    `choreNotchFilledMessage` in `lib/telegram/notify.ts`.
+9. **Barra di equilibrio rimossa** — richiesta diretta, esplicitamente motivata
+   ("niente confronti"), a rimuovere la barra di equilibrio della card "La
+   nostra settimana" introdotta dalla decisione 7. La barra era già un
+   compromesso (zona morta 30–70%, testo neutro fuori da quella zona), ma
+   restava comunque un confronto Tu/Lui-Lei esplicito nel testo ("X ha
+   spinto di più questa settimana") oltre che nel colore a due segmenti.
+   Rimossi insieme alla UI: `computeBalance`/`BalanceResult`
+   (`lib/chores/weekly.ts`), `BALANCE_DEAD_BAND_LOW`/`_HIGH`
+   (`lib/chores/config.ts`) e `choreXpByUser` da `WeekSummary` — quella
+   suddivisione per persona non aveva più nessun consumatore, quindi non
+   restava nemmeno come dato latente. La card "La nostra settimana" ora
+   mostra solo dati di casa: obiettivo, striscia, bottiglia, chip per area.
+   Il feed "Fatto di recente" (avatar/nome di chi ha fatto cosa, decisione
+   7) non è toccato: quella è visibilità su un fatto già accaduto, non un
+   riepilogo comparativo della settimana.
 
 ### Aperte
 
