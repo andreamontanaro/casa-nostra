@@ -1,95 +1,95 @@
 # Casa Nostra
 
-App web mobile-first per la gestione trasparente delle spese di casa tra due persone conviventi. Ogni spesa inserita è condivisa per definizione: 50/50 per l'affitto, 60/40 per tutto il resto (il partner con reddito maggiore paga il 60%). L'app mostra sempre il saldo aggiornato e permette di chiuderlo con un conguaglio in un tap.
+Mobile-first web app for transparently managing household expenses between two cohabiting partners. Every expense entered is shared by definition: 50/50 for rent, 60/40 for everything else (the partner with the higher income pays 60%). The app always shows the current balance and lets you settle it in one tap.
 
-Per una guida completa all'architettura, ai modelli di dominio e ai pattern usati nel progetto, vedi la **[Wiki dello Sviluppatore](docs/wiki/00-index.md)**.
+For a full guide to the architecture, domain models, and patterns used in the project, see the **[Developer Wiki](docs/wiki/00-index.md)** (in Italian).
 
-## Stack tecnico
+## Tech stack
 
 - [Next.js](https://nextjs.org) 16 (App Router, Turbopack)
 - [React](https://react.dev) 19
 - [Tailwind CSS](https://tailwindcss.com) v4
 - [Supabase](https://supabase.com) (Postgres + Auth + Storage)
-- [Google Gemini](https://ai.google.dev) (`@google/genai`) per l'assistente IA
+- [Google Gemini](https://ai.google.dev) (`@google/genai`) for the AI assistant
 - TypeScript
 
-## Prerequisiti
+## Prerequisites
 
-- Node.js 20 o superiore
-- Un progetto [Supabase](https://supabase.com) (gratuito) con accesso al pannello di amministrazione
-- Una API key [Google AI Studio](https://aistudio.google.com/apikey) per l'assistente IA (Gemini)
+- Node.js 20 or later
+- A [Supabase](https://supabase.com) project (free tier works) with access to the admin dashboard
+- A [Google AI Studio](https://aistudio.google.com/apikey) API key for the AI assistant (Gemini)
 
-## Setup del progetto
+## Project setup
 
-### 1. Installazione dipendenze
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Configurazione del database Supabase
+### 2. Set up the Supabase database
 
-Lo schema del database (tabelle, viste, RPC, RLS) è definito in [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql) ed è la fonte autoritativa dello schema applicato.
+The database schema (tables, views, RPCs, RLS) is defined in [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql), which is the authoritative source of truth for the applied schema.
 
-1. Crea un nuovo progetto su [supabase.com](https://supabase.com).
-2. Apri l'**SQL Editor** del progetto ed esegui per intero il contenuto di `docs/casa_nostra_schema.sql`.
-3. L'app è pensata per esattamente due utenti fissi, creati manualmente (non esiste una pagina di signup pubblica):
-   - Vai su **Authentication → Users → Add user** e crea i due account (email + password).
-   - Copia gli UUID generati e inserisci le due righe corrispondenti in `public.profiles`, seguendo l'esempio nella sezione 9 (`BOOTSTRAP dei due profili`) in fondo allo script SQL.
-4. Recupera **URL** e **anon key** del progetto da **Project Settings → API**: ti serviranno al passo successivo.
+1. Create a new project on [supabase.com](https://supabase.com).
+2. Open the project's **SQL Editor** and run the entire contents of `docs/casa_nostra_schema.sql`.
+3. The app is designed for exactly two fixed users, created manually (there is no public signup page):
+   - Go to **Authentication → Users → Add user** and create the two accounts (email + password).
+   - Copy the generated UUIDs and insert the two corresponding rows into `public.profiles`, following the example in section 9 (`BOOTSTRAP dei due profili`) at the end of the SQL script.
+4. Retrieve the project's **URL** and **anon key** from **Project Settings → API**: you'll need them in the next step.
 
-### 3. Variabili d'ambiente
+### 3. Environment variables
 
-Crea un file `.env.local` nella root del progetto (ignorato da Git) con le seguenti variabili. Il dettaglio di ciascuna è documentato in [`docs/wiki/06-configuration.md`](docs/wiki/06-configuration.md).
+Create a `.env.local` file in the project root (ignored by Git) with the following variables. Each one is documented in detail in [`docs/wiki/06-configuration.md`](docs/wiki/06-configuration.md).
 
 ```bash
 # Supabase — Project Settings → API
-NEXT_PUBLIC_SUPABASE_URL=https://<il-tuo-progetto>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key-del-progetto>
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-project-anon-key>
 
-# Google Gemini — assistente IA (route /api/assistant)
-GEMINI_API_KEY=<la-tua-api-key-google-ai-studio>
-# Opzionale — default: gemini-flash-lite-latest
+# Google Gemini — AI assistant (route /api/assistant)
+GEMINI_API_KEY=<your-google-ai-studio-api-key>
+# Optional — default: gemini-flash-lite-latest
 GEMINI_MODEL=gemini-flash-lite-latest
 ```
 
-| Variabile | Obbligatoria | Ambito | Descrizione |
+| Variable | Required | Scope | Description |
 |---|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Sì | Client + Server | Endpoint API del progetto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sì | Client + Server | Chiave pubblica "anon" Supabase, abilita la RLS |
-| `GEMINI_API_KEY` | Sì | Server (segreta) | Credenziale per le chiamate all'API Google Gemini |
-| `GEMINI_MODEL` | No | Server | Modello Gemini da usare (fallback: `gemini-flash-lite-latest`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Client + Server | API endpoint of the Supabase project |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Client + Server | Supabase public "anon" key, enables RLS |
+| `GEMINI_API_KEY` | Yes | Server (secret) | Credential for calls to the Google Gemini API |
+| `GEMINI_MODEL` | No | Server | Gemini model to use (fallback: `gemini-flash-lite-latest`) |
 
-### 4. Avvio in sviluppo
+### 4. Run in development
 
 ```bash
 npm run dev
 ```
 
-Apri [http://localhost:3000](http://localhost:3000). Verrai reindirizzato a `/login`: accedi con una delle due utenze create al passo 2.
+Open [http://localhost:3000](http://localhost:3000). You'll be redirected to `/login`: sign in with one of the two accounts created in step 2.
 
-## Script disponibili
+## Available scripts
 
 ```bash
-npm run dev     # server di sviluppo (Turbopack)
-npm run build   # build di produzione
-npm run start   # avvia la build di produzione
-npm run lint    # lint del codice (ESLint)
+npm run dev     # development server (Turbopack)
+npm run build   # production build
+npm run start   # start the production build
+npm run lint    # lint the code (ESLint)
 ```
 
-## Deploy
+## Deployment
 
-Il deploy di riferimento è su [Vercel](https://vercel.com):
+The reference deployment target is [Vercel](https://vercel.com):
 
-1. Importa la repository su Vercel.
-2. Configura le stesse variabili d'ambiente del passo 3 nelle **Project Settings → Environment Variables** di Vercel.
-3. Il deploy parte automaticamente ad ogni push sul branch di produzione.
+1. Import the repository into Vercel.
+2. Configure the same environment variables from step 3 under **Project Settings → Environment Variables** in Vercel.
+3. Deployment runs automatically on every push to the production branch.
 
-Consulta la [documentazione di deploy di Next.js](https://nextjs.org/docs/app/building-your-application/deploying) per dettagli aggiuntivi.
+See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for further details.
 
-## Documentazione
+## Documentation
 
-- [`docs/wiki/00-index.md`](docs/wiki/00-index.md) — Wiki dello Sviluppatore (architettura, modelli, servizi, API, pattern)
-- [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql) — schema Supabase definito e applicato
-- [`docs/Casa_Nostra_Requisiti_MVP.docx`](docs/Casa_Nostra_Requisiti_MVP.docx) — requisiti funzionali completi
-- [`AGENTS.md`](AGENTS.md) — convenzioni di progetto e briefing per lo sviluppo
+- [`docs/wiki/00-index.md`](docs/wiki/00-index.md) — Developer Wiki (architecture, models, services, API, patterns) — in Italian
+- [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql) — applied Supabase schema
+- [`docs/Casa_Nostra_Requisiti_MVP.docx`](docs/Casa_Nostra_Requisiti_MVP.docx) — full functional requirements — in Italian
+- [`AGENTS.md`](AGENTS.md) — project conventions and development briefing — in Italian
