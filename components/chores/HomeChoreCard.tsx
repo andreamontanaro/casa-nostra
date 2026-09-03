@@ -82,6 +82,7 @@ export function HomeChoreCard({ rows }: HomeChoreCardProps) {
                     ? `${formatChoreRecency(row.days_since)} · ${row.last_done_by_name}`
                     : formatChoreRecency(row.days_since)
                 }
+                xp={row.effort_xp ?? 0}
                 onComplete={() => handleComplete(row)}
                 pending={pendingIds.has(row.id!)}
               />

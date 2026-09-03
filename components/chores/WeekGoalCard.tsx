@@ -148,8 +148,6 @@ export function WeekGoalCard({
           {balance.inDeadBand ? 'In equilibrio questa settimana' : `${leaderName} spinto di più questa settimana`}
         </p>
       </div>
-
-      <p className="mt-3 text-xs text-muted/80">Conta i minuti in casa, non le giornate.</p>
     </Card>
   )
 }

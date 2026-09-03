@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 interface ChoreLogRowProps {
   area: string
   title: string
+  xp: number
   doneByName: string
   /** true se l'ha fatta l'utente che sta guardando lo schermo. */
   doneByMe: boolean
@@ -32,6 +33,7 @@ interface ChoreLogRowProps {
 export function ChoreLogRow({
   area,
   title,
+  xp,
   doneByName,
   doneByMe,
   whenLabel,
@@ -51,7 +53,12 @@ export function ChoreLogRow({
       <div className="flex items-center gap-3">
         <ChoreIcon area={area} size="sm" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-foreground">{title}</div>
+          <div className="flex items-center gap-1.5">
+            <div className="truncate text-sm font-medium text-foreground">{title}</div>
+            <span className="shrink-0 rounded-full bg-positive-muted px-1.5 py-0.5 text-[10px] font-semibold text-positive-soft">
+              +{xp} XP
+            </span>
+          </div>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-muted">
             <Avatar name={doneByName} highlighted={doneByMe} size="sm" />
             <span className="truncate">

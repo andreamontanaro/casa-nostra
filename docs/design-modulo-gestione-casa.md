@@ -509,8 +509,13 @@ regola 60/40; qui la scelta è **non** replicare quel meccanismo. Una "quota
 attesa" per persona renderebbe possibile la frase "hai fatto meno del tuo
 obiettivo", che è precisamente il verdetto che il modulo esiste per evitare. La
 zona morta ampia ottiene il risultato utile senza formalizzare un'aspettativa.
-La card dell'equilibrio porta un testo fisso e piccolo che lo dice: *«conta i
-minuti in casa, non le giornate»*.
+
+*Nota (rifinitura UI, settembre 2026): la card dell'equilibrio portava inizialmente
+un testo fisso che lo diceva esplicitamente — «conta i minuti in casa, non le
+giornate» — rimosso su richiesta esplicita nella rifinitura visiva perché
+percepito come superfluo. Il limite descritto sopra resta vero e resta la
+ragione per cui la zona morta è ampia; a non esistere più è solo la frase che
+lo rendeva esplicito in UI.*
 
 ### Chi tara il catalogo
 
