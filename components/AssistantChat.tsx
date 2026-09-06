@@ -220,7 +220,7 @@ export function AssistantChat() {
               className={cn(
                 // Come le sheet: sopra la tastiera, non sotto (vedi <KeyboardInsets>).
                 'fixed inset-x-0 bottom-[var(--keyboard-inset)] z-50 flex flex-col',
-                'h-[88svh] max-h-[calc(100svh-1rem-var(--keyboard-inset))]',
+                'h-[88svh] max-h-[calc(100svh-1rem-var(--keyboard-height))]',
                 'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
               )}
             >

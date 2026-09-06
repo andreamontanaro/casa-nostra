@@ -1,27 +1,25 @@
 'use client'
 
 import { useEffect } from 'react'
+import { measureKeyboard, NO_KEYBOARD, type KeyboardMetrics } from '@/lib/keyboard'
 
 /**
- * Tiene aggiornata la variabile CSS `--keyboard-inset` con l'altezza della
- * tastiera software, e marca `<html data-keyboard="open">` finché è aperta.
+ * Pubblica le misure della tastiera software in due variabili CSS su `<html>`
+ * — `--keyboard-height` (quanto spazio ruba: da sottrarre alle altezze) e
+ * `--keyboard-inset` (dove appoggiare un `fixed`: da dare a `bottom`) — e marca
+ * `data-keyboard="open"` finché la tastiera è aperta.
  *
- * Perché serve: su iOS la tastiera non rimpicciolisce il layout viewport, quindi
- * un elemento `position: fixed; bottom: 0` (le nostre sheet, il pannello
- * dell'assistente, le barre azioni sticky) finisce sotto la tastiera insieme al
- * campo che si sta compilando. L'unica misura affidabile è `visualViewport`:
- * la porzione di finestra coperta è `innerHeight - viewport.height - offsetTop`
- * (l'`offsetTop` tiene conto dello scroll che iOS applica da solo per portare
- * il campo a fuoco sopra la tastiera).
+ * Perché serve: su iOS la tastiera non accorcia il layout viewport, quindi un
+ * elemento `position: fixed; bottom: 0` (le nostre sheet, il pannello
+ * dell'assistente) e un'altezza in `svh` non si accorgono di lei. E quando la
+ * pagina non può scorrere — una sheet aperta blocca il body — iOS scopre il
+ * campo a fuoco spingendo su *tutta* la finestra: il fondo della sheet finisce
+ * al posto giusto da sé, ma la sua testa esce dallo schermo. Le due misure
+ * servono proprio a distinguere i due casi: vedi `lib/keyboard.ts`.
  *
- * Su Android il meta viewport `interactive-widget=resizes-content` (vedi
- * `app/layout.tsx`) fa già rimpicciolire il layout viewport: lì l'inset
- * calcolato resta ~0 e non si somma nulla.
- *
- * Chi vuole stare sopra la tastiera usa `bottom: var(--keyboard-inset)` e, per
- * la spaziatura di fondo, `var(--safe-bottom)` al posto di
- * `env(safe-area-inset-bottom)`: con la tastiera aperta la home indicator è
- * coperta e quello spazio è sprecato.
+ * Su Android non c'è niente da calcolare: il meta viewport
+ * `interactive-widget=resizes-content` (vedi `app/layout.tsx`) fa accorciare il
+ * layout viewport al browser, e le misure restano a zero.
  */
 export function KeyboardInsets() {
   useEffect(() => {
@@ -30,26 +28,22 @@ export function KeyboardInsets() {
 
     const root = document.documentElement
     let frame = 0
-    let current = 0
-
-    // Sotto questa soglia è la barra degli indirizzi che si ritrae o un
-    // arrotondamento, non una tastiera: ignorarla evita sfarfallii.
-    const MIN_KEYBOARD = 120
+    let current: KeyboardMetrics = NO_KEYBOARD
 
     const measure = () => {
       frame = 0
-      const raw = window.innerHeight - viewport.height - viewport.offsetTop
-      const inset = raw > MIN_KEYBOARD ? Math.round(raw) : 0
-      if (inset === current) return
+      const next = measureKeyboard(window.innerHeight, viewport.height, viewport.offsetTop)
+      if (next.height === current.height && next.inset === current.inset) return
 
-      const opening = current === 0 && inset > 0
-      current = inset
-      root.style.setProperty('--keyboard-inset', `${inset}px`)
-      if (inset > 0) root.setAttribute('data-keyboard', 'open')
+      const opening = current.height === 0 && next.height > 0
+      current = next
+      root.style.setProperty('--keyboard-height', `${next.height}px`)
+      root.style.setProperty('--keyboard-inset', `${next.inset}px`)
+      if (next.height > 0) root.setAttribute('data-keyboard', 'open')
       else root.removeAttribute('data-keyboard')
 
-      // Alla comparsa della tastiera il contenitore si è appena accorciato:
-      // riportiamo il campo a fuoco al centro dello spazio rimasto.
+      // Il contenitore si è appena accorciato: riportiamo il campo a fuoco al
+      // centro dello spazio rimasto.
       if (opening) revealFocused()
     }
 
@@ -60,7 +54,7 @@ export function KeyboardInsets() {
     // Cambio di campo a tastiera già aperta: il browser non sa che la sheet si
     // è accorciata, quindi lo scroll lo facciamo noi.
     const onFocusIn = () => {
-      if (current > 0) revealFocused()
+      if (current.height > 0) revealFocused()
     }
 
     viewport.addEventListener('resize', schedule)
@@ -76,6 +70,7 @@ export function KeyboardInsets() {
       viewport.removeEventListener('scroll', schedule)
       window.removeEventListener('orientationchange', schedule)
       document.removeEventListener('focusin', onFocusIn)
+      root.style.removeProperty('--keyboard-height')
       root.style.removeProperty('--keyboard-inset')
       root.removeAttribute('data-keyboard')
     }
@@ -90,8 +85,8 @@ function revealFocused() {
   if (!(el instanceof HTMLElement)) return
   if (!el.matches('input, textarea, select, [contenteditable="true"]')) return
 
-  // Un frame di attesa: prima che il layout recepisca la nuova altezza,
-  // scrollIntoView misurerebbe posizioni ormai vecchie.
+  // Un frame di attesa: prima che il layout recepisca le nuove misure,
+  // scrollIntoView leggerebbe posizioni ormai vecchie.
   requestAnimationFrame(() => {
     el.scrollIntoView({ block: 'center', behavior: 'smooth' })
   })

@@ -44,16 +44,19 @@ export function Sheet({
         />
         <DialogPrimitive.Content
           className={cn(
-            // La sheet si appoggia sopra la tastiera invece di finirci sotto:
-            // --keyboard-inset vale 0 quando è chiusa (vedi <KeyboardInsets>).
+            // Sopra la tastiera invece che sotto: `bottom` la scavalca e
+            // l'altezza si accorcia dello spazio che ruba. Sono due misure
+            // diverse — vedi lib/keyboard.ts — perché quando iOS spinge su la
+            // pagina da sé il fondo è già a posto ma l'altezza no, e la testa
+            // della sheet (intestazione e primi campi) finirebbe fuori schermo.
             'fixed inset-x-0 bottom-[var(--keyboard-inset)] z-50 flex flex-col',
             'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom',
             'duration-300',
             isFull
-              ? 'top-3'
-              : 'max-h-[calc(92svh-var(--keyboard-inset))]',
+              ? 'h-[calc(100svh-0.75rem-var(--keyboard-height))]'
+              : 'max-h-[calc(92svh-var(--keyboard-height))]',
             className,
           )}
         >

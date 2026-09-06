@@ -271,12 +271,16 @@
 
 /* ─── Base ───────────────────────────────────────────────────── */
 
-/* Tastiera software: `--keyboard-inset` è quanto della finestra è coperto
-   (0 quando è chiusa) ed è aggiornata da <KeyboardInsets>. `--safe-bottom` è
-   la safe area di fondo, che con la tastiera aperta non serve più: la home
-   indicator è dietro la tastiera. Chi sta in fondo allo schermo usa queste due
-   invece di `env(safe-area-inset-bottom)` da solo. */
+/* Tastiera software, aggiornate da <KeyboardInsets> (0 a tastiera chiusa):
+   `--keyboard-height` è lo spazio che ruba — si sottrae alle altezze — e
+   `--keyboard-inset` è dove appoggiare un `fixed`, cioè il valore di `bottom`.
+   Sono due numeri diversi quando iOS spinge su la pagina da solo: vedi
+   `lib/keyboard.ts`. `--safe-bottom` è la safe area di fondo, che con la
+   tastiera aperta non serve più: la home indicator è dietro la tastiera. Chi
+   sta in fondo allo schermo usa queste al posto di `env(safe-area-inset-bottom)`
+   da solo. */
 :root {
+  --keyboard-height: 0px;
   --keyboard-inset: 0px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
