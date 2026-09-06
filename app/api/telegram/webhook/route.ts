@@ -1,10 +1,15 @@
 import { after } from 'next/server'
-import { runAssistant } from '@/lib/assistant/run'
+import { MODEL, runAssistant } from '@/lib/assistant/run'
 import { describeBalance } from '@/lib/balance'
 import { formatEur } from '@/lib/fmt'
-import { getOpenBalance, getProfiles } from '@/lib/queries'
+import { getOpenBalance, getOpenShoppingItems, getProfiles } from '@/lib/queries'
+import { runReceiptCheck } from '@/lib/shopping/service'
 import { createServiceClient, type ServiceClient } from '@/lib/supabase/service'
-import { sendTelegramMessage, sendTypingAction } from '@/lib/telegram/api'
+import {
+  downloadTelegramFile,
+  sendTelegramMessage,
+  sendTypingAction,
+} from '@/lib/telegram/api'
 import { getTelegramConfig, type TelegramConfig } from '@/lib/telegram/config'
 import {
   claimUpdate,
@@ -13,7 +18,11 @@ import {
   saveAssistantReply,
 } from '@/lib/telegram/conversation'
 import { escapeHtml, htmlToPlain, markdownToTelegramHtml } from '@/lib/telegram/format'
-import { settlementRequestedMessage } from '@/lib/telegram/notify'
+import {
+  receiptCheckMessage,
+  settlementRequestedMessage,
+  shoppingListMessage,
+} from '@/lib/telegram/notify'
 import {
   telegramDisplayName,
   type TelegramApiMessage,
@@ -57,8 +66,15 @@ export async function POST(request: Request) {
   }
 
   const message = update.message
-  const text = message?.text?.trim()
-  if (!message || !text || message.from?.is_bot) return acknowledge()
+  if (!message || message.from?.is_bot) return acknowledge()
+
+  // La didascalia di una foto vale quanto il testo: e' li' che finisce
+  // "@bot controlla" quando si manda lo scontrino.
+  const text = (message.text ?? message.caption ?? '').trim()
+  const media =
+    findReceiptMedia(message) ??
+    (isReceiptCommand(text) ? findReceiptMedia(message.reply_to_message) : null)
+  if (!text && !media) return acknowledge()
 
   const command = parseCommand(text, config.botUsername)
   if (command === 'other-bot') return acknowledge()
@@ -79,6 +95,21 @@ export async function POST(request: Request) {
   }
 
   if (!shouldReply({ message, text, command, config, isPrivate })) return acknowledge()
+
+  if (media) {
+    after(async () => {
+      try {
+        await handleReceiptPhoto({ update, message, media, config })
+      } catch (e) {
+        console.error('[telegram] controllo scontrino fallito:', e)
+        await sendTelegramMessage(
+          '⚠️ Qualcosa è andato storto mentre leggevo lo scontrino. Riprova tra poco.',
+          { chatId: message.chat.id, replyTo: message.message_id },
+        )
+      }
+    })
+    return acknowledge()
+  }
 
   after(async () => {
     try {
@@ -150,6 +181,123 @@ function shouldReply(params: {
   }
 
   return false
+}
+
+interface ReceiptMedia {
+  fileId: string
+  fileName: string
+  /** MIME dichiarato da Telegram; per le foto compresse lo deduce il download. */
+  mimeType?: string
+}
+
+/** Riconosce `/scontrino` come didascalia o come risposta a una foto precedente. */
+function isReceiptCommand(text: string): boolean {
+  return /^\/scontrino(@[a-zA-Z0-9_]+)?\b/i.test(text)
+}
+
+/**
+ * La foto o il documento da trattare come scontrino. Delle piu' risoluzioni in
+ * cui Telegram consegna una foto si prende sempre l'ultima, la piu' grande: su
+ * uno scontrino la differenza fra leggere "LT PS 1L" e non leggere niente e'
+ * tutta li'.
+ */
+function findReceiptMedia(message: TelegramApiMessage | undefined): ReceiptMedia | null {
+  if (!message) return null
+
+  const photo = message.photo?.[message.photo.length - 1]
+  if (photo) return { fileId: photo.file_id, fileName: 'scontrino.jpg' }
+
+  const doc = message.document
+  const mime = doc?.mime_type ?? ''
+  if (doc && (mime.startsWith('image/') || mime === 'application/pdf')) {
+    return { fileId: doc.file_id, fileName: doc.file_name ?? 'scontrino', mimeType: mime }
+  }
+
+  return null
+}
+
+/**
+ * Scontrino arrivato nel gruppo: si scarica da Telegram, si confronta con la
+ * lista della spesa e si risponde con cosa e' stato spuntato e cosa manca
+ * ancora. Nessuna notifica separata: la risposta e' gia' nella chat che
+ * l'avrebbe ricevuta.
+ */
+async function handleReceiptPhoto(params: {
+  update: TelegramUpdate
+  message: TelegramApiMessage
+  media: ReceiptMedia
+  config: TelegramConfig
+}) {
+  const { update, message, media, config } = params
+  const chatId = message.chat.id
+  const isGroup = message.chat.type !== 'private'
+  const senderName = telegramDisplayName(message.from)
+
+  // Senza gruppo configurato si risponde solo a /id (vedi POST): qui non si
+  // arriva mai, ma il controllo tiene la funzione onesta per conto suo.
+  if (!config.chatId) return
+
+  const db = createServiceClient()
+
+  const isNew = await claimUpdate(db, {
+    chatId,
+    updateId: update.update_id,
+    senderName,
+    content: '[ha inviato uno scontrino da controllare]',
+  })
+  if (!isNew) return
+
+  const reply = async (html: string) => {
+    await sendTelegramMessage(html, {
+      chatId,
+      replyTo: isGroup ? message.message_id : undefined,
+    })
+    await saveAssistantReply(db, chatId, htmlToPlain(html))
+  }
+
+  const profiles = await getProfiles(db)
+  const sender = profiles.find(
+    (p) => p.telegram_user_id != null && Number(p.telegram_user_id) === message.from?.id,
+  )
+  if (!sender) {
+    await reply(
+      `👋 Ciao ${escapeHtml(senderName)}, non ti riconosco: collega il tuo account Telegram in <b>Impostazioni → Telegram</b> dentro Casa Nostra.`,
+    )
+    return
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    await reply('⚠️ Il controllo scontrino non è configurato: manca la chiave API di Gemini.')
+    return
+  }
+
+  await sendTypingAction(chatId)
+
+  const file = await downloadTelegramFile(media.fileId, media.fileName)
+  if (!file) {
+    await reply('⚠️ Non sono riuscito a scaricare la foto. Riprova a inviarla.')
+    return
+  }
+
+  const result = await runReceiptCheck({
+    db,
+    userId: sender.id,
+    apiKey,
+    model: MODEL,
+    source: 'telegram',
+    fileName: media.fileName || file.fileName,
+    mimeType: media.mimeType ?? file.mimeType,
+    bytes: file.bytes,
+  })
+
+  if (!result.ok) {
+    await reply(`⚠️ ${escapeHtml(result.error)}`)
+    return
+  }
+
+  await reply(receiptCheckMessage(result))
+  await pruneHistory(db)
 }
 
 async function handleMessage(params: {
@@ -244,6 +392,24 @@ async function handleMessage(params: {
         settlementRequestedMessage(sender.display_name, await getOpenBalance(db)),
       )
       return
+
+    case 'lista':
+      await reply(shoppingListMessage(await getOpenShoppingItems(db)))
+      return
+
+    case 'scontrino':
+      // Ci si arriva solo con /scontrino "a vuoto": quando il comando e' la
+      // didascalia di una foto o la risposta a una foto, la richiesta viene
+      // gia' dirottata sul controllo scontrino prima di questo punto.
+      await reply(
+        [
+          '🧾 <b>Controllo scontrino</b>',
+          '',
+          'Mandami la foto dello scontrino (o rispondi <code>/scontrino</code> a una foto già inviata): ',
+          'la confronto con la lista della spesa, spunto quello che avete comprato e vi dico cosa manca ancora.',
+        ].join('\n'),
+      )
+      return
   }
 
   const apiKey = process.env.GEMINI_API_KEY
@@ -317,12 +483,19 @@ function helpMessage(): string {
     '• «ho pagato 32€ di spesa al Lidl» — registro la spesa (prima ti chiedo conferma)',
     '• «quanto devo?» — il saldo aggiornato',
     '• «recap delle spese di questo mese» — un riepilogo',
+    '• «serve il latte e la carta igienica» — lo metto in lista della spesa',
+    '• «cosa manca?» — la lista aggiornata',
+    '',
+    '🧾 <b>Scontrini</b>',
+    'Mandami la foto di uno scontrino (menzionandomi, se siamo in gruppo) oppure rispondi <code>/scontrino</code> a una foto: la confronto con la lista, spunto cosa avete comprato e vi dico cosa manca ancora.',
     '',
     '<b>Comandi</b>',
     '/saldo — saldo corrente',
     '/recap — riepilogo delle spese del mese',
     '/spesa &lt;testo&gt; — aggiungi una spesa',
     '/conguaglio — chiedi il conguaglio all\'altra persona',
+    '/lista — la lista della spesa aggiornata',
+    '/scontrino — come funziona il controllo dello scontrino',
     '/id — id di chat e account, per la configurazione',
     '/aiuto — questo messaggio',
   ].join('\n')

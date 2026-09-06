@@ -2,6 +2,8 @@
 
 Mobile-first web app for transparently managing household expenses between two cohabiting partners. Every expense entered is shared by definition: 50/50 for rent, 60/40 for everything else (the partner with the higher income pays 60%). The app always shows the current balance and lets you settle it in one tap.
 
+It also keeps a **shopping list** — what's missing at home, by product type, quantity and urgency — with a **receipt check** that reads a photo of a receipt, ticks off what was bought and highlights what's still missing. The list can be managed from the app, from the AI assistant, or straight from the Telegram group.
+
 For a full guide to the architecture, domain models, and patterns used in the project, see the **[Developer Wiki](docs/wiki/00-index.md)** (in Italian).
 
 ## Tech stack
@@ -33,7 +35,7 @@ npm install
 The database schema (tables, views, RPCs, RLS) is defined in [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql), which is the authoritative source of truth for the applied schema.
 
 1. Create a new project on [supabase.com](https://supabase.com).
-2. Open the project's **SQL Editor** and run the entire contents of `docs/casa_nostra_schema.sql`.
+2. Open the project's **SQL Editor** and run the entire contents of `docs/casa_nostra_schema.sql`. (On an existing project, apply only the new migrations from `docs/migrations/` instead — for example `2026-09-06_lista_spesa.sql` for the shopping list module.)
 3. The app is designed for exactly two fixed users, created manually (there is no public signup page):
    - Go to **Authentication → Users → Add user** and create the two accounts (email + password).
    - Copy the generated UUIDs and insert the two corresponding rows into `public.profiles`, following the example in section 9 (`BOOTSTRAP dei due profili`) at the end of the SQL script.
@@ -123,6 +125,7 @@ See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-
 
 - [`docs/wiki/00-index.md`](docs/wiki/00-index.md) — Developer Wiki (architecture, models, services, API, patterns) — in Italian
 - [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql) — applied Supabase schema
-- [`docs/telegram-setup.md`](docs/telegram-setup.md) — Telegram bot setup (notifications + in-chat assistant)
+- [`docs/telegram-setup.md`](docs/telegram-setup.md) — Telegram bot setup (notifications, in-chat assistant, receipt checks)
+- [`docs/migrations/`](docs/migrations) — incremental SQL migrations, in the order they were applied
 - [`docs/Casa_Nostra_Requisiti_MVP.docx`](docs/Casa_Nostra_Requisiti_MVP.docx) — full functional requirements — in Italian
 - [`AGENTS.md`](AGENTS.md) — project conventions and development briefing — in Italian

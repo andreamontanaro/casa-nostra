@@ -1,6 +1,14 @@
 import { after } from 'next/server'
 import { describeBalance, type BalanceRow } from '@/lib/balance'
-import { CATEGORY_ICON, CATEGORY_LABELS, SPLIT_LABELS, formatDate, formatEur } from '@/lib/fmt'
+import {
+  CATEGORY_ICON,
+  CATEGORY_LABELS,
+  SHOPPING_CATEGORY_ICON,
+  SHOPPING_CATEGORY_LABELS,
+  SPLIT_LABELS,
+  formatDate,
+  formatEur,
+} from '@/lib/fmt'
 import { getTelegramConfig, isTelegramConfigured } from './config'
 import { escapeHtml } from './format'
 import { sendTelegramMessage } from './api'
@@ -166,4 +174,119 @@ function appLink(path: string, label: string): string {
   const config = getTelegramConfig()
   if (!config?.siteUrl) return ''
   return `<a href="${config.siteUrl}${path}">${escapeHtml(label)}</a>`
+}
+
+// ------------------------------------------------------------
+// Lista della spesa
+// ------------------------------------------------------------
+
+/**
+ * Forma minima del risultato di un controllo scontrino. Dichiarata qui invece
+ * di importare il tipo da `lib/shopping/service` per non trascinare l'SDK di
+ * Gemini nel grafo di chi vuole solo comporre un messaggio.
+ */
+export interface ReceiptCheckSummary {
+  storeName: string | null
+  receiptTotal: number | null
+  matched: { name: string }[]
+  missing: { name: string; quantity: string | null; urgency: string }[]
+}
+
+/** Esito del controllo scontrino: cosa è stato spuntato e cosa manca ancora. */
+export function receiptCheckMessage(check: ReceiptCheckSummary): string {
+  const header = check.storeName
+    ? `🧾 <b>Scontrino controllato</b> — ${escapeHtml(check.storeName)}`
+    : '🧾 <b>Scontrino controllato</b>'
+
+  const lines = [header, '']
+
+  if (check.receiptTotal !== null) {
+    lines.push(`<i>Totale letto: ${formatEur(check.receiptTotal)}</i>`, '')
+  }
+
+  if (check.matched.length > 0) {
+    lines.push(
+      `✅ <b>Spuntati ${check.matched.length}</b>`,
+      check.matched.map((m) => `• ${escapeHtml(m.name)}`).join('\n'),
+    )
+  } else {
+    lines.push('✅ Nessun articolo della lista riconosciuto sullo scontrino.')
+  }
+
+  if (check.missing.length > 0) {
+    lines.push(
+      '',
+      `🛒 <b>Manca ancora ${check.missing.length}</b>`,
+      check.missing
+        .map(
+          (m) =>
+            `• ${escapeHtml(m.name)}${m.quantity ? ` <i>(${escapeHtml(m.quantity)})</i>` : ''}` +
+            `${m.urgency === 'alta' ? ' ❗' : ''}`,
+        )
+        .join('\n'),
+    )
+  } else {
+    lines.push('', '🎉 La lista è vuota: preso tutto.')
+  }
+
+  const link = appLink('/lista', 'Apri la lista della spesa')
+  if (link) lines.push('', link)
+  return lines.join('\n')
+}
+
+/**
+ * Solo per un articolo segnato come urgente: è l'unico caso in cui l'altro ha
+ * bisogno di saperlo prima di passare al supermercato. Ogni aggiunta alla
+ * lista nel gruppo diventerebbe rumore di fondo.
+ */
+export function urgentItemAddedMessage(
+  actorName: string,
+  itemName: string,
+  quantity: string | null,
+): string {
+  const lines = [
+    `❗ <b>${escapeHtml(actorName)}</b> ha aggiunto una cosa urgente in lista`,
+    '',
+    `🛒 <b>${escapeHtml(itemName)}</b>${quantity ? ` — ${escapeHtml(quantity)}` : ''}`,
+  ]
+  const link = appLink('/lista', 'Apri la lista della spesa')
+  if (link) lines.push('', link)
+  return lines.join('\n')
+}
+
+/** La lista corrente, raggruppata per categoria: risposta al comando /lista. */
+export function shoppingListMessage(
+  items: { name: string; quantity: string | null; urgency: string; category: string }[],
+): string {
+  if (items.length === 0) {
+    return '🛒 <b>Lista della spesa</b>\n\nNon manca niente: la lista è vuota.'
+  }
+
+  const lines = [`🛒 <b>Lista della spesa</b> — ${items.length} ${items.length === 1 ? 'articolo' : 'articoli'}`, '']
+
+  const byCategory = new Map<string, typeof items>()
+  for (const item of items) {
+    const list = byCategory.get(item.category) ?? []
+    list.push(item)
+    byCategory.set(item.category, list)
+  }
+
+  for (const [category, list] of byCategory) {
+    lines.push(
+      `${SHOPPING_CATEGORY_ICON[category] ?? '📦'} <b>${escapeHtml(
+        SHOPPING_CATEGORY_LABELS[category] ?? category,
+      )}</b>`,
+    )
+    for (const item of list) {
+      lines.push(
+        `• ${escapeHtml(item.name)}${item.quantity ? ` <i>(${escapeHtml(item.quantity)})</i>` : ''}` +
+          `${item.urgency === 'alta' ? ' ❗' : ''}`,
+      )
+    }
+    lines.push('')
+  }
+
+  const link = appLink('/lista', 'Apri la lista della spesa')
+  if (link) lines.push(link)
+  return lines.join('\n').trim()
 }

@@ -15,6 +15,8 @@ L'applicazione gestisce le spese domestiche condivise: riservata a esattamente d
 
 Un'integrazione **Telegram** opzionale porta l'app nel gruppo dei due conviventi: notifica ogni movimento (spesa aggiunta, modificata, eliminata, conguaglio) con il saldo aggiornato, e mette a disposizione lo stesso assistente IA direttamente in chat. Configurazione in `docs/telegram-setup.md`.
 
+Il modulo **Lista della spesa** (`/lista`) tiene traccia di cosa manca in casa: articoli categorizzati per tipo di prodotto (cibo, cura della casa, igiene, …), con quantità in testo libero e urgenza. Il **controllo scontrino** confronta la foto di uno scontrino con la lista, spunta in automatico quello che è stato comprato ed evidenzia cosa manca ancora dall'ultimo scontrino inviato. Si usa dall'app, dall'assistente IA o mandando la foto nel gruppo Telegram.
+
 Il modulo **Gestione casa** (`/casa`) gamifica le faccende domestiche con XP e, in una fase futura, titoli — deliberatamente *senza* saldo né conguaglio: le faccende non generano un debito fra i due. Progettazione completa, inclusi i principi anti-tossicità pensati per un gioco a due soli giocatori, in `docs/design-modulo-gestione-casa.md`.
 
 ---
@@ -24,7 +26,7 @@ Il modulo **Gestione casa** (`/casa`) gamifica le faccende domestiche con XP e, 
 Seleziona una sezione per approfondire i dettagli tecnici:
 
 * **[01. Architettura](01-architecture.md)**: Struttura delle directory, routing Next.js App Router, middleware di autenticazione (`proxy.ts`) e flusso delle dipendenze.
-* **[02. Modelli di Dominio](02-domain-models.md)**: Schema del database, entità di dominio (Profiles, Expenses, Settlements, Attachments) e vincoli di integrità.
+* **[02. Modelli di Dominio](02-domain-models.md)**: Schema del database, entità di dominio (Profiles, Expenses, Settlements, Attachments, Shopping Items) e vincoli di integrità.
 * **[03. Servizi e Logica Applicativa](03-services.md)**: Server Actions per le mutazioni e calcoli del dominio (calcolo consumi pieno-a-pieno, ripartizione chilometrica).
 * **[04. Superficie delle API](04-api-surface.md)**: Route handler dell'Assistente IA (`/api/assistant`) e webhook del bot Telegram (`/api/telegram/webhook`), motore condiviso, dichiarazioni dei tool di Gemini, prompt e streaming payload.
 * **[05. Accesso ai Dati](05-data-access.md)**: Integrazione client Supabase (Browser/Server), query e viste SQL di calcolo saldo (`v_user_open_balance`), funzioni transazionali Postgres.

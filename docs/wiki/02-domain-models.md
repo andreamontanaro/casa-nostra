@@ -22,6 +22,12 @@ Regola di suddivisione dell'importo → `docs/casa_nostra_schema.sql#L25-L30`:
 * `sixty_forty`: Ripartizione 60/40. Il partner con il reddito maggiore paga il 60% dell'importo.
 * `custom`: Suddivisione personalizzata, espressa con quota fissa a carico del partner.
 
+### `shopping_category`
+Tipo di prodotto della lista della spesa → sezione 13 dello schema: `cibo`, `bevande`, `cura_casa`, `igiene_persona`, `farmacia`, `casalinghi`, `altro`. Deliberatamente distinta da `expense_category`: là si classifica una spesa (una riga di denaro), qui un prodotto da mettere nel carrello.
+
+### `shopping_urgency`
+Quanto serve in fretta un articolo → sezione 13 dello schema: `bassa`, `media`, `alta`. **L'ordine di dichiarazione conta**: è l'ordinamento della lista (`ORDER BY urgency DESC` mette gli urgenti in cima), non serve una colonna di priorità numerica.
+
 ### `chore_area`
 Area di casa a cui appartiene una faccenda (modulo "Gestione casa") → sezione 11 dello schema: `cucina`, `bagno`, `pulizie`, `spazzatura`, `bucato`, `spesa`, `manutenzione`, `altro`. Raggruppa le voci in UI e alimenta i titoli per varietà (fase 3, non ancora implementata).
 
@@ -88,7 +94,38 @@ Memoria conversazionale del bot Telegram → sezione 10 dello schema. Il webhook
   * `created_at` (`timestamptz`).
 * **Ritenzione**: Le righe più vecchie di 30 giorni vengono eliminate dal webhook → `lib/telegram/conversation.ts`.
 
-### 6. Catalogo Faccende (`chore_templates`)
+### 6. Articolo della Lista della Spesa (`shopping_items`)
+Una cosa che manca in casa e va comprata → sezione 13 dello schema.
+* **Proprietà**:
+  * `id` (`uuid`, PK).
+  * `name` (`text`): Nome del prodotto (non vuoto).
+  * `category` (`shopping_category`, default `altro`).
+  * `quantity` (`text`, Nullable): Quantità in **testo libero** ("2 confezioni", "1 kg", "una bottiglia grande"). Al supermercato si ragiona così, non con un numero più un'unità di misura: un campo numerico costringerebbe a scegliere un'unità che spesso non esiste.
+  * `urgency` (`shopping_urgency`, default `media`).
+  * `note` (`text`, Nullable).
+  * `bought_at` / `bought_by` / `bought_via` (Nullable): Stato dell'acquisto. `bought_via` è uno tra `app`, `assistente`, `scontrino`.
+  * `receipt_check_id` (`uuid`, Nullable, `ON DELETE SET NULL`) e `receipt_line` (`text`, Nullable): Quale controllo scontrino ha spuntato l'articolo e con quale riga dello scontrino.
+  * `added_by` (`uuid`), `created_at`, `updated_at`.
+* **Stato aperto/comprato**: `bought_at IS NULL` => ancora da comprare; valorizzato => comprato (storico). È lo stesso pattern di `expenses.settlement_id`.
+* **Invarianti**:
+  * `shopping_items_bought_consistency`: o ci sono tutti e tre i dati dell'acquisto (`bought_at`, `bought_by`, `bought_via`) o nessuno. Niente stati a metà.
+  * `shopping_items_receipt_consistency`: `receipt_check_id` valorizzato solo se `bought_via = 'scontrino'`.
+  * `shopping_items_unique_open_name`: indice unico **parziale** su `lower(trim(name))` per i soli articoli aperti. "Latte" non può stare due volte tra le cose da comprare, ma lo storico può contenerlo quante volte serve. La Server Action traduce la violazione (`23505`) in «"Latte" è già in lista».
+* **RLS come le spese, non come le faccende**: la lista è di casa, non di chi ha scritto la riga — entrambi aggiungono, spuntano ed eliminano qualsiasi articolo.
+
+### 7. Controllo Scontrino (`shopping_receipt_checks`)
+Uno scontrino letto e confrontato con la lista → sezione 13 dello schema.
+* **Proprietà**:
+  * `id` (`uuid`, PK).
+  * `storage_path` (`text`, UNIQUE), `file_name`, `mime_type`, `size_bytes`: Il file nel bucket privato `shopping-receipts` (formato del percorso: `YYYY/MM/uuid.ext`).
+  * `source` (`text`): `app` (caricato dalla lista), `telegram` (foto nel gruppo), `spesa` (allegato già presente su una spesa).
+  * `store_name`, `receipt_date`, `receipt_total` (Nullable): Quello che si è riusciti a leggere dallo scontrino.
+  * `lines` (`jsonb`): Righe lette (`[{"name", "quantity", "price"}]`), conservate per poter rileggere un controllo senza riaprire l'immagine.
+  * `matched_count` (`int`): Quanti articoli ha spuntato.
+  * `checked_by` (`uuid`), `checked_at` (`timestamptz`).
+* **Sopravvive agli articoli che spunta**: gli articoli si possono eliminare, il controllo no — è il riferimento temporale di "dall'ultimo scontrino". Per lo stesso motivo il file sta in un bucket suo e non in `expense-attachments`: cancellare una spesa non deve portarsi via la prova di un controllo (quando lo scontrino arriva da una spesa, se ne salva una copia).
+
+### 8. Catalogo Faccende (`chore_templates`)
 Voci del modulo "Gestione casa" (faccende domestiche ricorrenti) → sezione 11 dello schema. Interamente modificabile dai due utenti: il seed iniziale (21 voci, `docs/design-modulo-gestione-casa.md § 5`) è solo il contenuto di partenza della tabella, non una costante di codice.
 * **Proprietà**:
   * `id` (`uuid`, PK).
@@ -100,7 +137,7 @@ Voci del modulo "Gestione casa" (faccende domestiche ricorrenti) → sezione 11 
   * `sort_order` (`int`).
 * **Cancellazione**: fisica solo se la voce non ha mai avuto log (rimedia a un errore di battitura); altrimenti si disattiva, mai si elimina.
 
-### 7. Registro Faccende (`chore_logs`)
+### 9. Registro Faccende (`chore_logs`)
 Un completamento registrato → sezione 11 dello schema.
 * **Proprietà**:
   * `id` (`uuid`, PK).
@@ -114,7 +151,7 @@ Un completamento registrato → sezione 11 dello schema.
 * **RLS più restrittiva del modulo spese**: si corregge o cancella solo una riga propria (`done_by` o `created_by` uguale a `auth.uid()`). Le spese permettono a entrambi di modificare qualsiasi riga; qui no, perché una riga di `chore_logs` dice "questa cosa l'ho fatta io" e poter cancellare il contributo dell'altro con un tap non deve essere possibile.
 * **Eliminazione permanente, non solo "annulla"**: dal feed "Fatto di recente" di `/casa` ogni riga propria è cancellabile in ogni momento (icona cestino + `Dialog` di conferma, stesso pattern usato per l'eliminazione di una spesa), non solo nei secondi subito dopo la registrazione tramite il toast "Annulla". Stessa Server Action (`undoChoreLog`) per entrambi i percorsi.
 
-### 8. Kudos (`chore_kudos`, fase 2)
+### 10. Kudos (`chore_kudos`, fase 2)
 Reazione di un utente su una faccenda completata dall'altro → sezione 11 dello schema (migrazione fase 2).
 * **Proprietà**: `log_id` + `from_user_id` (PK composita — al massimo un kudos per utente per log: cambiare emoji aggiorna la riga, non la duplica), `emoji` (default `❤️`), `created_at`.
 * **Divieto di auto-kudos imposto da RLS**, non da un controllo client: la `WITH CHECK` della policy di insert/update confronta `from_user_id` con `done_by` del log referenziato via sottoquery.

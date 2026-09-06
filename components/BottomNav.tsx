@@ -7,6 +7,7 @@ import {
   Home,
   List,
   ArrowLeftRight,
+  ShoppingBasket,
   Sparkles,
 } from 'lucide-react'
 import { springLayout, springSnappy } from '@/lib/motion'
@@ -15,9 +16,14 @@ import { cn } from '@/lib/utils'
 // Statistiche vive nel menu dell'header (AppHeader), non qui: le faccende
 // sono l'interazione più frequente dell'app, il conguaglio la più rara — la
 // barra riflette la frequenza d'uso (docs/design-modulo-gestione-casa.md § 6).
+// La lista della spesa è dello stesso genere delle faccende (si apre più
+// volte al giorno, anche al supermercato con una mano sola), quindi sta qui e
+// non nel menu dell'header. Con cinque voci lo spazio per etichetta scende a
+// ~60px sui telefoni piccoli: da qui il testo a 11px e la pillola più stretta.
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/spese', label: 'Storico', icon: List },
+  { href: '/lista', label: 'Lista', icon: ShoppingBasket },
   { href: '/casa', label: 'Casa', icon: Sparkles },
   { href: '/conguaglio', label: 'Conguaglio', icon: ArrowLeftRight },
 ]
@@ -51,13 +57,14 @@ export function BottomNav() {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'relative flex h-full flex-col items-center justify-center gap-1 text-xs font-medium',
+                  'relative flex h-full flex-col items-center justify-center gap-1',
+                  'text-[11px] font-medium leading-none',
                   'transition-colors duration-200',
                   active ? 'text-foreground' : 'text-muted',
                 )}
               >
                 {/* Active indicator M3: pillola dietro la sola icona */}
-                <span className="relative flex h-8 w-14 items-center justify-center">
+                <span className="relative flex h-8 w-12 items-center justify-center">
                   {active && (
                     <motion.span
                       layoutId="nav-pill"

@@ -63,6 +63,7 @@ La struttura del progetto segue la convenzione standard di Next.js:
 * `lib/` → `lib/`: Utility di formattazione, funzioni di calcolo e client Supabase.
   * `supabase/` → `lib/supabase/`: Inizializzazione dei client Supabase per browser, server e service role.
   * `assistant/` → `lib/assistant/`: Motore condiviso dell'assistente IA (tool, system instruction, ciclo di tool calling), usato sia dalla chat nell'app sia dal bot Telegram.
+  * `shopping/` → `lib/shopping/`: Logica di dominio della lista della spesa (aggiunta, spunta, controllo scontrino con Gemini) e costanti del bucket degli scontrini. È condivisa da Server Action, assistente e webhook Telegram: accetta sempre un client Supabase esplicito.
   * `telegram/` → `lib/telegram/`: Configurazione, client dell'API Bot, formattazione dei messaggi, memoria conversazionale e testi delle notifiche.
 * `types/` → `types/`: Tipi TypeScript generati dal DB e costanti dell'applicazione.
 * `docs/` → `docs/`: Documentazione di progetto (schema SQL, log delle modifiche, requisiti).
@@ -85,6 +86,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/` → `app/(app)/page.tsx`: Dashboard principale con saldo, ultime 5 spese e le faccende più urgenti (`HomeChoreCard`).
 * `/spese` → `app/(app)/spese/page.tsx`: Storico completo delle spese con filtri avanzati.
 * `/spese/[id]` → `app/(app)/spese/[id]/page.tsx`: Dettaglio e modifica/eliminazione di una singola spesa.
+* `/lista` → `app/(app)/lista/page.tsx`: Lista della spesa — cosa manca in casa, raggruppato per tipo di prodotto, con controllo dello scontrino → `app/(app)/lista/ShoppingShell.tsx`.
 * `/casa` → `app/(app)/casa/page.tsx`: Modulo "Gestione casa" — faccende "Da fare", "Gesti" (cadenza libera) e feed "Fatto di recente", con registrazione in un tap → `components/chores/ChoreShell.tsx`.
 * `/casa/catalogo` → `app/(app)/casa/catalogo/page.tsx`: Gestione del catalogo delle faccende (creare, modificare, disattivare) → `app/(app)/casa/catalogo/CatalogoClient.tsx`. Raggiungibile dal menu dell'header, non dalla bottom nav.
 * `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio.
@@ -116,5 +118,6 @@ Caricano i dati direttamente sul server ed effettuano il rendering iniziale in H
 
 ### Client Components (`'use client'`)
 Gestiscono l'interattività e lo stato lato browser. Esempi:
+* `ShoppingShell.tsx` → `app/(app)/lista/ShoppingShell.tsx`: Gestisce filtri per categoria, spunta ottimistica con "Annulla" nel toast e le due sheet (form articolo, controllo scontrino).
 * `HomeShell.tsx` → `components/HomeShell.tsx`: Gestisce lo stato della modale ("Sheet") per l'inserimento rapido di una spesa e inserisce una spesa ottimistica ("Optimistic UI") nella lista prima del completamento della Server Action.
 * `ExpenseForm.tsx` → `app/(app)/spese/nuova/ExpenseForm.tsx`: Gestisce la selezione dinamica dei chip e i messaggi di validazione istantanei.

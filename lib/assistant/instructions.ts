@@ -1,6 +1,8 @@
 import { describeBalance } from '@/lib/balance'
 import {
   CATEGORY_LABELS,
+  SHOPPING_CATEGORY_LABELS,
+  SHOPPING_URGENCY_LABELS,
   SPLIT_LABELS,
   formatDate,
   formatEur,
@@ -9,7 +11,10 @@ import {
 import {
   getAllExpenses,
   getExpenseIdsWithAttachments,
+  getLastReceiptCheck,
+  getMissingSinceLastCheck,
   getOpenBalance,
+  getOpenShoppingItems,
   getProfiles,
   type QueryClient,
 } from '@/lib/queries'
@@ -18,8 +23,9 @@ import {
 export type AssistantChannel = 'app' | 'telegram'
 
 /**
- * Costruisce la system instruction iniettando profili, saldo corrente e l'elenco
- * completo delle spese (con marcatore per quelle che hanno allegati).
+ * Costruisce la system instruction iniettando profili, saldo corrente, l'elenco
+ * completo delle spese (con marcatore per quelle che hanno allegati) e la lista
+ * della spesa con l'esito dell'ultimo controllo scontrino.
  */
 export async function buildSystemInstruction(
   currentUserId: string,
@@ -27,11 +33,25 @@ export async function buildSystemInstruction(
 ): Promise<string> {
   const { db, channel = 'app' } = options
 
-  const [profiles, balance, expenses, attachmentExpenseIds] = await Promise.all([
+  const [
+    profiles,
+    balance,
+    expenses,
+    attachmentExpenseIds,
+    shoppingItems,
+    lastCheck,
+    missingSinceCheck,
+  ] = await Promise.all([
     getProfiles(db),
     getOpenBalance(db),
     getAllExpenses(db),
     getExpenseIdsWithAttachments(db),
+    // La lista non deve poter rompere l'assistente delle spese: se il modulo
+    // non e' ancora migrato sul database, il contesto perde una sezione e
+    // tutto il resto continua a funzionare.
+    getOpenShoppingItems(db).catch(() => []),
+    getLastReceiptCheck(db).catch(() => null),
+    getMissingSinceLastCheck(db).catch(() => []),
   ])
 
   const me = profiles.find((p) => p.id === currentUserId)
@@ -64,6 +84,34 @@ export async function buildSystemInstruction(
         })
         .join('\n')
     : '(nessuna spesa registrata)'
+
+  // Lista della spesa: elenco completo con gli id, così l'assistente può
+  // spuntare o togliere un articolo senza doverlo prima cercare con un tool.
+  const shoppingLines = shoppingItems.length
+    ? shoppingItems
+        .map((i) => {
+          const cat = SHOPPING_CATEGORY_LABELS[i.category] ?? i.category
+          const urg = SHOPPING_URGENCY_LABELS[i.urgency] ?? i.urgency
+          const qty = i.quantity ? ` | ${i.quantity}` : ''
+          const note = i.note ? ` | nota: ${i.note}` : ''
+          return `- [${i.id}] ${i.name}${qty} | ${cat} | ${urg}${note}`
+        })
+        .join('\n')
+    : '(la lista è vuota: non manca niente)'
+
+  const lastCheckLine = lastCheck?.checked_at
+    ? `Ultimo scontrino controllato: ${formatDate(lastCheck.checked_at)}` +
+      `${lastCheck.store_name ? ` da ${lastCheck.store_name}` : ''}` +
+      `${lastCheck.matched_count ? `, ha spuntato ${lastCheck.matched_count} articoli` : ''}.`
+    : 'Nessuno scontrino ancora controllato.'
+
+  const missingLine = missingSinceCheck.length
+    ? `Non comprati con l'ultimo scontrino (${missingSinceCheck.length}): ` +
+      missingSinceCheck.map((i) => i.name).filter(Boolean).join(', ') +
+      '.'
+    : lastCheck?.checked_at
+      ? 'Con l\'ultimo scontrino è stato preso tutto quello che era in lista.'
+      : ''
 
   return [
     'Sei l\'assistente IA di "Casa Nostra", un\'app con cui due conviventi gestiscono le spese di casa.',
@@ -107,6 +155,22 @@ export async function buildSystemInstruction(
     '- Una spesa "saldata" NON può essere eliminata: se lo stato è saldata, spiegalo all\'utente e non chiamare il tool.',
     '- PRIMA di chiamare il tool, RIEPILOGA quale spesa stai per eliminare (importo, descrizione, data) e chiedi conferma esplicita, perché l\'eliminazione è irreversibile e immediata: chiama delete_expense SOLO dopo un "sì"/"conferma" dell\'utente.',
     '- Dopo l\'eliminazione, conferma in modo naturale cosa hai eliminato. Non serve nessun link, la spesa non esiste più.',
+    '',
+    'LISTA DELLA SPESA (cosa manca in casa e va comprato). Formato: [id] nome | quantità | tipo di prodotto | urgenza.',
+    shoppingLines,
+    '',
+    'CONTROLLO SCONTRINO:',
+    lastCheckLine,
+    ...(missingLine ? [missingLine] : []),
+    '',
+    'USARE LA LISTA DELLA SPESA:',
+    '- La lista e le spese sono due cose diverse: la lista dice cosa COMPRARE, le spese dicono cosa è stato PAGATO. "Serve il latte" va in lista, non è una spesa.',
+    '- Per aggiungere prodotti usa add_shopping_items: non chiedere conferma, scegli tu il tipo di prodotto e metti insieme più prodotti in una sola chiamata.',
+    '- Per rispondere a "cosa manca?", "cosa devo comprare?", "cosa c\'è in lista?" usa l\'elenco qui sopra: non serve nessuno strumento.',
+    '- Quando l\'utente dice di aver comprato qualcosa, usa mark_shopping_bought con gli id degli articoli presi dall\'elenco.',
+    '- Per togliere un articolo che non serve più usa remove_shopping_items, ma prima riepiloga e chiedi conferma: quello viene eliminato, non spuntato.',
+    '- Se un prodotto che l\'utente vuole aggiungere è già in lista, dillo invece di aggiungerlo di nuovo.',
+    '- Per confrontare con la lista uno scontrino allegato a una spesa (📎scontrino) usa check_expense_receipt con l\'id della spesa.',
     ...(channel === 'telegram' ? TELEGRAM_INSTRUCTIONS : []),
   ].join('\n')
 }

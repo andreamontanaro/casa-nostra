@@ -60,7 +60,8 @@ runAssistant({
   apiKey,
   onText,          // testo del modello, man mano che arriva
   onAction,        // frase di stato prima dell'esecuzione di uno strumento
-  onExpenseCreated // notifica che una spesa è stata davvero registrata
+  onExpenseCreated, // notifica che una spesa è stata davvero registrata
+  onShoppingChanged // notifica che la lista della spesa è cambiata
 })
 ```
 
@@ -72,11 +73,15 @@ Il Route Handler dell'app traduce le callback nelle sentinelle dello stream; il 
 
 La system instruction viene compilata dinamicamente prima di interrogare Gemini, iniettando lo stato corrente dell'applicazione → `lib/assistant/instructions.ts`:
 
-* **Contesto Spese**:
+* **Contesto Spese e Lista**:
   - Elenco dei profili utenti autorizzati (display name e ID) con indicazione del reddito superiore.
   - Saldo netto complessivo corrente ricavato dalla vista SQL (`v_user_open_balance`).
   - La data odierna in formato ISO (es. `2026-06-13`).
   - L'elenco completo delle spese registrate con i relativi ID, date, importi, categorie, regole di suddivisione e l'indicazione visiva se contengono un allegato (`📎scontrino`).
+  - La **lista della spesa** aperta con gli ID di ogni articolo, tipo di prodotto, quantità e urgenza: così «cosa manca?» si risponde dal contesto, senza chiamare nessuno strumento, e spuntare un articolo non richiede prima di cercarlo.
+  - Data e negozio dell'**ultimo controllo scontrino** e la lista di ciò che non è stato comprato con quello scontrino (dalla vista `v_shopping_missing_since_last_check`).
+
+  Le query della lista sono avvolte in un `catch` che degrada a valore vuoto: se il modulo non è ancora migrato sul database, il contesto perde una sezione e l'assistente delle spese continua a funzionare.
 
 ---
 
@@ -109,6 +114,19 @@ Consente a Gemini di visionare e analizzare il file di uno scontrino → `lib/as
 
 ---
 
+### 3. Lista della spesa (`add_shopping_items`, `mark_shopping_bought`, `remove_shopping_items`)
+Strumenti di scrittura sulla lista → `lib/assistant/tools.ts`. A differenza dei tool delle spese, **non riscrivono la logica di dominio**: chiamano `lib/shopping/service.ts`, lo stesso modulo delle Server Action.
+* `add_shopping_items({ items: [{ name, category, quantity?, urgency?, note? }] })`: Aggiunge più prodotti in una chiamata sola. **Senza giro di conferma**, a differenza di `create_expense`: aggiungere alla lista non muove soldi e si annulla con un tap, la conferma sarebbe solo un ostacolo fra «serve il latte» e il latte in lista. I doppioni non fanno fallire il resto: vengono riportati e basta.
+* `mark_shopping_bought({ item_ids })`: Spunta gli articoli comprati (`bought_via = 'assistente'`).
+* `remove_shopping_items({ item_ids })`: Toglie articoli **senza** segnarli comprati. Questo sì con conferma esplicita: elimina.
+
+### 4. Controllo scontrino di una spesa (`check_expense_receipt`)
+Confronta con la lista lo scontrino allegato a una spesa (`📎scontrino`), spunta ciò che risulta comprato e riporta cosa resta → `lib/assistant/run.ts`. Scarica l'allegato da `expense-attachments` e passa i byte a `runReceiptCheck`, che ne salva una copia nel bucket dei controlli.
+
+Le tre operazioni di scrittura sulla lista, quando vanno a buon fine, invocano `onShoppingChanged`: nel Route Handler dell'app diventa la stessa `REFRESH_SENTINEL` usata per le spese, così la pagina sotto la chat si aggiorna.
+
+---
+
 ## Endpoint `/api/telegram/webhook`
 
 Riceve gli aggiornamenti del bot Telegram: notifiche in uscita a parte, è il punto d'ingresso dell'assistente nel gruppo dei due conviventi.
@@ -127,8 +145,15 @@ Riceve gli aggiornamenti del bot Telegram: notifiche in uscita a parte, è il pu
 1. Verifica secret, chat e condizioni di intervento (comando, menzione, risposta al bot, chat privata, oppure sempre con `TELEGRAM_REPLY_MODE=all`).
 2. Risponde subito `200 {"ok":true}` e prosegue in `after()`: Gemini può impiegare decine di secondi e Telegram ripeterebbe l'update.
 3. `claimUpdate` inserisce il messaggio in `telegram_messages` — l'`update_id` UNIQUE fa da lucchetto contro i doppioni.
-4. Comandi diretti (`/id`, `/aiuto`, `/saldo`, `/conguaglio`) rispondono senza interpellare Gemini.
+4. Comandi diretti (`/id`, `/aiuto`, `/saldo`, `/conguaglio`, `/lista`, `/scontrino`) rispondono senza interpellare Gemini.
 5. Altrimenti: `sendChatAction('typing')`, ricostruzione della cronologia, `runAssistant({ channel: 'telegram' })`, conversione Markdown → HTML e invio nel gruppo.
+
+### Scontrini inviati in chat
+Il webhook accetta anche foto e documenti (immagini o PDF), non solo testo:
+* La **didascalia** di una foto vale quanto il testo, quindi decide come sempre `shouldReply`: nel gruppo serve una menzione, un comando o una risposta al bot (in chat privata basta la foto; con `TELEGRAM_REPLY_MODE=all` basta la foto anche nel gruppo). È la scelta che tiene il bot silenzioso davanti a una foto qualsiasi nel gruppo.
+* `/scontrino` **in risposta** a una foto già inviata la ripesca da `reply_to_message`: è la strada per controllare uno scontrino mandato prima.
+* Delle più risoluzioni in cui Telegram consegna una foto si prende sempre la più grande: su uno scontrino la differenza fra leggere `LT PS 1L` e non leggere niente è tutta lì.
+* Il file si scarica con `downloadTelegramFile` (`getFile` + endpoint dei file) e finisce in `runReceiptCheck` con `source = 'telegram'`. La risposta nel gruppo elenca spuntati e mancanti; **nessuna notifica separata**, sarebbe la stessa cosa detta due volte nella stessa chat.
 
 ### Payload di risposta
 Sempre `200` con `{"ok": true}` quando l'update è accettato (elaborato o volutamente ignorato): a Telegram interessa solo che la consegna sia andata a buon fine. Gli esiti per l'utente arrivano come messaggi nella chat, non nel corpo della risposta.

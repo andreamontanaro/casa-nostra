@@ -10,11 +10,32 @@ import {
   type QueryClient,
 } from '@/lib/queries'
 import { sendTelegramMessage } from '@/lib/telegram/api'
-import { expenseCreatedMessage, expenseDeletedMessage, notifyTelegram } from '@/lib/telegram/notify'
+import {
+  expenseCreatedMessage,
+  expenseDeletedMessage,
+  notifyTelegram,
+  receiptCheckMessage,
+  urgentItemAddedMessage,
+} from '@/lib/telegram/notify'
+import {
+  addShoppingItems,
+  deleteShoppingItem,
+  markShoppingItemsBought,
+  runReceiptCheck,
+  type ShoppingItemInput,
+} from '@/lib/shopping/service'
 import { Constants } from '@/types/database'
 import type { Database } from '@/types/database'
 import { buildSystemInstruction, type AssistantChannel } from './instructions'
-import { createExpenseTool, deleteExpenseTool, getAttachmentsTool } from './tools'
+import {
+  addShoppingItemsTool,
+  checkExpenseReceiptTool,
+  createExpenseTool,
+  deleteExpenseTool,
+  getAttachmentsTool,
+  markShoppingBoughtTool,
+  removeShoppingItemsTool,
+} from './tools'
 
 export const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest'
 export const MAX_TURNS = 5
@@ -49,6 +70,8 @@ export interface RunAssistantOptions {
   onExpenseCreated?: (expenseId: string) => void
   /** Invocata quando l'assistente ha davvero eliminato una spesa. */
   onExpenseDeleted?: (expenseId: string) => void
+  /** Invocata quando l'assistente ha modificato la lista della spesa. */
+  onShoppingChanged?: () => void
 }
 
 /**
@@ -74,7 +97,19 @@ export async function runAssistant(options: RunAssistantOptions): Promise<string
 
   const config = {
     systemInstruction,
-    tools: [{ functionDeclarations: [getAttachmentsTool, createExpenseTool, deleteExpenseTool] }],
+    tools: [
+      {
+        functionDeclarations: [
+          getAttachmentsTool,
+          createExpenseTool,
+          deleteExpenseTool,
+          addShoppingItemsTool,
+          markShoppingBoughtTool,
+          removeShoppingItemsTool,
+          checkExpenseReceiptTool,
+        ],
+      },
+    ],
     temperature: 0.4,
   }
 
@@ -171,6 +206,61 @@ export async function runAssistant(options: RunAssistantOptions): Promise<string
           },
         })
         if (result.ok) options.onExpenseDeleted?.(result.expenseId)
+      } else if (call.name === 'add_shopping_items') {
+        const result = await addShoppingItemsFromTool(
+          call.args as Record<string, unknown> | undefined,
+          userId,
+          { db, channel },
+        )
+        responseParts.push({
+          functionResponse: {
+            id: call.id,
+            name: 'add_shopping_items',
+            response: result.ok ? { result: result.summary } : { error: result.error },
+          },
+        })
+        if (result.ok) options.onShoppingChanged?.()
+      } else if (call.name === 'mark_shopping_bought') {
+        const result = await markShoppingBoughtFromTool(
+          call.args as Record<string, unknown> | undefined,
+          userId,
+          { db },
+        )
+        responseParts.push({
+          functionResponse: {
+            id: call.id,
+            name: 'mark_shopping_bought',
+            response: result.ok ? { result: result.summary } : { error: result.error },
+          },
+        })
+        if (result.ok) options.onShoppingChanged?.()
+      } else if (call.name === 'remove_shopping_items') {
+        const result = await removeShoppingItemsFromTool(
+          call.args as Record<string, unknown> | undefined,
+          { db },
+        )
+        responseParts.push({
+          functionResponse: {
+            id: call.id,
+            name: 'remove_shopping_items',
+            response: result.ok ? { result: result.summary } : { error: result.error },
+          },
+        })
+        if (result.ok) options.onShoppingChanged?.()
+      } else if (call.name === 'check_expense_receipt') {
+        const result = await checkExpenseReceiptFromTool(
+          call.args as Record<string, unknown> | undefined,
+          userId,
+          { db, channel, apiKey },
+        )
+        responseParts.push({
+          functionResponse: {
+            id: call.id,
+            name: 'check_expense_receipt',
+            response: result.ok ? { result: result.summary } : { error: result.error },
+          },
+        })
+        if (result.ok) options.onShoppingChanged?.()
       } else {
         responseParts.push({
           functionResponse: {
@@ -456,4 +546,205 @@ async function deleteExpenseFromTool(
     `del ${expense.expense_date}.`
 
   return { ok: true, expenseId, summary }
+}
+
+// ------------------------------------------------------------
+// Strumenti della lista della spesa
+// ------------------------------------------------------------
+// A differenza delle spese, qui i tool non riscrivono la logica di dominio:
+// chiamano `lib/shopping/service`, lo stesso modulo usato dalle Server Action
+// dell'app. Le funzioni qui sotto fanno solo la traduzione argomenti → dominio
+// → frase di risposta per il modello.
+
+type ToolResult = { ok: true; summary: string } | { ok: false; error: string }
+
+/** Invalida le pagine della lista dopo una modifica fatta dall'assistente. */
+function revalidateShopping() {
+  try {
+    revalidatePath('/lista')
+  } catch (e) {
+    console.error('[assistant] revalidate della lista fallita:', e)
+  }
+}
+
+async function addShoppingItemsFromTool(
+  args: Record<string, unknown> | undefined,
+  currentUserId: string,
+  options: { db?: QueryClient; channel: AssistantChannel },
+): Promise<ToolResult> {
+  const { db, channel } = options
+  const raw = Array.isArray(args?.items) ? (args.items as Record<string, unknown>[]) : []
+  const items: ShoppingItemInput[] = raw
+    .map((i) => ({
+      name: String(i?.name ?? '').trim(),
+      category: i?.category as string | undefined,
+      quantity: i?.quantity as string | undefined,
+      urgency: i?.urgency as string | undefined,
+      note: i?.note as string | undefined,
+    }))
+    .filter((i) => i.name)
+
+  if (items.length === 0) return { ok: false, error: 'Nessun prodotto da aggiungere.' }
+
+  const supabase = db ?? (await createClient())
+  const result = await addShoppingItems(supabase, currentUserId, items)
+
+  if (result.added.length === 0 && result.duplicates.length === 0) {
+    return { ok: false, error: 'Errore durante il salvataggio degli articoli.' }
+  }
+
+  revalidateShopping()
+
+  // Come nell'app, nel gruppo finisce solo l'urgenza vera. Su Telegram non si
+  // notifica affatto: la risposta dell'assistente è già nella chat di entrambi.
+  if (channel === 'app') {
+    const profiles = await getProfiles(db).catch(() => [])
+    const actorName =
+      profiles.find((p) => p.id === currentUserId)?.display_name ?? 'Assistente'
+    for (const item of result.added) {
+      if (item.urgency === 'alta') {
+        notifyTelegram(urgentItemAddedMessage(actorName, item.name, null))
+      }
+    }
+  }
+
+  const parts: string[] = []
+  if (result.added.length > 0) {
+    parts.push(`Aggiunti alla lista: ${result.added.map((i) => i.name).join(', ')}.`)
+  }
+  if (result.duplicates.length > 0) {
+    parts.push(`Già in lista (non aggiunti): ${result.duplicates.join(', ')}.`)
+  }
+  if (result.failed.length > 0) {
+    parts.push(`Non salvati per un errore: ${result.failed.join(', ')}.`)
+  }
+
+  return { ok: true, summary: parts.join(' ') }
+}
+
+async function markShoppingBoughtFromTool(
+  args: Record<string, unknown> | undefined,
+  currentUserId: string,
+  options: { db?: QueryClient },
+): Promise<ToolResult> {
+  const ids = (Array.isArray(args?.item_ids) ? args.item_ids : [])
+    .map((id) => String(id ?? '').trim())
+    .filter(Boolean)
+
+  if (ids.length === 0) return { ok: false, error: 'Nessun articolo da spuntare.' }
+
+  const supabase = options.db ?? (await createClient())
+  const result = await markShoppingItemsBought(supabase, currentUserId, ids, 'assistente')
+  if (!result.ok) return { ok: false, error: result.error }
+
+  if (result.names.length === 0) {
+    return {
+      ok: false,
+      error: 'Nessuno di questi articoli era ancora in lista: forse era già stato spuntato.',
+    }
+  }
+
+  revalidateShopping()
+  return { ok: true, summary: `Segnati come comprati: ${result.names.join(', ')}.` }
+}
+
+async function removeShoppingItemsFromTool(
+  args: Record<string, unknown> | undefined,
+  options: { db?: QueryClient },
+): Promise<ToolResult> {
+  const ids = (Array.isArray(args?.item_ids) ? args.item_ids : [])
+    .map((id) => String(id ?? '').trim())
+    .filter(Boolean)
+
+  if (ids.length === 0) return { ok: false, error: 'Nessun articolo da togliere.' }
+
+  const supabase = options.db ?? (await createClient())
+
+  // Si leggono i nomi prima di cancellare: dopo non esistono più e la risposta
+  // all'utente resterebbe un elenco di UUID.
+  const { data: rows } = await supabase
+    .from('shopping_items')
+    .select('id, name')
+    .in('id', ids)
+
+  const removed: string[] = []
+  for (const row of rows ?? []) {
+    const result = await deleteShoppingItem(supabase, row.id)
+    if (result.ok) removed.push(row.name)
+  }
+
+  if (removed.length === 0) return { ok: false, error: 'Non ho trovato quegli articoli in lista.' }
+
+  revalidateShopping()
+  return { ok: true, summary: `Tolti dalla lista: ${removed.join(', ')}.` }
+}
+
+/**
+ * Controllo scontrino su una ricevuta già allegata a una spesa. Stessa logica
+ * della Server Action `checkExpenseReceiptAction`, ma con il client esplicito:
+ * su Telegram non c'è sessione da cui prendere i permessi.
+ */
+async function checkExpenseReceiptFromTool(
+  args: Record<string, unknown> | undefined,
+  currentUserId: string,
+  options: { db?: QueryClient; channel: AssistantChannel; apiKey: string },
+): Promise<ToolResult> {
+  const { db, channel, apiKey } = options
+  const expenseId = String(args?.expense_id ?? '').trim()
+  if (!expenseId) return { ok: false, error: 'Id della spesa mancante.' }
+
+  const supabase = db ?? (await createClient())
+
+  const attachments = await getExpenseAttachments(expenseId, db).catch(() => [])
+  const receipt = attachments[0]
+  if (!receipt) return { ok: false, error: 'Questa spesa non ha nessuno scontrino allegato.' }
+
+  const { data: blob, error } = await supabase.storage
+    .from(ATTACHMENTS_BUCKET)
+    .download(receipt.storage_path)
+  if (error || !blob) return { ok: false, error: 'Non sono riuscito a leggere l\'allegato.' }
+
+  const result = await runReceiptCheck({
+    db: supabase,
+    userId: currentUserId,
+    apiKey,
+    model: MODEL,
+    source: 'spesa',
+    fileName: receipt.file_name,
+    mimeType: receipt.mime_type,
+    bytes: new Uint8Array(await blob.arrayBuffer()),
+  })
+
+  if (!result.ok) return { ok: false, error: result.error }
+
+  revalidateShopping()
+  // Sul canale Telegram la risposta dell'assistente è già nel gruppo: una
+  // notifica in più direbbe due volte la stessa cosa.
+  if (channel === 'app') notifyTelegram(receiptCheckMessage(result))
+
+  return { ok: true, summary: describeReceiptCheck(result) }
+}
+
+/** Riassunto testuale di un controllo, da dare in pasto al modello. */
+function describeReceiptCheck(check: {
+  storeName: string | null
+  receiptTotal: number | null
+  matched: { name: string }[]
+  missing: { name: string; quantity: string | null }[]
+}): string {
+  const parts = [
+    check.storeName ? `Scontrino di ${check.storeName}.` : 'Scontrino controllato.',
+    check.receiptTotal !== null ? `Totale letto: ${formatEur(check.receiptTotal)}.` : '',
+    check.matched.length > 0
+      ? `Spuntati dalla lista (${check.matched.length}): ${check.matched
+          .map((m) => m.name)
+          .join(', ')}.`
+      : 'Nessun articolo della lista riconosciuto sullo scontrino.',
+    check.missing.length > 0
+      ? `Restano da comprare (${check.missing.length}): ${check.missing
+          .map((m) => (m.quantity ? `${m.name} (${m.quantity})` : m.name))
+          .join(', ')}.`
+      : 'La lista è vuota: preso tutto.',
+  ]
+  return parts.filter(Boolean).join(' ')
 }

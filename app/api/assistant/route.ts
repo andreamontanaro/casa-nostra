@@ -59,6 +59,9 @@ export async function POST(request: Request) {
           // Spesa creata o eliminata: segnala al client di rinfrescare la pagina sottostante.
           onExpenseCreated: () => write(REFRESH_SENTINEL),
           onExpenseDeleted: () => write(REFRESH_SENTINEL),
+          // Anche la lista della spesa vive sotto la chat: se l'assistente la
+          // cambia, la pagina sotto deve aggiornarsi come per le spese.
+          onShoppingChanged: () => write(REFRESH_SENTINEL),
         })
         controller.close()
       } catch {
