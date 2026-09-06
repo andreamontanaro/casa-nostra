@@ -289,6 +289,10 @@ async function handleReceiptPhoto(params: {
     fileName: media.fileName || file.fileName,
     mimeType: media.mimeType ?? file.mimeType,
     bytes: file.bytes,
+    // Chi manda lo scontrino nel gruppo si aspetta che la spesa risulti, non
+    // di doverla ribattere nell'app: la si registra con le opzioni di default
+    // e chi ha mandato la foto come pagante.
+    createExpense: true,
   })
 
   if (!result.ok) {
@@ -296,7 +300,13 @@ async function handleReceiptPhoto(params: {
     return
   }
 
-  await reply(receiptCheckMessage(result))
+  // Il saldo si rilegge dopo l'eventuale spesa, così la cifra nel messaggio è
+  // già quella nuova.
+  const balance = result.expense?.created
+    ? await getOpenBalance(db).catch(() => [])
+    : undefined
+
+  await reply(receiptCheckMessage({ ...result, balance }))
   await pruneHistory(db)
 }
 
@@ -405,8 +415,11 @@ async function handleMessage(params: {
         [
           '🧾 <b>Controllo scontrino</b>',
           '',
-          'Mandami la foto dello scontrino (o rispondi <code>/scontrino</code> a una foto già inviata): ',
-          'la confronto con la lista della spesa, spunto quello che avete comprato e vi dico cosa manca ancora.',
+          'Mandami la foto dello scontrino (o rispondi <code>/scontrino</code> a una foto già inviata):',
+          '• registro la spesa con le opzioni di default (totale e data dello scontrino, pagata da chi manda la foto, divisione predefinita) e ci allego la foto;',
+          '• la confronto con la lista della spesa, spunto quello che avete comprato e vi dico cosa manca ancora.',
+          '',
+          '<i>La spesa resta modificabile dall\'app, ed è saltata se il totale non si legge o se ce n\'è già una identica in quella data.</i>',
         ].join('\n'),
       )
       return
@@ -487,7 +500,7 @@ function helpMessage(): string {
     '• «cosa manca?» — la lista aggiornata',
     '',
     '🧾 <b>Scontrini</b>',
-    'Mandami la foto di uno scontrino (menzionandomi, se siamo in gruppo) oppure rispondi <code>/scontrino</code> a una foto: la confronto con la lista, spunto cosa avete comprato e vi dico cosa manca ancora.',
+    'Mandami la foto di uno scontrino (menzionandomi, se siamo in gruppo) oppure rispondi <code>/scontrino</code> a una foto: <b>registro la spesa</b> con le opzioni di default, la confronto con la lista, spunto cosa avete comprato e vi dico cosa manca ancora.',
     '',
     '<b>Comandi</b>',
     '/saldo — saldo corrente',

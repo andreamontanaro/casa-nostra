@@ -61,6 +61,7 @@ La struttura del progetto segue la convenzione standard di Next.js:
 * `components/` → `components/`: Componenti React riutilizzabili.
   * `ui/` → `components/ui/`: Elementi UI di base (Card, Button, Dialog, ecc.).
 * `lib/` → `lib/`: Utility di formattazione, funzioni di calcolo e client Supabase.
+  * `nav.ts` → `lib/nav.ts`: Unica definizione delle destinazioni dell'app. Il menu dell'header le elenca tutte, la barra in basso ne mostra un sottoinsieme (`BOTTOM_NAV_HREFS`): tenerle in un file solo evita che le due navigazioni divergano quando arriva una schermata nuova.
   * `supabase/` → `lib/supabase/`: Inizializzazione dei client Supabase per browser, server e service role.
   * `assistant/` → `lib/assistant/`: Motore condiviso dell'assistente IA (tool, system instruction, ciclo di tool calling), usato sia dalla chat nell'app sia dal bot Telegram.
   * `shopping/` → `lib/shopping/`: Logica di dominio della lista della spesa (aggiunta, spunta, controllo scontrino con Gemini) e costanti del bucket degli scontrini. È condivisa da Server Action, assistente e webhook Telegram: accetta sempre un client Supabase esplicito.
@@ -89,8 +90,8 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/lista` → `app/(app)/lista/page.tsx`: Lista della spesa — cosa manca in casa, raggruppato per tipo di prodotto, con controllo dello scontrino → `app/(app)/lista/ShoppingShell.tsx`.
 * `/casa` → `app/(app)/casa/page.tsx`: Modulo "Gestione casa" — faccende "Da fare", "Gesti" (cadenza libera) e feed "Fatto di recente", con registrazione in un tap → `components/chores/ChoreShell.tsx`.
 * `/casa/catalogo` → `app/(app)/casa/catalogo/page.tsx`: Gestione del catalogo delle faccende (creare, modificare, disattivare) → `app/(app)/casa/catalogo/CatalogoClient.tsx`. Raggiungibile dal menu dell'header, non dalla bottom nav.
-* `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio.
-* `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu dell'header (non dalla bottom nav, a favore di `/casa`: vedi `08-patterns.md`).
+* `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio. Raggiungibile dal menu dell'header e dalla CTA "Conguaglia" in home, non dalla bottom nav (è l'azione più rara: vedi `08-patterns.md`).
+* `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu dell'header (non dalla bottom nav: vedi `08-patterns.md`).
 * `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password, collegamento dell'account Telegram).
 
 ---

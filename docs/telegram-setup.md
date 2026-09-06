@@ -173,14 +173,20 @@ Esempi:
 
 L'assistente chiede **sempre** una conferma esplicita prima di scrivere una spesa nel database: nel gruppo la conferma può darla chiunque dei due, quindi vale la stessa fiducia reciproca che c'è nell'app. Per la lista della spesa no: aggiungere un prodotto non muove soldi e si toglie con un tap, quindi il bot lo fa e basta.
 
-### Controllare uno scontrino dalla chat
+### Mandare uno scontrino: spesa registrata e lista aggiornata
 
-Manda nel gruppo la foto dello scontrino (o il PDF): il bot la confronta con la lista della spesa, spunta quello che avete comprato e risponde con quello che manca ancora.
+Manda nel gruppo la foto dello scontrino (o il PDF). Il bot fa due cose in un colpo solo: **registra la spesa** con le opzioni di default e **confronta lo scontrino con la lista della spesa**, spuntando quello che avete comprato.
 
 ```
 🧾 Scontrino controllato — Esselunga
 
 Totale letto: 43,20 €
+
+💸 Spesa registrata
+🛒 43,20 € — Spesa da Esselunga
+Spesa · 60 / 40 · pagata da Andrea · 6 settembre 2026 · 📎 scontrino allegato
+
+📊 Giulia deve 60,00 € ad Andrea
 
 ✅ Spuntati 4
 • Latte
@@ -192,13 +198,34 @@ Totale letto: 43,20 €
 • Carta igienica (1 pacco) ❗
 ```
 
+Le "opzioni di default" della spesa sono quelle che proporrebbe il form dell'app:
+
+| Campo | Valore |
+|---|---|
+| Importo | il totale letto sullo scontrino |
+| Data | la data dello scontrino, o oggi se non si legge |
+| Descrizione | «Spesa da \<negozio\>» |
+| Categoria | dedotta dallo scontrino (supermercato → Spesa, ferramenta → Manutenzione, altrimenti Altro) |
+| Divisione | quella predefinita per la categoria: 50/50 su affitto e viaggi, 60/40 sul resto |
+| Pagata da | chi ha mandato la foto |
+| Allegato | la foto stessa, così si rivede dal dettaglio della spesa |
+
+Resta tutto modificabile dall'app: il link «Apri la spesa» nel messaggio porta dritto lì.
+
+La spesa **non** viene creata in due casi, e il messaggio lo dice sempre:
+
+* il **totale non si legge** sulla foto — senza importo non c'è spesa da registrare;
+* esiste **già una spesa dello stesso importo in quella data** — quasi sempre è lo stesso scontrino mandato due volte, e una spesa doppia falserebbe il saldo. Se erano davvero due spese, aggiungi la seconda dall'app.
+
 Quando il bot guarda la foto dipende dalla stessa regola delle risposte:
 
 * con `TELEGRAM_REPLY_MODE=mention` (default), nel gruppo serve una **didascalia** che lo menzioni (`@casa_nostra_bot`) oppure una risposta `/scontrino` a una foto già inviata — così una foto qualsiasi nel gruppo non fa partire un controllo;
 * in **chat privata** con il bot basta mandare la foto;
 * con `TELEGRAM_REPLY_MODE=all` basta mandarla anche nel gruppo.
 
-Di ogni foto viene usata la risoluzione più alta che Telegram consegna: su uno scontrino la differenza fra leggere `LT PS 1L` e non leggere niente è tutta lì. La foto viene conservata nel bucket privato `shopping-receipts` come traccia del controllo, e lo stesso controllo si può fare dall'app (`Lista → Controlla uno scontrino`).
+Di ogni foto viene usata la risoluzione più alta che Telegram consegna: su uno scontrino la differenza fra leggere `LT PS 1L` e non leggere niente è tutta lì. La foto viene conservata nel bucket privato `shopping-receipts` come traccia del controllo.
+
+Lo stesso controllo si può fare dall'app (`Lista → Controlla uno scontrino`), ma **lì la spesa non viene creata in automatico**: nell'app il form della spesa è a un tap di distanza, e registrarla di nascosto sarebbe una sorpresa; su Telegram, dove il form non c'è, è quello che serve.
 
 ---
 
@@ -221,7 +248,8 @@ Di ogni foto viene usata la risoluzione più alta che Telegram consegna: su uno 
 | Risponde ai `/comandi` ma non alle menzioni | privacy mode del bot ancora attiva (passo 1.4) |
 | «Non ti riconosco» | account non collegato: Impostazioni → Telegram |
 | Nessuna notifica, ma il bot risponde | `TELEGRAM_CHAT_ID` assente o sbagliato (dev'essere l'id del gruppo, negativo) |
-| Manda la foto dello scontrino e non succede niente | Nel gruppo serve la menzione nella didascalia (o una risposta `/scontrino` alla foto): vedi «Controllare uno scontrino dalla chat» |
+| Manda la foto dello scontrino e non succede niente | Nel gruppo serve la menzione nella didascalia (o una risposta `/scontrino` alla foto): vedi «Mandare uno scontrino» |
+| Scontrino letto ma spesa non registrata | Il messaggio ne dà il motivo: totale illeggibile (rifai la foto più nitida) o spesa identica già presente in quella data |
 | «Il controllo scontrino non è configurato» | manca `GEMINI_API_KEY` nell'ambiente del deploy |
 | «Non trovo la lista» / errori sulla lista | la migrazione `2026-09-06_lista_spesa.sql` non è stata eseguita su Supabase |
 | `500` sul webhook | manca `TELEGRAM_WEBHOOK_SECRET` o `SUPABASE_SERVICE_ROLE_KEY` nell'ambiente del deploy |

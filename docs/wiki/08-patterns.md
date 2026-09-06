@@ -57,7 +57,9 @@ La barra in basso applica il pattern M3 active indicator → `components/BottomN
 
 **Composizione dei tab (settembre 2026, modulo "Gestione casa").** Quattro voci: Home · Storico · **Casa** · Conguaglio. Statistiche è stata spostata nel `Sheet` "Menu" dell'header (insieme a "Catalogo faccende") perché la barra riflette la *frequenza d'uso*, non l'importanza dei moduli: le faccende sono l'interazione più frequente dell'app, il conguaglio la più rara → `docs/design-modulo-gestione-casa.md § 6`.
 
-**Cinque voci (modulo "Lista della spesa").** Home · Storico · **Lista** · Casa · Conguaglio. La lista è dello stesso genere delle faccende — si apre più volte al giorno, spesso al supermercato con una mano sola — quindi per la stessa regola della frequenza sta nella barra e non nel menu. Cinque è il massimo previsto da M3: lo spazio per etichetta scende a ~60px sui telefoni piccoli, da cui il testo a 11px e la pillola a `w-12` invece di `w-14`.
+**Navigazione attuale: menu completo + barra ridotta.** Il menu hamburger in alto a sinistra (`AppHeader`) è la **mappa dell'app** — elenca tutte le schermate, ognuna con una riga di spiegazione e l'evidenza di quella corrente — mentre la barra in basso è un **accesso rapido** alle quattro che si aprono più volte al giorno: Home · Storico · **Lista** · Casa. Il conguaglio è nel menu insieme a Statistiche, Catalogo faccende e Impostazioni: è l'azione più rara dell'app (`docs/design-modulo-gestione-casa.md § 6`), e la barra riflette la frequenza d'uso, non la mappa. La conseguenza pratica è che un modulo nuovo entra nel menu senza costringere a spostare qualcos'altro, e la barra non cresce oltre le quattro voci (a cinque le etichette scendono sotto i 60px sui telefoni piccoli e vanno rimpicciolite).
+
+Voci, ordine ed etichette corte stanno tutti in `lib/nav.ts`, con `activeNavHref()` che sceglie la voce attiva come href più lungo che è prefisso del percorso — così `/casa/catalogo` illumina "Catalogo faccende" nel menu e il tab "Casa" nella barra.
 
 ---
 

@@ -153,7 +153,8 @@ Il webhook accetta anche foto e documenti (immagini o PDF), non solo testo:
 * La **didascalia** di una foto vale quanto il testo, quindi decide come sempre `shouldReply`: nel gruppo serve una menzione, un comando o una risposta al bot (in chat privata basta la foto; con `TELEGRAM_REPLY_MODE=all` basta la foto anche nel gruppo). È la scelta che tiene il bot silenzioso davanti a una foto qualsiasi nel gruppo.
 * `/scontrino` **in risposta** a una foto già inviata la ripesca da `reply_to_message`: è la strada per controllare uno scontrino mandato prima.
 * Delle più risoluzioni in cui Telegram consegna una foto si prende sempre la più grande: su uno scontrino la differenza fra leggere `LT PS 1L` e non leggere niente è tutta lì.
-* Il file si scarica con `downloadTelegramFile` (`getFile` + endpoint dei file) e finisce in `runReceiptCheck` con `source = 'telegram'`. La risposta nel gruppo elenca spuntati e mancanti; **nessuna notifica separata**, sarebbe la stessa cosa detta due volte nella stessa chat.
+* Il file si scarica con `downloadTelegramFile` (`getFile` + endpoint dei file) e finisce in `runReceiptCheck` con `source = 'telegram'` e `createExpense: true`: chi manda lo scontrino nel gruppo si aspetta che la spesa risulti, non di doverla ribattere nell'app (dettagli e casi di rinuncia in `03-services.md`).
+* La risposta nel gruppo riporta la spesa registrata (con saldo aggiornato e link per modificarla), gli articoli spuntati e quelli che mancano ancora; **nessuna notifica separata**, sarebbe la stessa cosa detta due volte nella stessa chat.
 
 ### Payload di risposta
 Sempre `200` con `{"ok": true}` quando l'update è accettato (elaborato o volutamente ignorato): a Telegram interessa solo che la consegna sia andata a buon fine. Gli esiti per l'utente arrivano come messaggi nella chat, non nel corpo della risposta.

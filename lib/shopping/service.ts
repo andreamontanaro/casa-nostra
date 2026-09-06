@@ -4,6 +4,7 @@ import { getOpenShoppingItems } from '@/lib/queries'
 import { Constants } from '@/types/database'
 import type { Database, Json } from '@/types/database'
 import { RECEIPTS_BUCKET, buildReceiptPath, isAcceptedReceiptMime } from './receipts'
+import { createExpenseFromReceipt, type ReceiptExpenseOutcome } from './receipt-expense'
 
 export type ShoppingCategory = Database['public']['Enums']['shopping_category']
 export type ShoppingUrgency = Database['public']['Enums']['shopping_urgency']
@@ -11,6 +12,7 @@ export type BoughtVia = 'app' | 'assistente' | 'scontrino'
 export type ReceiptSource = 'app' | 'telegram' | 'spesa'
 
 export const SHOPPING_CATEGORIES = Constants.public.Enums.shopping_category
+const EXPENSE_CATEGORIES = Constants.public.Enums.expense_category
 export const SHOPPING_URGENCIES = Constants.public.Enums.shopping_urgency
 
 /** Violazione dell'indice unico sugli articoli aperti (stesso nome due volte). */
@@ -243,6 +245,8 @@ export interface ReceiptCheckOk {
   missing: { id: string; name: string; quantity: string | null; urgency: ShoppingUrgency }[]
   /** Righe dello scontrino che non corrispondono a nessun articolo in lista. */
   extraLines: string[]
+  /** Esito della registrazione automatica della spesa (solo se richiesta). */
+  expense?: ReceiptExpenseOutcome
 }
 
 export type ReceiptCheckResult = ReceiptCheckOk | { ok: false; error: string }
@@ -258,6 +262,13 @@ interface ReceiptCheckParams {
   bytes: Uint8Array
   /** Modello Gemini da usare per la lettura. */
   model: string
+  /**
+   * Registra anche la spesa corrispondente allo scontrino, con le opzioni di
+   * default (vedi `createExpenseFromReceipt`). Attivo sul canale Telegram:
+   * chi manda la foto nel gruppo si aspetta che la spesa risulti, non di
+   * doverla ribattere nell'app.
+   */
+  createExpense?: boolean
 }
 
 /**
@@ -327,10 +338,24 @@ export async function runReceiptCheck(params: ReceiptCheckParams): Promise<Recei
     return { ok: false, error: 'Errore durante la registrazione del controllo. Riprova.' }
   }
 
+  // La spesa si registra dopo il controllo, mai prima: se qualcosa va storto
+  // qui, lo scontrino risulta comunque confrontato con la lista.
+  const expense = params.createExpense
+    ? await createExpenseFromReceipt(db, userId, {
+        amount: reading.receiptTotal,
+        storeName: reading.storeName,
+        receiptDate: reading.receiptDate,
+        category: reading.expenseCategory,
+        bytes,
+        mimeType,
+      })
+    : undefined
+
   // Le righe che il modello ha collegato a un articolo non sono "in più".
   const matchedLines = new Set(matched.map((m) => m.receiptLine.toLowerCase()))
 
   return {
+    expense,
     ok: true,
     checkId,
     storeName: reading.storeName,
@@ -351,6 +376,8 @@ interface ReceiptReading {
   storeName: string | null
   receiptDate: string | null
   receiptTotal: number | null
+  /** Categoria di spesa proposta per lo scontrino nel suo insieme. */
+  expenseCategory: string | null
   lines: ReceiptLine[]
   matches: { itemId: string; receiptLine: string }[]
 }
@@ -392,7 +419,8 @@ async function readReceipt(params: {
                 'LISTA DELLA SPESA (formato: [id] nome (quantità)):',
                 listBlock,
                 '',
-                'Restituisci anche negozio, data (YYYY-MM-DD) e totale dello scontrino se sono leggibili, altrimenti lasciali vuoti.',
+                'Restituisci anche negozio, data (YYYY-MM-DD) e totale pagato dello scontrino se sono leggibili, altrimenti lasciali vuoti.',
+                `In expense_category indica di che tipo di spesa si tratta nel complesso, scegliendo fra: ${EXPENSE_CATEGORIES.join(', ')}. Un supermercato o un alimentari è "spesa_alimentare"; una ferramenta o un negozio di materiali è "manutenzione"; una farmacia o qualsiasi altra cosa è "altro".`,
               ].join('\n'),
             },
           ],
@@ -407,6 +435,7 @@ async function readReceipt(params: {
             store_name: { type: Type.STRING },
             receipt_date: { type: Type.STRING },
             total: { type: Type.NUMBER },
+            expense_category: { type: Type.STRING, enum: [...EXPENSE_CATEGORIES] },
             lines: {
               type: Type.ARRAY,
               items: {
@@ -445,6 +474,7 @@ async function readReceipt(params: {
       store_name?: string
       receipt_date?: string
       total?: number
+      expense_category?: string
       lines?: { name?: string; quantity?: string; price?: number }[]
       matches?: { item_id?: string; receipt_line?: string }[]
     }
@@ -463,6 +493,7 @@ async function readReceipt(params: {
       ok: true,
       storeName: cleanOptional(parsed.store_name),
       receiptDate: /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : null,
+      expenseCategory: cleanOptional(parsed.expense_category),
       receiptTotal:
         Number.isFinite(parsed.total) && (parsed.total as number) > 0
           ? Math.round((parsed.total as number) * 100) / 100

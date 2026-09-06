@@ -190,6 +190,64 @@ export interface ReceiptCheckSummary {
   receiptTotal: number | null
   matched: { name: string }[]
   missing: { name: string; quantity: string | null; urgency: string }[]
+  /** Spesa registrata in automatico dallo scontrino, o il motivo per cui no. */
+  expense?: ReceiptExpenseSummary
+  /** Saldo aggiornato dopo l'eventuale spesa registrata. */
+  balance?: BalanceRow[]
+}
+
+export type ReceiptExpenseSummary =
+  | {
+      created: true
+      expense: {
+        id: string
+        amount: number
+        description: string
+        category: string
+        splitRule: string
+        payerName: string
+        expenseDate: string
+        attached: boolean
+      }
+    }
+  | { created: false; reason: 'no-total' }
+  | { created: false; reason: 'duplicate'; existingId: string; description: string }
+  | { created: false; reason: 'error' }
+
+/**
+ * Righe sulla spesa registrata (o non registrata) a partire dallo scontrino.
+ * Dice sempre cosa è successo: una spesa creata in automatico che l'utente
+ * non vede è peggio di una spesa non creata.
+ */
+function receiptExpenseLines(summary: ReceiptExpenseSummary): string[] {
+  if (summary.created) {
+    const e = summary.expense
+    const icon = CATEGORY_ICON[e.category] ?? '📦'
+    const category = CATEGORY_LABELS[e.category] ?? e.category
+    const split = SPLIT_LABELS[e.splitRule] ?? e.splitRule
+    return [
+      '💸 <b>Spesa registrata</b>',
+      `${icon} <b>${formatEur(e.amount)}</b> — ${escapeHtml(e.description)}`,
+      `<i>${escapeHtml(category)} · ${escapeHtml(split)} · pagata da ${escapeHtml(
+        e.payerName,
+      )} · ${formatDate(e.expenseDate)}${e.attached ? ' · 📎 scontrino allegato' : ''}</i>`,
+    ]
+  }
+
+  switch (summary.reason) {
+    case 'no-total':
+      return [
+        '💸 <i>Spesa non registrata: non sono riuscito a leggere il totale dello scontrino.</i>',
+      ]
+    case 'duplicate':
+      return [
+        `💸 <i>Spesa non registrata: ce n'era già una dello stesso importo in quella data («${escapeHtml(
+          summary.description,
+        )}»). Se erano due, aggiungila dall'app.</i>`,
+      ]
+    default:
+      return ['💸 <i>Spesa non registrata: qualcosa è andato storto. Aggiungila dall\'app.</i>']
+  }
 }
 
 /** Esito del controllo scontrino: cosa è stato spuntato e cosa manca ancora. */
@@ -202,6 +260,20 @@ export function receiptCheckMessage(check: ReceiptCheckSummary): string {
 
   if (check.receiptTotal !== null) {
     lines.push(`<i>Totale letto: ${formatEur(check.receiptTotal)}</i>`, '')
+  }
+
+  if (check.expense) {
+    lines.push(...receiptExpenseLines(check.expense), '')
+    if (check.expense.created && check.balance) {
+      lines.push(balanceLine(check.balance), '')
+    }
+  }
+
+  // Lista vuota in partenza: dire "nessun articolo riconosciuto" e "preso
+  // tutto" nello stesso messaggio suonerebbe come due risposte in disaccordo.
+  if (check.matched.length === 0 && check.missing.length === 0) {
+    lines.push('🛒 <i>La lista della spesa era vuota: niente da spuntare.</i>')
+    return finishReceiptMessage(check, lines)
   }
 
   if (check.matched.length > 0) {
@@ -229,8 +301,17 @@ export function receiptCheckMessage(check: ReceiptCheckSummary): string {
     lines.push('', '🎉 La lista è vuota: preso tutto.')
   }
 
-  const link = appLink('/lista', 'Apri la lista della spesa')
-  if (link) lines.push('', link)
+  return finishReceiptMessage(check, lines)
+}
+
+/** Chiude il messaggio del controllo con i link all'app. */
+function finishReceiptMessage(check: ReceiptCheckSummary, lines: string[]): string {
+  const links = [
+    check.expense?.created ? appLink(`/spese/${check.expense.expense.id}`, 'Apri la spesa') : '',
+    appLink('/lista', 'Apri la lista della spesa'),
+  ].filter(Boolean)
+  if (links.length > 0) lines.push('', links.join('  ·  '))
+
   return lines.join('\n')
 }
 

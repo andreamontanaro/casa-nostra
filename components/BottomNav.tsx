@@ -3,40 +3,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'motion/react'
-import {
-  Home,
-  List,
-  ArrowLeftRight,
-  ShoppingBasket,
-  Sparkles,
-} from 'lucide-react'
+import { BOTTOM_NAV_ITEMS, BOTTOM_NAV_LABELS, activeNavHref } from '@/lib/nav'
 import { springLayout, springSnappy } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
-// Statistiche vive nel menu dell'header (AppHeader), non qui: le faccende
-// sono l'interazione più frequente dell'app, il conguaglio la più rara — la
-// barra riflette la frequenza d'uso (docs/design-modulo-gestione-casa.md § 6).
-// La lista della spesa è dello stesso genere delle faccende (si apre più
-// volte al giorno, anche al supermercato con una mano sola), quindi sta qui e
-// non nel menu dell'header. Con cinque voci lo spazio per etichetta scende a
-// ~60px sui telefoni piccoli: da qui il testo a 11px e la pillola più stretta.
-const navItems = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/spese', label: 'Storico', icon: List },
-  { href: '/lista', label: 'Lista', icon: ShoppingBasket },
-  { href: '/casa', label: 'Casa', icon: Sparkles },
-  { href: '/conguaglio', label: 'Conguaglio', icon: ArrowLeftRight },
-]
-
+/**
+ * Accesso rapido alle quattro schermate che si aprono più volte al giorno.
+ * L'elenco completo delle sezioni sta nel menu dell'header: la barra riflette
+ * la frequenza d'uso, non la mappa dell'app — quindi non cresce quando
+ * arriva un modulo nuovo. Voci e ordine in `lib/nav.ts`.
+ */
 export function BottomNav() {
   const pathname = usePathname()
-
-  // Tab attivo: l'href più lungo che è prefisso del pathname corrente.
-  const activeHref = [...navItems]
-    .sort((a, b) => b.href.length - a.href.length)
-    .find(
-      (it) => pathname === it.href || pathname.startsWith(`${it.href}/`),
-    )?.href
+  const activeHref = activeNavHref(pathname, BOTTOM_NAV_ITEMS)
 
   return (
     <nav
@@ -49,7 +28,7 @@ export function BottomNav() {
       )}
     >
       <ul className="mx-auto flex h-16 w-full max-w-lg px-2">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {BOTTOM_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = href === activeHref
           return (
             <li key={href} className="relative flex-1">
@@ -57,14 +36,13 @@ export function BottomNav() {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'relative flex h-full flex-col items-center justify-center gap-1',
-                  'text-[11px] font-medium leading-none',
+                  'relative flex h-full flex-col items-center justify-center gap-1 text-xs font-medium',
                   'transition-colors duration-200',
                   active ? 'text-foreground' : 'text-muted',
                 )}
               >
                 {/* Active indicator M3: pillola dietro la sola icona */}
-                <span className="relative flex h-8 w-12 items-center justify-center">
+                <span className="relative flex h-8 w-14 items-center justify-center">
                   {active && (
                     <motion.span
                       layoutId="nav-pill"
@@ -80,7 +58,7 @@ export function BottomNav() {
                     <Icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />
                   </motion.span>
                 </span>
-                {label}
+                {BOTTOM_NAV_LABELS[href] ?? label}
               </Link>
             </li>
           )

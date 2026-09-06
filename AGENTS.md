@@ -84,6 +84,10 @@ Alcune linee guida concrete:
 
 **Input importo.** Su mobile usa `inputMode="decimal"` sull'input dell'importo per far apparire la tastiera numerica. Valida che sia un numero positivo con al massimo due decimali.
 
+## Navigazione
+
+Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* le schermate. La **barra in basso** è solo un accesso rapido alle quattro più frequenti (Home, Storico, Lista, Casa). Le voci di entrambe stanno in `lib/nav.ts`: aggiungendo una schermata va aggiunta lì, e finisce nel menu senza toccare la barra — la barra non cresce.
+
 ## Schermate principali
 
 Le quattro schermate del MVP, con una bottom navigation persistente che lega home, storico e conguaglio.
@@ -137,6 +141,7 @@ Il modulo `/lista` tiene traccia di cosa manca in casa: articoli con tipo di pro
 - **Aggiungere alla lista non chiede conferma**, né nell'app né via assistente: non muove soldi e si annulla con un tap. La conferma resta dove serve — eliminare un articolo, svuotare lo storico.
 - **Le notifiche Telegram della lista sono volutamente poche**: solo l'esito di un controllo scontrino e l'aggiunta di un articolo urgente. Notificare ogni prodotto renderebbe rumore anche le notifiche delle spese.
 - **Il riconoscimento dei prodotti sullo scontrino lo fa Gemini**, in una sola chiamata che legge l'immagine e la confronta con la lista. Gli id che il modello restituisce vengono sempre riverificati contro la lista reale prima di scrivere.
+- **Uno scontrino mandato su Telegram registra anche la spesa** (`lib/shopping/receipt-expense.ts`), con le opzioni di default del form: totale e data dello scontrino, pagante chi manda la foto, `DEFAULT_SPLIT` per la categoria, foto allegata alla spesa. Non succede per il controllo fatto dall'app, dove il form è a un tap di distanza. Non creare mai la spesa in silenzio: il messaggio deve sempre dire cosa è stato registrato o perché no (totale illeggibile, doppione dello stesso importo in quella data).
 
 ## Workflow di fine sessione
 

@@ -48,6 +48,22 @@ Azioni di supporto all'integrazione con il gruppo Telegram → `app/actions/tele
 4. Carica il file nel bucket `shopping-receipts` e chiama la RPC `register_receipt_check`, che in un'unica transazione registra il controllo e spunta gli articoli riconosciuti. Se la RPC fallisce, il file appena caricato viene rimosso: niente orfani nel bucket.
 5. Restituisce spuntati, mancanti e righe dello scontrino che non erano in lista.
 
+### Spesa automatica dallo scontrino (`lib/shopping/receipt-expense.ts`)
+
+Con l'opzione `createExpense` (attiva **solo sul canale Telegram**), dopo il controllo `runReceiptCheck` registra anche la spesa corrispondente allo scontrino → `createExpenseFromReceipt`. Non è un percorso con regole sue: è il form della spesa compilato in automatico con le opzioni di default dell'app.
+
+* **Importo e data**: quelli letti sullo scontrino; se la data non è leggibile, oggi.
+* **Categoria**: la propone il modello nella stessa lettura (campo `expense_category`, vincolato all'enum delle 7 categorie), con ripiego su `spesa_alimentare`.
+* **Divisione**: `DEFAULT_SPLIT[categoria]` — la stessa mappa che il form propone, quindi 50/50 su affitto e viaggi, 60/40 sul resto.
+* **Pagante**: chi ha mandato la foto.
+* **Allegato**: la stessa immagine viene allegata alla spesa (`expense_attachments`), così si rivede dal dettaglio e l'assistente può leggerla con `get_attachments`. Se il formato non è fra quelli accettati dagli allegati (il WEBP, per esempio) l'allegato si salta e la spesa resta: è un extra, non una condizione.
+
+Due casi in cui la spesa **non** viene creata, e il messaggio nel gruppo lo dice sempre:
+* **totale illeggibile** — senza importo non c'è spesa da registrare;
+* **doppione** — esiste già una spesa con lo stesso importo nella stessa data. Quasi certamente è lo stesso scontrino mandato due volte o già registrato a mano, e una spesa doppia falsa il saldo, che è l'invariante centrale dell'app. Il messaggio nomina la spesa esistente, così se davvero erano due si aggiunge dall'app.
+
+Una spesa creata in automatico che l'utente non vede sarebbe peggio di una spesa non creata: per questo il messaggio riporta *sempre* cosa è successo, con importo, divisione, pagante, saldo aggiornato e link alla spesa per modificarla.
+
 **Perché il riconoscimento lo fa il modello e non un confronto di stringhe**: sugli scontrini i prodotti sono abbreviati e storpiati (`LT PS PARM 1L` = latte parzialmente scremato, `POM PELATI` = pomodori pelati). Nessuna normalizzazione testuale regge il colpo, mentre il modello sta già leggendo l'immagine: chiedergli anche l'abbinamento non costa una chiamata in più.
 
 ---
