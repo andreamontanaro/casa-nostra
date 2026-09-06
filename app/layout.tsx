@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import NextTopLoader from 'nextjs-toploader'
 import { Toaster } from '@/lib/toast'
+import { KeyboardInsets } from '@/components/KeyboardInsets'
 import { THEME_COLOR_DARK, THEME_COLOR_LIGHT } from '@/lib/theme'
 import './globals.css'
 
@@ -31,6 +32,10 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  // Android/Chrome: la tastiera accorcia il layout viewport, così le barre in
+  // fondo e i campi restano sopra di essa senza calcoli. iOS lo ignora: lì ci
+  // pensa <KeyboardInsets> con --keyboard-inset.
+  interactiveWidget: 'resizes-content',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: THEME_COLOR_LIGHT },
     { media: '(prefers-color-scheme: dark)', color: THEME_COLOR_DARK },
@@ -47,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full bg-background text-foreground antialiased">
         <NextTopLoader color="var(--accent)" showSpinner={false} height={2} />
+        <KeyboardInsets />
         {children}
         <Toaster />
       </body>

@@ -73,9 +73,10 @@ Voci, ordine ed etichette corte stanno tutti in `lib/nav.ts`, con `activeNavHref
 
 ## Safe Area e Mobile Viewports
 
-* **Viewport Config**: `viewportFit: 'cover'` + `themeColor` light/dark da `lib/theme.ts` → `app/layout.tsx`.
+* **Viewport Config**: `viewportFit: 'cover'` + `interactiveWidget: 'resizes-content'` (tastiera su Android) + `themeColor` light/dark da `lib/theme.ts` → `app/layout.tsx`.
 * **Safe Area Top**: `AppHeader` e container principale con padding superiore sulla safe area → `app/(app)/layout.tsx`.
-* **Safe Area Bottom**: `BottomNav`, FAB e footer sticky dei form usano `env(safe-area-inset-bottom)`.
+* **Safe Area Bottom**: `BottomNav` e FAB usano `env(safe-area-inset-bottom)`; sheet, pannello assistente e footer sticky dei form usano `var(--safe-bottom)`, che è la stessa cosa ma si azzera con la tastiera aperta.
+* **Tastiera software**: `components/KeyboardInsets.tsx` (montato nel layout radice) misura con `visualViewport` quanto della finestra copre la tastiera — `innerHeight - height - offsetTop`, soglia 120px — e lo pubblica in `--keyboard-inset` su `<html>`, insieme a `data-keyboard="open"`. Serve perché su iOS la tastiera non accorcia il layout viewport: un `fixed bottom-0` (e un'altezza in `svh`) finirebbe sotto la tastiera. Chi vive in fondo allo schermo usa `bottom-[var(--keyboard-inset)]` e sottrae l'inset dalla propria altezza massima; `.hide-on-keyboard` nasconde bottom nav e FAB mentre si scrive; alla comparsa della tastiera il campo a fuoco viene centrato con `scrollIntoView`.
 
 ---
 

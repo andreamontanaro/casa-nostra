@@ -252,7 +252,7 @@ export function ExpenseForm({
         className={cn(
           "mt-5",
           isSheet &&
-            "sticky bottom-0 z-10 -mx-4 mt-4 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+            "sticky bottom-0 z-10 -mx-4 mt-4 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,var(--safe-bottom))]",
         )}
       >
         <Button

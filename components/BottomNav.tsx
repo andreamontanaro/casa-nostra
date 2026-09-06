@@ -20,7 +20,9 @@ export function BottomNav() {
   return (
     <nav
       className={cn(
-        'fixed bottom-0 inset-x-0 z-40 border-t border-border',
+        // Nascosta mentre si scrive: sotto la tastiera è invisibile su iOS e
+        // su Android ruberebbe 4rem al form (vedi .hide-on-keyboard).
+        'fixed bottom-0 inset-x-0 z-40 border-t border-border hide-on-keyboard',
         'bg-surface/70 backdrop-blur-xl backdrop-saturate-150',
         'supports-[backdrop-filter]:bg-surface/65',
         'pb-[env(safe-area-inset-bottom)]',

@@ -14,7 +14,8 @@ interface SheetProps {
   // mentre il corpo scrolla, anche con tastiera aperta.
   footer?: React.ReactNode
   // `auto` = altezza guidata dal contenuto (bottom-sheet); `full` = quasi
-  // schermo intero (form amount-first).
+  // schermo intero (form amount-first). In entrambi i casi l'altezza si
+  // accorcia da sola quando compare la tastiera.
   size?: 'auto' | 'full'
   className?: string
 }
@@ -43,12 +44,16 @@ export function Sheet({
         />
         <DialogPrimitive.Content
           className={cn(
-            'fixed inset-x-0 bottom-0 z-50 flex flex-col',
+            // La sheet si appoggia sopra la tastiera invece di finirci sotto:
+            // --keyboard-inset vale 0 quando è chiusa (vedi <KeyboardInsets>).
+            'fixed inset-x-0 bottom-[var(--keyboard-inset)] z-50 flex flex-col',
             'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom',
             'duration-300',
-            isFull ? 'top-3 h-[calc(100svh-0.75rem)]' : 'max-h-[92svh]',
+            isFull
+              ? 'top-3'
+              : 'max-h-[calc(92svh-var(--keyboard-inset))]',
             className,
           )}
         >
@@ -85,7 +90,7 @@ export function Sheet({
           <div
             className={cn(
               'min-h-0 flex-1 overflow-y-auto px-1',
-              !footer && 'pb-[env(safe-area-inset-bottom)]',
+              !footer && 'pb-[var(--safe-bottom)]',
             )}
           >
             {children}
@@ -93,7 +98,7 @@ export function Sheet({
 
           {/* Footer sticky opzionale */}
           {footer && (
-            <div className="shrink-0 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="shrink-0 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,var(--safe-bottom))]">
               {footer}
             </div>
           )}

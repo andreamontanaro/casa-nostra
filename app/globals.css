@@ -271,6 +271,27 @@
 
 /* ─── Base ───────────────────────────────────────────────────── */
 
+/* Tastiera software: `--keyboard-inset` è quanto della finestra è coperto
+   (0 quando è chiusa) ed è aggiornata da <KeyboardInsets>. `--safe-bottom` è
+   la safe area di fondo, che con la tastiera aperta non serve più: la home
+   indicator è dietro la tastiera. Chi sta in fondo allo schermo usa queste due
+   invece di `env(safe-area-inset-bottom)` da solo. */
+:root {
+  --keyboard-inset: 0px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+:root[data-keyboard="open"] {
+  --safe-bottom: 0px;
+}
+
+/* Elementi flottanti che non servono mentre si scrive: su iOS sono comunque
+   nascosti dalla tastiera, su Android (che accorcia il layout) ruberebbero
+   spazio al form. */
+:root[data-keyboard="open"] .hide-on-keyboard {
+  display: none;
+}
+
 html {
   background: var(--background);
 }
