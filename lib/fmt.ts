@@ -207,3 +207,70 @@ export function greetingForHour(hour: number): string {
   if (hour < 18) return 'Buon pomeriggio'
   return 'Buonasera'
 }
+
+
+// ------------------------------------------------------------
+// Modulo "Lista della spesa"
+// ------------------------------------------------------------
+
+export const SHOPPING_CATEGORY_LABELS: Record<string, string> = {
+  cibo: 'Cibo',
+  bevande: 'Bevande',
+  cura_casa: 'Cura della casa',
+  igiene_persona: 'Igiene personale',
+  farmacia: 'Farmacia',
+  casalinghi: 'Casalinghi',
+  altro: 'Altro',
+}
+
+export const SHOPPING_CATEGORY_ICON: Record<string, string> = {
+  cibo: '🍎',
+  bevande: '🥤',
+  cura_casa: '🧽',
+  igiene_persona: '🧴',
+  farmacia: '💊',
+  casalinghi: '🔌',
+  altro: '📦',
+}
+
+export const SHOPPING_URGENCY_LABELS: Record<string, string> = {
+  bassa: 'Quando capita',
+  media: 'Normale',
+  alta: 'Urgente',
+}
+
+/** Etichetta corta dell'urgenza, per i badge di riga dove lo spazio è poco. */
+export const SHOPPING_URGENCY_SHORT: Record<string, string> = {
+  bassa: 'Con calma',
+  media: 'Normale',
+  alta: 'Urgente',
+}
+
+// Solo l'urgenza alta ha un colore: se tutto è evidenziato, niente lo è.
+export const SHOPPING_URGENCY_CLASS: Record<string, string> = {
+  bassa: 'bg-surface-sunken text-muted',
+  media: 'bg-surface-sunken text-muted',
+  alta: 'bg-destructive/12 text-destructive dark:bg-destructive/20',
+}
+
+/** Ordine di visualizzazione delle categorie nella lista raggruppata. */
+export const SHOPPING_CATEGORY_ORDER = [
+  'cibo',
+  'bevande',
+  'cura_casa',
+  'igiene_persona',
+  'farmacia',
+  'casalinghi',
+  'altro',
+] as const
+
+/** «Comprato oggi», «ieri», o la data breve: sottotitolo dello storico. */
+export function formatBoughtWhen(iso: string | null): string {
+  if (!iso) return ''
+  const key = romeDateKey(iso)
+  const today = romeDateKey(new Date().toISOString())
+  const yesterday = romeDateKey(new Date(Date.now() - 86400000).toISOString())
+  if (key === today) return 'oggi'
+  if (key === yesterday) return 'ieri'
+  return formatDateShort(iso)
+}

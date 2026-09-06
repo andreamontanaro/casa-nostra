@@ -103,3 +103,75 @@ export async function sendTypingAction(chatId: string | number): Promise<void> {
   if (!config) return
   await callApi(config, 'sendChatAction', { chat_id: chatId, action: 'typing' })
 }
+
+export interface TelegramDownloadedFile {
+  bytes: Uint8Array
+  mimeType: string
+  fileName: string
+}
+
+// Le foto compresse di Telegram sono sempre JPEG, ma il getFile non lo dice:
+// il tipo si deduce dall'estensione del file_path, con JPEG come fallback.
+const MIME_BY_EXT: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+}
+
+/**
+ * Scarica un file inviato al bot (la foto di uno scontrino, tipicamente).
+ * Sono due chiamate: `getFile` restituisce un `file_path` temporaneo, poi il
+ * file si preleva dall'endpoint dei file. Non solleva: come per l'invio, un
+ * problema di rete verso Telegram non deve propagarsi nell'app.
+ *
+ * @returns i byte del file, o `null` se non è stato possibile scaricarlo.
+ */
+export async function downloadTelegramFile(
+  fileId: string,
+  fallbackName = 'scontrino.jpg',
+): Promise<TelegramDownloadedFile | null> {
+  const config = getTelegramConfig()
+  if (!config) return null
+
+  try {
+    const infoRes = await fetch(`${API_BASE}/bot${config.botToken}/getFile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_id: fileId }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: 'no-store',
+    })
+    const info = (await infoRes.json()) as {
+      ok?: boolean
+      result?: { file_path?: string }
+      description?: string
+    }
+    const filePath = info.result?.file_path
+    if (!infoRes.ok || !info.ok || !filePath) {
+      console.error('[telegram] getFile fallito:', info.description ?? `HTTP ${infoRes.status}`)
+      return null
+    }
+
+    // Il download può essere di qualche MB: timeout più largo dell'invio.
+    const fileRes = await fetch(`${API_BASE}/file/bot${config.botToken}/${filePath}`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS * 4),
+      cache: 'no-store',
+    })
+    if (!fileRes.ok) {
+      console.error('[telegram] download del file fallito:', `HTTP ${fileRes.status}`)
+      return null
+    }
+
+    const ext = filePath.split('.').pop()?.toLowerCase() ?? ''
+    return {
+      bytes: new Uint8Array(await fileRes.arrayBuffer()),
+      mimeType: MIME_BY_EXT[ext] ?? 'image/jpeg',
+      fileName: filePath.split('/').pop() || fallbackName,
+    }
+  } catch (e) {
+    console.error('[telegram] download del file non riuscito:', e)
+    return null
+  }
+}

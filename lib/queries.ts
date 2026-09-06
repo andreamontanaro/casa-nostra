@@ -314,3 +314,91 @@ export async function getCurrentChoreWeekStart(db?: QueryClient): Promise<string
   if (error) throw error
   return data
 }
+
+// ------------------------------------------------------------
+// Modulo "Lista della spesa"
+// ------------------------------------------------------------
+
+export type ShoppingItem = Tables<'shopping_items'> & {
+  added_by_profile: { display_name: string } | null
+  bought_by_profile: { display_name: string } | null
+}
+export type ShoppingLastCheck = Tables<'v_shopping_last_check'>
+export type ShoppingMissingItem = Tables<'v_shopping_missing_since_last_check'>
+
+// Literal, non concatenato: il tipo del select va inferito dalla stringa
+// esatta, e una concatenazione lo degrada a `string`.
+const SHOPPING_SELECT =
+  '*, added_by_profile:profiles!shopping_items_added_by_fkey(display_name), bought_by_profile:profiles!shopping_items_bought_by_fkey(display_name)' as const
+
+/**
+ * Articoli ancora da comprare, dai più urgenti ai meno. L'ordinamento è
+ * quello dell'enum `shopping_urgency` (bassa < media < alta), quindi
+ * decrescente mette "Urgente" in cima; a parità di urgenza vince chi è in
+ * lista da più tempo.
+ */
+export async function getOpenShoppingItems(db?: QueryClient): Promise<ShoppingItem[]> {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('shopping_items')
+    .select(SHOPPING_SELECT)
+    .is('bought_at', null)
+    .order('urgency', { ascending: false })
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data ?? []
+}
+
+/** Storico dei comprati, il più recente in cima. */
+export async function getBoughtShoppingItems(
+  limit = 20,
+  db?: QueryClient,
+): Promise<ShoppingItem[]> {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('shopping_items')
+    .select(SHOPPING_SELECT)
+    .not('bought_at', 'is', null)
+    .order('bought_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return data ?? []
+}
+
+/**
+ * L'ultimo scontrino controllato, o `null` se non ne è mai stato inviato uno.
+ * La vista fa già l'ordinamento e il LIMIT 1: qui non si ripete.
+ */
+export async function getLastReceiptCheck(
+  db?: QueryClient,
+): Promise<ShoppingLastCheck | null> {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('v_shopping_last_check')
+    .select('*')
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Cosa non è stato comprato con l'ultimo scontrino: articoli ancora aperti
+ * che erano già in lista quando lo scontrino è stato controllato. Calcolato
+ * dalla vista, non ricostruito confrontando date lato client.
+ */
+export async function getMissingSinceLastCheck(
+  db?: QueryClient,
+): Promise<ShoppingMissingItem[]> {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('v_shopping_missing_since_last_check')
+    .select('*')
+    .order('urgency', { ascending: false })
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data ?? []
+}

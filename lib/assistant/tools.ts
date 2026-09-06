@@ -107,3 +107,125 @@ export const deleteExpenseTool = {
     required: ['expense_id'],
   },
 }
+
+// ------------------------------------------------------------
+// Lista della spesa
+// ------------------------------------------------------------
+
+// Aggiungere alla lista non muove soldi e si annulla con un tap: a differenza
+// di create_expense non serve un giro di conferma, sarebbe solo un ostacolo
+// fra "serve il latte" e il latte in lista.
+export const addShoppingItemsTool = {
+  name: 'add_shopping_items',
+  description:
+    'Aggiunge uno o più prodotti alla LISTA DELLA SPESA (le cose che mancano in casa e vanno comprate). ' +
+    'Usalo quando l\'utente dice che manca qualcosa o chiede di segnare/aggiungere prodotti da comprare. ' +
+    'Non serve chiedere conferma: aggiungere alla lista è un\'azione leggera e reversibile. ' +
+    'Se l\'utente elenca più prodotti in un messaggio, aggiungili tutti con una sola chiamata. ' +
+    'category deve essere una tra: cibo, bevande, cura_casa, igiene_persona, farmacia, casalinghi, altro ' +
+    '(scegli tu la più adatta al tipo di prodotto, in dubbio "altro"). ' +
+    'urgency tra: bassa, media, alta — usa "alta" solo se l\'utente fa capire che serve subito, ' +
+    '"bassa" se dice che non c\'è fretta, altrimenti "media".',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      items: {
+        type: Type.ARRAY,
+        description: 'I prodotti da aggiungere alla lista.',
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: {
+              type: Type.STRING,
+              description: 'Nome del prodotto (es. "Latte parzialmente scremato").',
+            },
+            category: {
+              type: Type.STRING,
+              description:
+                'Tipo di prodotto: cibo | bevande | cura_casa | igiene_persona | farmacia | casalinghi | altro.',
+            },
+            quantity: {
+              type: Type.STRING,
+              description: 'Facoltativo: quantità in testo libero (es. "2 confezioni", "1 kg").',
+            },
+            urgency: {
+              type: Type.STRING,
+              description: 'Facoltativo: bassa | media | alta. Default: media.',
+            },
+            note: {
+              type: Type.STRING,
+              description: 'Facoltativo: nota breve (es. "quella senza lattosio").',
+            },
+          },
+          required: ['name', 'category'],
+        },
+      },
+      action: actionParam,
+    },
+    required: ['items'],
+  },
+}
+
+export const markShoppingBoughtTool = {
+  name: 'mark_shopping_bought',
+  description:
+    'Segna come GIÀ COMPRATI uno o più articoli della lista della spesa, identificati dal loro id ' +
+    'preso dall\'elenco LISTA DELLA SPESA. Usalo quando l\'utente dice di aver comprato qualcosa. ' +
+    'Gli articoli spuntati escono dalla lista e finiscono nello storico: l\'operazione si annulla dall\'app, ' +
+    'quindi non serve una conferma esplicita.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      item_ids: {
+        type: Type.ARRAY,
+        description: 'Gli id (UUID) esatti degli articoli comprati.',
+        items: { type: Type.STRING },
+      },
+      action: actionParam,
+    },
+    required: ['item_ids'],
+  },
+}
+
+export const removeShoppingItemsTool = {
+  name: 'remove_shopping_items',
+  description:
+    'Toglie definitivamente uno o più articoli dalla lista della spesa SENZA segnarli come comprati ' +
+    '(es. "non serve più", "l\'ho messo per sbaglio"). Prima di chiamarlo riepiloga cosa stai per ' +
+    'togliere e attendi una conferma esplicita: l\'articolo viene eliminato, non spostato nello storico.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      item_ids: {
+        type: Type.ARRAY,
+        description: 'Gli id (UUID) esatti degli articoli da togliere dalla lista.',
+        items: { type: Type.STRING },
+      },
+      action: actionParam,
+    },
+    required: ['item_ids'],
+  },
+}
+
+export const checkExpenseReceiptTool = {
+  name: 'check_expense_receipt',
+  description:
+    'Confronta lo scontrino allegato a una SPESA con la lista della spesa: spunta in automatico gli ' +
+    'articoli che risultano comprati e riporta quelli che restano da comprare. ' +
+    'Usalo quando l\'utente chiede di controllare uno scontrino già allegato a una spesa ' +
+    '(es. "controlla lo scontrino della spesa di ieri contro la lista"). ' +
+    'Funziona solo su spese che nell\'ELENCO SPESE hanno il marcatore 📎scontrino. ' +
+    'Per sapere invece cosa manca dall\'ultimo scontrino già controllato non serve nessun tool: ' +
+    'quel dato è già nel contesto.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      expense_id: {
+        type: Type.STRING,
+        description: 'L\'id (UUID) della spesa il cui scontrino va confrontato con la lista.',
+      },
+      action: actionParam,
+    },
+    required: ['expense_id'],
+  },
+}

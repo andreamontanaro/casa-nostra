@@ -487,6 +487,191 @@ export type Database = {
           },
         ]
       }
+      shopping_items: {
+        Row: {
+          added_by: string
+          bought_at: string | null
+          bought_by: string | null
+          bought_via: string | null
+          category: Database["public"]["Enums"]["shopping_category"]
+          created_at: string
+          id: string
+          name: string
+          note: string | null
+          quantity: string | null
+          receipt_check_id: string | null
+          receipt_line: string | null
+          updated_at: string
+          urgency: Database["public"]["Enums"]["shopping_urgency"]
+        }
+        Insert: {
+          added_by: string
+          bought_at?: string | null
+          bought_by?: string | null
+          bought_via?: string | null
+          category?: Database["public"]["Enums"]["shopping_category"]
+          created_at?: string
+          id?: string
+          name: string
+          note?: string | null
+          quantity?: string | null
+          receipt_check_id?: string | null
+          receipt_line?: string | null
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["shopping_urgency"]
+        }
+        Update: {
+          added_by?: string
+          bought_at?: string | null
+          bought_by?: string | null
+          bought_via?: string | null
+          category?: Database["public"]["Enums"]["shopping_category"]
+          created_at?: string
+          id?: string
+          name?: string
+          note?: string | null
+          quantity?: string | null
+          receipt_check_id?: string | null
+          receipt_line?: string | null
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["shopping_urgency"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_items_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_items_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_items_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_items_bought_by_fkey"
+            columns: ["bought_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_items_bought_by_fkey"
+            columns: ["bought_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_items_bought_by_fkey"
+            columns: ["bought_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_items_receipt_check_id_fkey"
+            columns: ["receipt_check_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_receipt_checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_items_receipt_check_id_fkey"
+            columns: ["receipt_check_id"]
+            isOneToOne: false
+            referencedRelation: "v_shopping_last_check"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_items_receipt_check_id_fkey"
+            columns: ["receipt_check_id"]
+            isOneToOne: false
+            referencedRelation: "v_shopping_missing_since_last_check"
+            referencedColumns: ["check_id"]
+          },
+        ]
+      }
+      shopping_receipt_checks: {
+        Row: {
+          checked_at: string
+          checked_by: string
+          file_name: string
+          id: string
+          lines: Json
+          matched_count: number
+          mime_type: string
+          receipt_date: string | null
+          receipt_total: number | null
+          size_bytes: number
+          source: string
+          storage_path: string
+          store_name: string | null
+        }
+        Insert: {
+          checked_at?: string
+          checked_by: string
+          file_name: string
+          id?: string
+          lines?: Json
+          matched_count?: number
+          mime_type: string
+          receipt_date?: string | null
+          receipt_total?: number | null
+          size_bytes: number
+          source: string
+          storage_path: string
+          store_name?: string | null
+        }
+        Update: {
+          checked_at?: string
+          checked_by?: string
+          file_name?: string
+          id?: string
+          lines?: Json
+          matched_count?: number
+          mime_type?: string
+          receipt_date?: string | null
+          receipt_total?: number | null
+          size_bytes?: number
+          source?: string
+          storage_path?: string
+          store_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       telegram_messages: {
         Row: {
           chat_id: number
@@ -646,6 +831,59 @@ export type Database = {
           },
         ]
       }
+      v_shopping_last_check: {
+        Row: {
+          checked_at: string | null
+          checked_by: string | null
+          checked_by_name: string | null
+          file_name: string | null
+          id: string | null
+          matched_count: number | null
+          receipt_date: string | null
+          receipt_total: number | null
+          source: string | null
+          storage_path: string | null
+          store_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      v_shopping_missing_since_last_check: {
+        Row: {
+          category: Database["public"]["Enums"]["shopping_category"] | null
+          check_checked_at: string | null
+          check_id: string | null
+          check_store_name: string | null
+          created_at: string | null
+          id: string | null
+          name: string | null
+          note: string | null
+          quantity: string | null
+          urgency: Database["public"]["Enums"]["shopping_urgency"] | null
+        }
+        Relationships: []
+      }
       v_user_open_balance: {
         Row: {
           display_name: string | null
@@ -661,6 +899,22 @@ export type Database = {
     Functions: {
       current_chore_week_start: { Args: never; Returns: string }
       is_authorized_user: { Args: never; Returns: boolean }
+      register_receipt_check: {
+        Args: {
+          p_checked_by?: string
+          p_file_name: string
+          p_item_ids?: string[]
+          p_lines?: Json
+          p_mime_type: string
+          p_receipt_date?: string
+          p_receipt_total?: number
+          p_size_bytes: number
+          p_source: string
+          p_storage_path: string
+          p_store_name?: string
+        }
+        Returns: string
+      }
       register_settlement: {
         Args: { p_expense_ids?: string[]; p_notes?: string }
         Returns: string
@@ -685,6 +939,15 @@ export type Database = {
         | "viaggi"
         | "altro"
       split_rule: "fifty_fifty" | "sixty_forty" | "custom"
+      shopping_category:
+        | "cibo"
+        | "bevande"
+        | "cura_casa"
+        | "igiene_persona"
+        | "farmacia"
+        | "casalinghi"
+        | "altro"
+      shopping_urgency: "bassa" | "media" | "alta"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -832,6 +1095,16 @@ export const Constants = {
         "altro",
       ],
       split_rule: ["fifty_fifty", "sixty_forty", "custom"],
+      shopping_category: [
+        "cibo",
+        "bevande",
+        "cura_casa",
+        "igiene_persona",
+        "farmacia",
+        "casalinghi",
+        "altro",
+      ],
+      shopping_urgency: ["bassa", "media", "alta"],
     },
   },
 } as const

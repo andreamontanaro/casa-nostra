@@ -37,6 +37,13 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 * `getExpenseIdsWithAttachments()` → `lib/queries.ts`: Restituisce l'insieme degli id di spesa che hanno almeno un allegato; l'assistente lo usa per marcare le spese con 📎scontrino nel contesto.
 * `getFrequentDescriptions(limit)` → `lib/queries.ts`: Recupera le ultime 200 descrizioni inserite ed effettua un conteggio delle frequenze in memoria sul server. Evita l'esposizione di funzioni RPC aggiuntive e fornisce i suggerimenti rapidi per il form.
 
+### Modulo Lista della Spesa (`queries.ts`)
+* `getOpenShoppingItems(db?)` → `lib/queries.ts`: Gli articoli ancora da comprare, ordinati per `urgency` decrescente e poi per anzianità. L'ordinamento è quello dell'enum (`bassa < media < alta`): non esiste una colonna di priorità.
+* `getBoughtShoppingItems(limit, db?)` → `lib/queries.ts`: Lo storico dei comprati, il più recente in cima.
+* `getLastReceiptCheck(db?)` / `getMissingSinceLastCheck(db?)` → `lib/queries.ts`: Leggono le due viste del controllo scontrino (sotto). Nessun ordinamento o filtro temporale ricostruito lato client.
+
+> Il `select` con i due join su `profiles` (`added_by_profile`, `bought_by_profile`) è una **stringa letterale** e non una concatenazione: `@supabase/supabase-js` inferisce il tipo del risultato dal literal, e concatenare due pezzi lo degrada a `string` facendo collassare il tipo su `GenericStringError[]`.
+
 ### Modulo Gestione Casa (`queries.ts`)
 * `getChoreStatus()` → `lib/queries.ts`: Interroga la vista `v_chore_status` (solo faccende attive), ordinata per `due_in_days` crescente (le più scadute per prime) e poi `sort_order`. È la query che alimenta la lista "Da fare" di `/casa` e la card compatta in home.
 * `getChoreTemplates()` → `lib/queries.ts`: L'intero catalogo, comprese le voci disattivate. Usata solo da `/casa/catalogo`.
@@ -95,6 +102,38 @@ Numero di kudos per settimana ISO, indipendentemente da chi li ha dati o ricevut
 
 ### 4. Faccende per area e per settimana (`v_chore_week_area`, rifinitura UI fase 2)
 Conteggio e XP per area (`chore_area`) e per settimana ISO, **a livello di casa**: raggruppa solo su `week_start` e `area`, senza `user_id`. È una scelta strutturale, non solo di query — un riepilogo "questa settimana in cucina X, in bagno Y" non deve poter diventare "questa settimana TU in cucina X, LUI in bagno Y": la vista non ha nemmeno la colonna per farlo. Alimenta i chip di riepilogo nella card "La nostra settimana" (`summarizeWeekAreas()` in `lib/chores/weekly.ts`).
+
+---
+
+## Stato della Lista della Spesa tramite Viste SQL
+
+Stessa regola del saldo e delle faccende: "cosa manca dall'ultimo scontrino" è stato derivato e sta sul database.
+
+### 1. Ultimo controllo (`v_shopping_last_check`)
+L'ultimo scontrino controllato (`ORDER BY checked_at DESC LIMIT 1` dentro la vista), con il nome di chi l'ha fatto. Nessuna riga se non ne è mai stato inviato uno → sezione 13 dello schema. Evita di ripetere ordinamento e limite in ogni chiamante (app, assistente, bot).
+
+### 2. Cosa non è stato comprato (`v_shopping_missing_since_last_check`)
+Articoli **ancora aperti** che erano **già in lista** quando l'ultimo scontrino è stato controllato:
+
+```sql
+FROM shopping_items i
+CROSS JOIN v_shopping_last_check c
+WHERE i.bought_at IS NULL AND i.created_at < c.checked_at
+```
+
+* Un articolo aggiunto **dopo** il controllo non è "non comprato": è semplicemente arrivato dopo, e il confronto su `created_at` lo esclude.
+* Il `CROSS JOIN` con una vista che può essere vuota non produce righe quando non c'è nessuno scontrino — che è esattamente la risposta giusta, senza bisogno di un caso speciale nel codice.
+
+---
+
+## Controllo Scontrino Transazionale (RPC)
+
+`register_receipt_check(...)` registra il controllo e spunta gli articoli riconosciuti in un'unica transazione → sezione 13 dello schema. `SECURITY DEFINER` come `register_settlement`.
+
+* **Chi firma il controllo**: `auth.uid()` quando c'è una sessione; `p_checked_by` **solo** se il ruolo del JWT è `service_role`, cioè il webhook Telegram, che non ha sessione. Un anonimo non ottiene nessuna identità e viene respinto, come un id che non corrisponde a un profilo.
+  > Il vincolo sul ruolo non è teorico: Supabase concede `EXECUTE` ad `anon` su ogni funzione nuova in `public` (default privileges), e un `REVOKE ALL … FROM public` non lo tocca. Senza quel controllo un chiamante anonimo poteva dichiararsi un profilo qualsiasi su una funzione `SECURITY DEFINER`, che scavalca RLS. Oltre al controllo nel corpo, `EXECUTE` è revocato esplicitamente ad `anon` — due difese, perché la prima è codice e la seconda è configurazione.
+* **Spunta solo gli articoli ancora aperti** (`AND bought_at IS NULL`): se nel frattempo l'altro ne ha spuntato uno a mano, la sua registrazione resta.
+* **`matched_count`** viene scritto contando le righe davvero aggiornate, non quelle proposte dal modello.
 
 ---
 

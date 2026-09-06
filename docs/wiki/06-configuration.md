@@ -58,6 +58,13 @@ Limiti configurati per il caricamento di scontrini e ricevute delle spese condiv
 * `MAX_SIZE_BYTES = 10 * 1024 * 1024` (10 MB): Dimensione massima consentita per ciascun file → `lib/attachments.ts#L6`.
 * `ACCEPTED_MIME = ['image/jpeg', 'image/png', 'application/pdf']`: Formati file accettati (JPG, PNG e file PDF) → `lib/attachments.ts#L8-L12`.
 
+### Scontrini della Lista della Spesa (`shopping_receipt_checks`)
+Limiti del controllo scontrino → `lib/shopping/receipts.ts`:
+* `RECEIPTS_BUCKET = 'shopping-receipts'`: Bucket privato, **separato** da quello degli allegati delle spese: uno scontrino controllato non è l'allegato di una spesa, e cancellare una spesa non deve portarsi via la prova di un controllo.
+* `MAX_RECEIPT_SIZE_BYTES = 10 * 1024 * 1024` (10 MB).
+* `ACCEPTED_RECEIPT_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']`: WEBP in più rispetto agli allegati, perché è quello che producono alcune fotocamere Android.
+* **Pathing**: `YYYY/MM/{uuid}.ext` — raggruppare per mese tiene navigabile il bucket dal pannello Supabase senza interrogare il database.
+
 ### Assistente IA Chat (`/api/assistant`)
 Parametri di esecuzione dell'assistente, condivisi tra la chat nell'app e il bot Telegram → `lib/assistant/run.ts`, `app/api/assistant/route.ts`:
 * `MAX_TURNS = 5` → `lib/assistant/run.ts`: Numero massimo di turni interni di chiamata a funzione che l'assistente IA può risolvere in una singola richiesta HTTP prima di forzare l'uscita (previene loop infiniti di tool-calling).

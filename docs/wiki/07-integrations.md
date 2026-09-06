@@ -17,12 +17,16 @@ L'intera persistenza, l'autenticazione degli utenti e la gestione dei file binar
 * **Sicurezza (RLS)**: Row Level Security è abilitata su tutte le tabelle. La funzione SQL `is_authorized_user()` verifica che l'UUID di `auth.uid()` esista in `public.profiles` prima di consentire le letture/scritture → `docs/casa_nostra_schema.sql#L226-L234`.
 
 ### 3. File Storage (Buckets)
-L'applicazione integra un bucket privato di Supabase Storage:
+L'applicazione integra due bucket privati di Supabase Storage:
 
 * **Bucket `expense-attachments`** → `lib/attachments.ts#L3`:
-  - **Uso**: Conserva immagini e PDF delle ricevute/scontrini.
+  - **Uso**: Conserva immagini e PDF delle ricevute/scontrini allegati a una spesa.
   - **Pathing**: `expense_id/{uuid}.ext` → `lib/attachments.ts#L58-L61`.
   - **Accesso**: I file sono privati. Per la visualizzazione nel client o per l'assistente, viene generato un URL firmato temporaneo (1 ora) sul server → `lib/queries.ts#L76-L81`.
+* **Bucket `shopping-receipts`** → `lib/shopping/receipts.ts`:
+  - **Uso**: Conserva la foto (o il PDF) di ogni scontrino confrontato con la lista della spesa.
+  - **Pathing**: `YYYY/MM/{uuid}.ext`.
+  - **Perché separato**: il controllo scontrino sopravvive alla spesa. Quando lo scontrino arriva da un allegato di una spesa (`source = 'spesa'`) se ne salva una copia qui, così eliminare la spesa non cancella la prova del controllo.
 
 ---
 

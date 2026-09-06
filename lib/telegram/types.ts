@@ -15,12 +15,35 @@ export interface TelegramApiChat {
   title?: string
 }
 
+/** Una delle dimensioni in cui Telegram consegna una foto. */
+export interface TelegramPhotoSize {
+  file_id: string
+  file_unique_id: string
+  width: number
+  height: number
+  file_size?: number
+}
+
+/** File inviato come documento (es. lo scontrino in PDF, o una foto "senza compressione"). */
+export interface TelegramApiDocument {
+  file_id: string
+  file_unique_id: string
+  file_name?: string
+  mime_type?: string
+  file_size?: number
+}
+
 export interface TelegramApiMessage {
   message_id: number
   from?: TelegramApiUser
   chat: TelegramApiChat
   date: number
   text?: string
+  /** Didascalia di foto e documenti: per il bot vale quanto `text`. */
+  caption?: string
+  /** Stesse foto in piu' risoluzioni, dalla piu' piccola alla piu' grande. */
+  photo?: TelegramPhotoSize[]
+  document?: TelegramApiDocument
   reply_to_message?: TelegramApiMessage
 }
 

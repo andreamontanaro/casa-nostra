@@ -1,6 +1,14 @@
 import { after } from 'next/server'
 import { describeBalance, type BalanceRow } from '@/lib/balance'
-import { CATEGORY_ICON, CATEGORY_LABELS, SPLIT_LABELS, formatDate, formatEur } from '@/lib/fmt'
+import {
+  CATEGORY_ICON,
+  CATEGORY_LABELS,
+  SHOPPING_CATEGORY_ICON,
+  SHOPPING_CATEGORY_LABELS,
+  SPLIT_LABELS,
+  formatDate,
+  formatEur,
+} from '@/lib/fmt'
 import { getTelegramConfig, isTelegramConfigured } from './config'
 import { escapeHtml } from './format'
 import { sendTelegramMessage } from './api'
@@ -166,4 +174,200 @@ function appLink(path: string, label: string): string {
   const config = getTelegramConfig()
   if (!config?.siteUrl) return ''
   return `<a href="${config.siteUrl}${path}">${escapeHtml(label)}</a>`
+}
+
+// ------------------------------------------------------------
+// Lista della spesa
+// ------------------------------------------------------------
+
+/**
+ * Forma minima del risultato di un controllo scontrino. Dichiarata qui invece
+ * di importare il tipo da `lib/shopping/service` per non trascinare l'SDK di
+ * Gemini nel grafo di chi vuole solo comporre un messaggio.
+ */
+export interface ReceiptCheckSummary {
+  storeName: string | null
+  receiptTotal: number | null
+  matched: { name: string }[]
+  missing: { name: string; quantity: string | null; urgency: string }[]
+  /** Spesa registrata in automatico dallo scontrino, o il motivo per cui no. */
+  expense?: ReceiptExpenseSummary
+  /** Saldo aggiornato dopo l'eventuale spesa registrata. */
+  balance?: BalanceRow[]
+}
+
+export type ReceiptExpenseSummary =
+  | {
+      created: true
+      expense: {
+        id: string
+        amount: number
+        description: string
+        category: string
+        splitRule: string
+        payerName: string
+        expenseDate: string
+        attached: boolean
+      }
+    }
+  | { created: false; reason: 'no-total' }
+  | { created: false; reason: 'duplicate'; existingId: string; description: string }
+  | { created: false; reason: 'error' }
+
+/**
+ * Righe sulla spesa registrata (o non registrata) a partire dallo scontrino.
+ * Dice sempre cosa è successo: una spesa creata in automatico che l'utente
+ * non vede è peggio di una spesa non creata.
+ */
+function receiptExpenseLines(summary: ReceiptExpenseSummary): string[] {
+  if (summary.created) {
+    const e = summary.expense
+    const icon = CATEGORY_ICON[e.category] ?? '📦'
+    const category = CATEGORY_LABELS[e.category] ?? e.category
+    const split = SPLIT_LABELS[e.splitRule] ?? e.splitRule
+    return [
+      '💸 <b>Spesa registrata</b>',
+      `${icon} <b>${formatEur(e.amount)}</b> — ${escapeHtml(e.description)}`,
+      `<i>${escapeHtml(category)} · ${escapeHtml(split)} · pagata da ${escapeHtml(
+        e.payerName,
+      )} · ${formatDate(e.expenseDate)}${e.attached ? ' · 📎 scontrino allegato' : ''}</i>`,
+    ]
+  }
+
+  switch (summary.reason) {
+    case 'no-total':
+      return [
+        '💸 <i>Spesa non registrata: non sono riuscito a leggere il totale dello scontrino.</i>',
+      ]
+    case 'duplicate':
+      return [
+        `💸 <i>Spesa non registrata: ce n'era già una dello stesso importo in quella data («${escapeHtml(
+          summary.description,
+        )}»). Se erano due, aggiungila dall'app.</i>`,
+      ]
+    default:
+      return ['💸 <i>Spesa non registrata: qualcosa è andato storto. Aggiungila dall\'app.</i>']
+  }
+}
+
+/** Esito del controllo scontrino: cosa è stato spuntato e cosa manca ancora. */
+export function receiptCheckMessage(check: ReceiptCheckSummary): string {
+  const header = check.storeName
+    ? `🧾 <b>Scontrino controllato</b> — ${escapeHtml(check.storeName)}`
+    : '🧾 <b>Scontrino controllato</b>'
+
+  const lines = [header, '']
+
+  if (check.receiptTotal !== null) {
+    lines.push(`<i>Totale letto: ${formatEur(check.receiptTotal)}</i>`, '')
+  }
+
+  if (check.expense) {
+    lines.push(...receiptExpenseLines(check.expense), '')
+    if (check.expense.created && check.balance) {
+      lines.push(balanceLine(check.balance), '')
+    }
+  }
+
+  // Lista vuota in partenza: dire "nessun articolo riconosciuto" e "preso
+  // tutto" nello stesso messaggio suonerebbe come due risposte in disaccordo.
+  if (check.matched.length === 0 && check.missing.length === 0) {
+    lines.push('🛒 <i>La lista della spesa era vuota: niente da spuntare.</i>')
+    return finishReceiptMessage(check, lines)
+  }
+
+  if (check.matched.length > 0) {
+    lines.push(
+      `✅ <b>Spuntati ${check.matched.length}</b>`,
+      check.matched.map((m) => `• ${escapeHtml(m.name)}`).join('\n'),
+    )
+  } else {
+    lines.push('✅ Nessun articolo della lista riconosciuto sullo scontrino.')
+  }
+
+  if (check.missing.length > 0) {
+    lines.push(
+      '',
+      `🛒 <b>Manca ancora ${check.missing.length}</b>`,
+      check.missing
+        .map(
+          (m) =>
+            `• ${escapeHtml(m.name)}${m.quantity ? ` <i>(${escapeHtml(m.quantity)})</i>` : ''}` +
+            `${m.urgency === 'alta' ? ' ❗' : ''}`,
+        )
+        .join('\n'),
+    )
+  } else {
+    lines.push('', '🎉 La lista è vuota: preso tutto.')
+  }
+
+  return finishReceiptMessage(check, lines)
+}
+
+/** Chiude il messaggio del controllo con i link all'app. */
+function finishReceiptMessage(check: ReceiptCheckSummary, lines: string[]): string {
+  const links = [
+    check.expense?.created ? appLink(`/spese/${check.expense.expense.id}`, 'Apri la spesa') : '',
+    appLink('/lista', 'Apri la lista della spesa'),
+  ].filter(Boolean)
+  if (links.length > 0) lines.push('', links.join('  ·  '))
+
+  return lines.join('\n')
+}
+
+/**
+ * Solo per un articolo segnato come urgente: è l'unico caso in cui l'altro ha
+ * bisogno di saperlo prima di passare al supermercato. Ogni aggiunta alla
+ * lista nel gruppo diventerebbe rumore di fondo.
+ */
+export function urgentItemAddedMessage(
+  actorName: string,
+  itemName: string,
+  quantity: string | null,
+): string {
+  const lines = [
+    `❗ <b>${escapeHtml(actorName)}</b> ha aggiunto una cosa urgente in lista`,
+    '',
+    `🛒 <b>${escapeHtml(itemName)}</b>${quantity ? ` — ${escapeHtml(quantity)}` : ''}`,
+  ]
+  const link = appLink('/lista', 'Apri la lista della spesa')
+  if (link) lines.push('', link)
+  return lines.join('\n')
+}
+
+/** La lista corrente, raggruppata per categoria: risposta al comando /lista. */
+export function shoppingListMessage(
+  items: { name: string; quantity: string | null; urgency: string; category: string }[],
+): string {
+  if (items.length === 0) {
+    return '🛒 <b>Lista della spesa</b>\n\nNon manca niente: la lista è vuota.'
+  }
+
+  const lines = [`🛒 <b>Lista della spesa</b> — ${items.length} ${items.length === 1 ? 'articolo' : 'articoli'}`, '']
+
+  const byCategory = new Map<string, typeof items>()
+  for (const item of items) {
+    const list = byCategory.get(item.category) ?? []
+    list.push(item)
+    byCategory.set(item.category, list)
+  }
+
+  for (const [category, list] of byCategory) {
+    lines.push(
+      `${SHOPPING_CATEGORY_ICON[category] ?? '📦'} <b>${escapeHtml(
+        SHOPPING_CATEGORY_LABELS[category] ?? category,
+      )}</b>`,
+    )
+    for (const item of list) {
+      lines.push(
+        `• ${escapeHtml(item.name)}${item.quantity ? ` <i>(${escapeHtml(item.quantity)})</i>` : ''}` +
+          `${item.urgency === 'alta' ? ' ❗' : ''}`,
+      )
+    }
+    lines.push('')
+  }
+
+  const link = appLink('/lista', 'Apri la lista della spesa')
+  if (link) lines.push(link)
+  return lines.join('\n').trim()
 }

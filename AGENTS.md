@@ -12,7 +12,7 @@ I documenti di riferimento e le guide del progetto sono:
 - `docs/Casa_Nostra_Requisiti_MVP.docx` — requisiti funzionali completi
 - `docs/casa_nostra_schema.sql` — schema Supabase definito e applicato
 - `docs/wiki/00-index.md` — Wiki dello Sviluppatore (Architettura, Modelli, Servizi, API, Accesso Dati, Pattern)
-- `docs/telegram-setup.md` — guida alla configurazione del bot Telegram (notifiche e assistente nel gruppo)
+- `docs/telegram-setup.md` — guida alla configurazione del bot Telegram (notifiche, assistente nel gruppo, scontrini inviati in chat)
 
 Leggili prima di iniziare. Questo file riassume le cose più importanti e aggiunge convenzioni tecniche e raccomandazioni pratiche.
 
@@ -84,6 +84,10 @@ Alcune linee guida concrete:
 
 **Input importo.** Su mobile usa `inputMode="decimal"` sull'input dell'importo per far apparire la tastiera numerica. Valida che sia un numero positivo con al massimo due decimali.
 
+## Navigazione
+
+Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* le schermate. La **barra in basso** è solo un accesso rapido alle quattro più frequenti (Home, Storico, Lista, Casa). Le voci di entrambe stanno in `lib/nav.ts`: aggiungendo una schermata va aggiunta lì, e finisce nel menu senza toccare la barra — la barra non cresce.
+
 ## Schermate principali
 
 Le quattro schermate del MVP, con una bottom navigation persistente che lega home, storico e conguaglio.
@@ -103,7 +107,7 @@ Queste sono scritte come lista apposta perché sono il tipo di errore che è fac
 - Non ricalcolare il saldo lato client: usa `v_user_open_balance`
 - Non scrivere logica custom per il conguaglio: chiama la RPC `register_settlement`
 - Non creare una pagina di signup pubblica: i due utenti sono gestiti manualmente
-- Non aggiungere funzionalità fuori scope MVP (grafici, export CSV, budget mensili, spese ricorrenti automatiche): la sezione 8 dei requisiti le elenca esplicitamente come evoluzioni future. Le notifiche e le foto degli scontrini erano in quell'elenco ma sono state realizzate su richiesta esplicita: vedi "Integrazione Telegram" qui sotto
+- Non aggiungere funzionalità fuori scope MVP (grafici, export CSV, budget mensili, spese ricorrenti automatiche): la sezione 8 dei requisiti le elenca esplicitamente come evoluzioni future. Le notifiche e le foto degli scontrini erano in quell'elenco ma sono state realizzate su richiesta esplicita: vedi "Integrazione Telegram" qui sotto. Stesso discorso per la lista della spesa: vedi "Lista della spesa" più sotto
 - Non modificare lo schema SQL senza aggiornare anche `casa_nostra_schema.sql`
 - Non duplicare le policy RLS con controlli client-side come se fossero sicurezza: la sicurezza è in DB
 
@@ -126,6 +130,18 @@ Cose da sapere prima di metterci mano:
 - **Le notifiche non stanno nel percorso critico**: si preparano nella Server Action e si inviano con `after()`. Non aggiungere `await` su Telegram prima di rispondere all'utente (l'unica eccezione voluta è `requestSettlementOnTelegram`, dove l'esito serve per il toast).
 - **L'integrazione è spegnibile**: senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` tutto il codice Telegram esce subito e l'app si comporta come prima. Mantieni questa proprietà.
 - **Configurazione e troubleshooting**: `docs/telegram-setup.md`. Schema: sezione 10 di `casa_nostra_schema.sql` e `docs/migrations/2026-09-03_telegram.sql`.
+
+## Lista della spesa
+
+Il modulo `/lista` tiene traccia di cosa manca in casa: articoli con tipo di prodotto, quantità in testo libero e urgenza, più il **controllo scontrino** che confronta una foto con la lista e spunta in automatico quello che è stato comprato. Documentazione completa nella wiki (sezioni 02, 03, 04, 05); qui le cose da sapere prima di metterci mano:
+
+- **La logica di dominio sta in `lib/shopping/service.ts`, non nelle Server Action.** È la stessa scelta dell'assistente: quel modulo riceve sempre un client Supabase esplicito, così Server Action (sessione), assistente e webhook Telegram (service role) eseguono la stessa identica logica. Se aggiungi un'operazione sulla lista, aggiungila lì e chiamala dai tre lati — non duplicarla nei tool come è successo per le spese.
+- **Lo stato è sul database, come il saldo.** "Cosa manca dall'ultimo scontrino" è la vista `v_shopping_missing_since_last_check`, il controllo scontrino è la RPC transazionale `register_receipt_check`. Non ricostruire quelle risposte lato client confrontando date.
+- **Un articolo è aperto se `bought_at IS NULL`**, esattamente come una spesa è aperta se `settlement_id IS NULL`. I doppioni tra gli articoli aperti li blocca un indice unico parziale: l'errore `23505` si traduce in un messaggio, non si previene con una SELECT.
+- **Aggiungere alla lista non chiede conferma**, né nell'app né via assistente: non muove soldi e si annulla con un tap. La conferma resta dove serve — eliminare un articolo, svuotare lo storico.
+- **Le notifiche Telegram della lista sono volutamente poche**: solo l'esito di un controllo scontrino e l'aggiunta di un articolo urgente. Notificare ogni prodotto renderebbe rumore anche le notifiche delle spese.
+- **Il riconoscimento dei prodotti sullo scontrino lo fa Gemini**, in una sola chiamata che legge l'immagine e la confronta con la lista. Gli id che il modello restituisce vengono sempre riverificati contro la lista reale prima di scrivere.
+- **Uno scontrino mandato su Telegram registra anche la spesa** (`lib/shopping/receipt-expense.ts`), con le opzioni di default del form: totale e data dello scontrino, pagante chi manda la foto, `DEFAULT_SPLIT` per la categoria, foto allegata alla spesa. Non succede per il controllo fatto dall'app, dove il form è a un tap di distanza. Non creare mai la spesa in silenzio: il messaggio deve sempre dire cosa è stato registrato o perché no (totale illeggibile, doppione dello stesso importo in quella data).
 
 ## Workflow di fine sessione
 
