@@ -38,7 +38,9 @@ export interface ExpenseFormFieldsProps {
   // Suggerimenti descrizione (solo in creazione).
   suggestions?: string[]
   descriptionRef?: React.Ref<HTMLInputElement>
-  amountAutoFocus?: boolean
+  // Importo da mettere a fuoco all'apertura della sheet (il fuoco lo dà la
+  // Sheet a fine animazione, vedi components/ui/Sheet.tsx).
+  amountFocusOnOpen?: boolean
   // Slot allegati: differisce tra creazione (deferred) e modifica (immediate).
   attachmentsSlot?: React.ReactNode
 
@@ -65,7 +67,7 @@ export function ExpenseFormFields({
   fieldErrors,
   suggestions = [],
   descriptionRef,
-  amountAutoFocus = false,
+  amountFocusOnOpen = false,
   attachmentsSlot,
   amount,
   onAmountChange,
@@ -102,7 +104,7 @@ export function ExpenseFormFields({
         onChange={onAmountChange}
         disabled={disabled}
         error={fieldErrors?.amount}
-        autoFocus={amountAutoFocus}
+        focusOnOpen={amountFocusOnOpen}
         size="hero"
       />
 

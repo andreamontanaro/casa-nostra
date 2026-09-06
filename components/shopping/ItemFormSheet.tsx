@@ -86,7 +86,8 @@ export function ItemFormSheet({ open, onOpenChange, item }: ItemFormSheetProps) 
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Latte parzialmente scremato"
-          autoFocus={!editing}
+          // Il fuoco lo dà la Sheet a fine animazione: vedi components/ui/Sheet.tsx
+          data-autofocus={editing ? undefined : ''}
           enterKeyHint="done"
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleSubmit()

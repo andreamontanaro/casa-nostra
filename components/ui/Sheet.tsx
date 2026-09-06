@@ -1,8 +1,24 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+/**
+ * Quanto aspettare prima di mettere a fuoco il primo campo, in millisecondi:
+ * la durata dell'animazione di entrata (`duration-300`) più un margine.
+ *
+ * Il fuoco iniziale non può arrivare al montaggio (né con `autoFocus` sul campo
+ * né lasciandolo fare a Radix): la sheet in quel momento sta ancora scivolando
+ * su dal fondo, e iOS, per "scoprire" un campo che sta fuori schermo, spinge su
+ * l'intera finestra — è il «premo + e vola su tutto». A fine animazione il
+ * campo è dove deve stare e la tastiera si comporta.
+ */
+const OPEN_FOCUS_DELAY = 340
+
+/** Il campo da mettere a fuoco all'apertura si marca con `data-autofocus`. */
+const AUTOFOCUS_SELECTOR = '[data-autofocus]'
 
 interface SheetProps {
   open: boolean
@@ -31,6 +47,28 @@ export function Sheet({
   className,
 }: SheetProps) {
   const isFull = size === 'full'
+  const contentRef = useRef<HTMLDivElement>(null)
+  const focusTimer = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => window.clearTimeout(focusTimer.current), [])
+
+  function handleOpenAutoFocus(event: Event) {
+    // Il fuoco entra subito nella sheet — serve a lettori di schermo e al giro
+    // di Tab — ma sul contenitore, che non apre nessuna tastiera. Il campo vero
+    // lo mettiamo a fuoco quando la sheet ha finito di salire.
+    event.preventDefault()
+    contentRef.current?.focus({ preventScroll: true })
+
+    window.clearTimeout(focusTimer.current)
+    focusTimer.current = window.setTimeout(() => {
+      const field = contentRef.current?.querySelector<HTMLElement>(AUTOFOCUS_SELECTOR)
+      field?.focus({ preventScroll: true })
+    }, OPEN_FOCUS_DELAY)
+  }
+
+  function handleCloseAutoFocus() {
+    window.clearTimeout(focusTimer.current)
+  }
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -43,17 +81,23 @@ export function Sheet({
           )}
         />
         <DialogPrimitive.Content
+          ref={contentRef}
+          onOpenAutoFocus={handleOpenAutoFocus}
+          onCloseAutoFocus={handleCloseAutoFocus}
           className={cn(
-            // La sheet si appoggia sopra la tastiera invece di finirci sotto:
-            // --keyboard-inset vale 0 quando è chiusa (vedi <KeyboardInsets>).
+            // Sopra la tastiera invece che sotto: `bottom` la scavalca e
+            // l'altezza si accorcia dello spazio che ruba. Sono due misure
+            // diverse — vedi lib/keyboard.ts — perché quando iOS spinge su la
+            // pagina da sé il fondo è già a posto ma l'altezza no, e la testa
+            // della sheet (intestazione e primi campi) finirebbe fuori schermo.
             'fixed inset-x-0 bottom-[var(--keyboard-inset)] z-50 flex flex-col',
             'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom',
             'duration-300',
             isFull
-              ? 'top-3'
-              : 'max-h-[calc(92svh-var(--keyboard-inset))]',
+              ? 'h-[calc(100svh-0.75rem-var(--keyboard-height))]'
+              : 'max-h-[calc(92svh-var(--keyboard-height))]',
             className,
           )}
         >
