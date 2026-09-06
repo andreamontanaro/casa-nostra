@@ -53,7 +53,7 @@ export function NuovaSpesaFab({
         transition={{ ...springSnappy, delay: 0.1 }}
         whileTap={{ scale: 0.92 }}
         className={cn(
-          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30',
+          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30 hide-on-keyboard',
           'flex size-14 items-center justify-center rounded-full',
           'bg-accent text-accent-foreground shadow-fab',
         )}

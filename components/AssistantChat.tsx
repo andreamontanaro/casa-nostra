@@ -191,7 +191,7 @@ export function AssistantChat() {
           // right-5 (1.25rem) allinea il centro di questo bottone (size-12) a
           // quello del FAB (right-4 + size-14); bottom 10rem lascia ~1rem di gap
           // sopra il FAB, che termina a 9rem dal fondo.
-          'fixed right-5 z-40',
+          'fixed right-5 z-40 hide-on-keyboard',
           'bottom-[calc(10rem+env(safe-area-inset-bottom))]',
           'flex size-12 items-center justify-center rounded-full',
           'bg-surface text-accent border border-border shadow-card',
@@ -218,7 +218,9 @@ export function AssistantChat() {
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 34 }}
               className={cn(
-                'fixed inset-x-0 bottom-0 z-50 flex h-[88svh] flex-col',
+                // Come le sheet: sopra la tastiera, non sotto (vedi <KeyboardInsets>).
+                'fixed inset-x-0 bottom-[var(--keyboard-inset)] z-50 flex flex-col',
+                'h-[88svh] max-h-[calc(100svh-1rem-var(--keyboard-inset))]',
                 'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
               )}
             >
@@ -317,7 +319,7 @@ export function AssistantChat() {
                   e.preventDefault()
                   send(input)
                 }}
-                className="flex items-end gap-2 border-t border-border px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+                className="flex items-end gap-2 border-t border-border px-4 py-3 pb-[calc(0.75rem+var(--safe-bottom))]"
               >
                 <input
                   ref={inputRef}

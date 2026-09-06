@@ -86,7 +86,7 @@ export function CatalogoClient({ templates }: CatalogoClientProps) {
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.9, rotate: -8 }}
         className={cn(
-          'chore-fab-glow fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30',
+          'chore-fab-glow fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30 hide-on-keyboard',
           'flex size-14 items-center justify-center rounded-full',
           'bg-gradient-to-br from-accent to-accent-soft text-accent-foreground shadow-fab',
         )}
