@@ -80,6 +80,7 @@ Voci, ordine ed etichette corte stanno tutti in `lib/nav.ts`, con `activeNavHref
   * `--keyboard-height` = `innerHeight - visualViewport.height`, lo spazio rubato dalla tastiera → si sottrae alle **altezze** (`max-h-[calc(92svh-var(--keyboard-height))]`, `h-[calc(100svh-0.75rem-var(--keyboard-height))]`);
   * `--keyboard-inset` = `--keyboard-height - visualViewport.offsetTop`, mai negativo → è il valore di **`bottom`** per un elemento `fixed`.
   Servono entrambe perché su iOS la tastiera non accorcia il layout viewport, e quando la pagina non può scorrere (sheet aperta = body bloccato) WebKit spinge su *tutta* la finestra: lì il fondo si sistema da sé (`inset` → 0) ma l'altezza va comunque ridotta, altrimenti la testa della sheet esce dallo schermo. Un solo numero per entrambe le cose non copre quel caso. `.hide-on-keyboard` nasconde bottom nav e FAB mentre si scrive; alla comparsa della tastiera il campo a fuoco viene centrato con `scrollIntoView`.
+* **Fuoco iniziale di una sheet**: mai `autoFocus` sul campo. `autoFocus` scatta al montaggio, quando la sheet sta ancora scivolando su dal fondo: iOS spinge su tutta la finestra per scoprire un campo che è ancora fuori schermo, e il form "vola su". Il campo si marca con `data-autofocus` e `Sheet` gli dà il fuoco a fine animazione (340ms), tenendo nel frattempo il fuoco sul contenitore per accessibilità e Tab. `AmountInput` espone la stessa cosa come `focusOnOpen`.
 
 ---
 

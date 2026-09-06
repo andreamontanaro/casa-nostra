@@ -205,7 +205,7 @@ export function ExpenseForm({
         disabled={pending}
         fieldErrors={state.fieldErrors}
         suggestions={suggestions}
-        amountAutoFocus={isSheet}
+        amountFocusOnOpen={isSheet}
         amount={rawAmount}
         onAmountChange={setRawAmount}
         description={description}

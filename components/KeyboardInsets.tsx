@@ -87,7 +87,9 @@ function revealFocused() {
 
   // Un frame di attesa: prima che il layout recepisca le nuove misure,
   // scrollIntoView leggerebbe posizioni ormai vecchie.
+  // Scorrimento istantaneo, non `smooth`: mentre la tastiera sale, iOS sta
+  // già scorrendo per conto suo e le due animazioni si darebbero fastidio.
   requestAnimationFrame(() => {
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el.scrollIntoView({ block: 'center', behavior: 'auto' })
   })
 }

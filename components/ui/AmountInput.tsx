@@ -10,7 +10,10 @@ interface AmountInputProps {
   placeholder?: string
   disabled?: boolean
   error?: string
-  autoFocus?: boolean
+  // Campo da mettere a fuoco all'apertura della sheet che lo contiene: il
+  // fuoco vero lo dà la Sheet a fine animazione (vedi components/ui/Sheet.tsx),
+  // qui si mette solo il marcatore che va a cercare.
+  focusOnOpen?: boolean
   // `hero` = campo importo protagonista (form amount-first);
   // `md` = campo importo secondario (es. quota personalizzata).
   size?: 'hero' | 'md'
@@ -25,7 +28,7 @@ export function AmountInput({
   placeholder = '0,00',
   disabled = false,
   error,
-  autoFocus = false,
+  focusOnOpen = false,
   size = 'hero',
   id,
 }: AmountInputProps) {
@@ -67,7 +70,7 @@ export function AmountInput({
           disabled={disabled}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          autoFocus={autoFocus}
+          data-autofocus={focusOnOpen ? '' : undefined}
           className={cn(
             'min-w-0 bg-transparent font-bold text-foreground tabular-nums',
             'placeholder:font-medium placeholder:text-muted/50',
