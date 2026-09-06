@@ -35,7 +35,7 @@ npm install
 The database schema (tables, views, RPCs, RLS) is defined in [`docs/casa_nostra_schema.sql`](docs/casa_nostra_schema.sql), which is the authoritative source of truth for the applied schema.
 
 1. Create a new project on [supabase.com](https://supabase.com).
-2. Open the project's **SQL Editor** and run the entire contents of `docs/casa_nostra_schema.sql`. (On an existing project, apply only the new migrations from `docs/migrations/` instead — for example `2026-09-06_lista_spesa.sql` for the shopping list module.)
+2. Open the project's **SQL Editor** and run the entire contents of `docs/casa_nostra_schema.sql`. (On an existing project, apply only the migrations from `docs/migrations/` that it doesn't have yet.)
 3. The app is designed for exactly two fixed users, created manually (there is no public signup page):
    - Go to **Authentication → Users → Add user** and create the two accounts (email + password).
    - Copy the generated UUIDs and insert the two corresponding rows into `public.profiles`, following the example in section 9 (`BOOTSTRAP dei due profili`) at the end of the SQL script.

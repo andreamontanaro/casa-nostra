@@ -545,11 +545,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shopping_items_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_items_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "shopping_items_bought_by_fkey"
             columns: ["bought_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_items_bought_by_fkey"
+            columns: ["bought_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_items_bought_by_fkey"
+            columns: ["bought_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "shopping_items_receipt_check_id_fkey"
@@ -564,6 +592,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_shopping_last_check"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_items_receipt_check_id_fkey"
+            columns: ["receipt_check_id"]
+            isOneToOne: false
+            referencedRelation: "v_shopping_missing_since_last_check"
+            referencedColumns: ["check_id"]
           },
         ]
       }
@@ -620,6 +655,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -796,7 +845,29 @@ export type Database = {
           storage_path: string | null
           store_name: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "v_expense_shares"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "shopping_receipt_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_open_balance"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       v_shopping_missing_since_last_check: {
         Row: {

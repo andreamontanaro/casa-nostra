@@ -37,7 +37,7 @@ I tipi in `types/database.ts` sono già allineati.
 
 ### Migrazione della lista della spesa
 
-Il modulo lista della spesa aggiunge le proprie tabelle con `docs/migrations/2026-09-06_lista_spesa.sql`: va eseguito nell'editor SQL di Supabase perché il bot possa rispondere a `/lista` e controllare gli scontrini inviati in chat. Crea anche il bucket privato `shopping-receipts`.
+**Già applicata** al progetto Casa Nostra il 6 settembre 2026. Il file `docs/migrations/2026-09-06_lista_spesa.sql` resta come riferimento e per ricreare lo schema da zero: aggiunge le tabelle della lista, le viste, la RPC del controllo scontrino e il bucket privato `shopping-receipts`. È ciò che permette al bot di rispondere a `/lista` e di controllare gli scontrini inviati in chat.
 
 ## Scorciatoia: lo script guidato (Windows)
 

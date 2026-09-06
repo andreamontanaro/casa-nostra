@@ -261,10 +261,26 @@ SET search_path = public
 AS $$
 DECLARE
   v_user     uuid;
+  v_role     text;
   v_check_id uuid;
   v_matched  int;
 BEGIN
-  v_user := COALESCE(auth.uid(), p_checked_by);
+  -- Ruolo del chiamante secondo il JWT (anon | authenticated | service_role).
+  -- current_user non serve: dentro SECURITY DEFINER e' sempre il proprietario.
+  v_role := coalesce(
+    nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role',
+    ''
+  );
+
+  -- p_checked_by e' accettato SOLO dal client service role: Supabase concede
+  -- EXECUTE ad anon su ogni funzione nuova in public, e senza questo vincolo
+  -- un chiamante anonimo potrebbe dichiararsi un profilo qualsiasi su una
+  -- funzione SECURITY DEFINER, che scavalca RLS.
+  v_user := CASE
+    WHEN auth.uid() IS NOT NULL   THEN auth.uid()      -- sessione vera: vince sempre
+    WHEN v_role = 'service_role'  THEN p_checked_by    -- webhook Telegram
+    ELSE NULL                                          -- anonimo: nessuna identita'
+  END;
 
   IF v_user IS NULL OR NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = v_user) THEN
     RAISE EXCEPTION 'Utente non autorizzato';
@@ -302,7 +318,9 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.register_receipt_check IS
-  'Registra un controllo scontrino e spunta in un''unica transazione gli articoli riconosciuti. Ritorna l''id del controllo.';
+  'Registra un controllo scontrino e spunta in un''unica transazione gli articoli riconosciuti. Ritorna l''id del controllo. Firma con auth.uid(); p_checked_by e'' accettato solo dal client service role.';
 
-REVOKE ALL ON FUNCTION public.register_receipt_check FROM public;
+-- `FROM public` da solo non basta: Supabase concede EXECUTE ad anon su ogni
+-- funzione nuova in public (default privileges), con un grant esplicito.
+REVOKE ALL ON FUNCTION public.register_receipt_check FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.register_receipt_check TO authenticated, service_role;

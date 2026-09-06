@@ -130,7 +130,8 @@ WHERE i.bought_at IS NULL AND i.created_at < c.checked_at
 
 `register_receipt_check(...)` registra il controllo e spunta gli articoli riconosciuti in un'unica transazione → sezione 13 dello schema. `SECURITY DEFINER` come `register_settlement`.
 
-* **Chi firma il controllo**: `COALESCE(auth.uid(), p_checked_by)`. Con una sessione vera vince sempre `auth.uid()` e il parametro viene ignorato; `p_checked_by` serve solo al webhook Telegram, che gira con la service role e non ha una sessione. Un id che non corrisponde a un profilo fa sollevare un'eccezione.
+* **Chi firma il controllo**: `auth.uid()` quando c'è una sessione; `p_checked_by` **solo** se il ruolo del JWT è `service_role`, cioè il webhook Telegram, che non ha sessione. Un anonimo non ottiene nessuna identità e viene respinto, come un id che non corrisponde a un profilo.
+  > Il vincolo sul ruolo non è teorico: Supabase concede `EXECUTE` ad `anon` su ogni funzione nuova in `public` (default privileges), e un `REVOKE ALL … FROM public` non lo tocca. Senza quel controllo un chiamante anonimo poteva dichiararsi un profilo qualsiasi su una funzione `SECURITY DEFINER`, che scavalca RLS. Oltre al controllo nel corpo, `EXECUTE` è revocato esplicitamente ad `anon` — due difese, perché la prima è codice e la seconda è configurazione.
 * **Spunta solo gli articoli ancora aperti** (`AND bought_at IS NULL`): se nel frattempo l'altro ne ha spuntato uno a mano, la sua registrazione resta.
 * **`matched_count`** viene scritto contando le righe davvero aggiornate, non quelle proposte dal modello.
 
