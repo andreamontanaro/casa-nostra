@@ -37,7 +37,7 @@ interface ShoppingShellProps {
 
 /**
  * Schermata della lista della spesa. Un tap sul checkbox spunta l'articolo
- * senza conferma (con "Annulla" nel toast, come il "Fatto" delle faccende),
+ * senza conferma, con "Annulla" nel toast,
  * il resto della riga apre la modifica. In cima, quando c'è, la card di
  * quello che è rimasto fuori dall'ultimo scontrino: è l'unica cosa che
  * merita di stare sopra la lista, perché è l'unica che si scorda.
@@ -64,7 +64,7 @@ export function ShoppingShell({
   // Gli id nascosti in ottimistica valgono solo finché i dati del server sono
   // quelli su cui la scelta è stata fatta: appena la rotta si rivalida, la
   // verità torna a essere la lista che arriva dal server (stesso meccanismo
-  // di ChoreShell).
+  // di altre liste interattive).
   const itemsKey = openItems.map((i) => i.id).join('|')
   const visibleHidden = hiddenBaseKey === itemsKey ? hiddenIds : new Set<string>()
 

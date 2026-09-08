@@ -22,6 +22,11 @@ export function formatDateShort(dateStr: string) {
   }).format(new Date(dateStr))
 }
 
+/** Chiave YYYY-MM-DD nel fuso orario della casa. */
+export function romeDateKey(iso: string): string {
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' })
+}
+
 export function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -138,75 +143,6 @@ export const DEFAULT_SPLIT: Record<Category, SplitRule> = {
   altro: 'sixty_forty',
 }
 
-
-// ------------------------------------------------------------
-// Modulo "Gestione casa" — faccende domestiche
-// ------------------------------------------------------------
-
-export const CHORE_AREA_LABELS: Record<string, string> = {
-  cucina: 'Cucina',
-  bagno: 'Bagno',
-  pulizie: 'Pulizie',
-  spazzatura: 'Spazzatura',
-  bucato: 'Bucato',
-  spesa: 'Spesa',
-  manutenzione: 'Manutenzione',
-  altro: 'Altro',
-}
-
-export const CHORE_AREA_ICON: Record<string, string> = {
-  cucina: '🍳',
-  bagno: '🛁',
-  pulizie: '🧹',
-  spazzatura: '🗑️',
-  bucato: '🧺',
-  spesa: '🛒',
-  manutenzione: '🔧',
-  altro: '✨',
-}
-
-/**
- * Testo neutro sull'ultimo completamento di una faccenda. Non usa mai parole
- * come "in ritardo" o "scaduta" (principio 7 del modulo): l'ordinamento della
- * lista comunica l'urgenza, il testo si limita a dire quando è successo.
- */
-export function formatChoreRecency(daysSince: number | null): string {
-  if (daysSince === null) return 'Mai fatta'
-  if (daysSince <= 0) return 'Fatta oggi'
-  if (daysSince === 1) return 'Fatta ieri'
-  return `Fatta ${daysSince} giorni fa`
-}
-
-/** Etichetta della cadenza di una faccenda ricorrente, o "Gesto" se libera. */
-export function formatChoreCadence(days: number | null): string {
-  if (days === null) return 'Gesto — nessuna cadenza attesa'
-  if (days === 1) return 'Ogni giorno'
-  return `Ogni ${days} giorni`
-}
-
-/** Chiave 'YYYY-MM-DD' di un timestamp nel fuso di casa (Europe/Rome). */
-export function romeDateKey(iso: string): string {
-  // 'sv-SE' è un trucco comune per ottenere il formato ISO YYYY-MM-DD da
-  // toLocaleDateString senza librerie di date aggiuntive.
-  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' })
-}
-
-/** Etichetta di un giorno per gli header del feed: "Oggi", "Ieri", o la data estesa. */
-export function formatChoreDayLabel(dateKey: string): string {
-  const today = romeDateKey(new Date().toISOString())
-  const yesterday = romeDateKey(new Date(Date.now() - 86400000).toISOString())
-  if (dateKey === today) return 'Oggi'
-  if (dateKey === yesterday) return 'Ieri'
-  return formatDate(dateKey)
-}
-
-/** Saluto contestuale all'ora del giorno, per l'header di benvenuto del modulo faccende. */
-export function greetingForHour(hour: number): string {
-  if (hour < 6) return 'Buonanotte'
-  if (hour < 12) return 'Buongiorno'
-  if (hour < 18) return 'Buon pomeriggio'
-  return 'Buonasera'
-}
 
 
 // ------------------------------------------------------------

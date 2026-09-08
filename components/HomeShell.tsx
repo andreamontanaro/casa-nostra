@@ -6,13 +6,11 @@ import { AnimatePresence, motion } from 'motion/react'
 import { BalanceCard } from '@/components/BalanceCard'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
-import { HomeChoreCard } from '@/components/chores/HomeChoreCard'
 import { Card } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import type { OptimisticExpense as OptimisticExpenseShape } from '@/app/(app)/spese/nuova/ExpenseForm'
 import { formatDateShort } from '@/lib/fmt'
 import type { Tables } from '@/types/database'
-import type { ChoreStatusRow } from '@/lib/queries'
 
 type Expense = Tables<'expenses'> & {
   paid_by_profile: { display_name: string } | null
@@ -28,7 +26,6 @@ interface HomeShellProps {
   recentExpenses: Expense[]
   profiles: Profile[]
   suggestions: string[]
-  urgentChores: ChoreStatusRow[]
 }
 
 export function HomeShell({
@@ -37,7 +34,6 @@ export function HomeShell({
   recentExpenses,
   profiles,
   suggestions,
-  urgentChores,
 }: HomeShellProps) {
   const [optimistic, setOptimistic] = useState<OptimisticExpense[]>([])
   const [optimisticBaseKey, setOptimisticBaseKey] = useState('')
@@ -55,8 +51,6 @@ export function HomeShell({
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-24">
       <BalanceCard rows={balanceRows} currentUserId={userId} />
-
-      <HomeChoreCard rows={urgentChores} />
 
       <section>
         <div className="mb-3 flex items-center justify-between px-1">

@@ -15,7 +15,7 @@ interface AvatarProps {
   className?: string
 }
 
-/** Cerchio con le iniziali. Estratto da `BalanceCard`, riusato dal feed del modulo faccende. */
+/** Cerchio con le iniziali, riusabile nelle superfici dell'app. */
 export function Avatar({ name, highlighted = false, size = 'md', className }: AvatarProps) {
   return (
     <div

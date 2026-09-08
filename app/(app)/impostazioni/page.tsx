@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { GamificationToggle } from '@/components/chores/GamificationToggle'
 import { isTelegramConfigured } from '@/lib/telegram/config'
 import { ProfileForm } from './ProfileForm'
 import { PasswordForm } from './PasswordForm'
@@ -44,10 +43,6 @@ export default async function ImpostazioniPage() {
 
       <Section title="Aspetto">
         <ThemeToggle />
-      </Section>
-
-      <Section title="Gestione casa">
-        <GamificationToggle />
       </Section>
 
       <Section title="Sessione">
