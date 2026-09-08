@@ -2,6 +2,8 @@
 
 Aggiornamento del redesign approvato l’8 settembre 2026. Il modulo **Casa è deprecato**: non appartiene alla navigazione o alle schermate attive. I documenti storici sulle faccende restano un archivio.
 
+> Le **regole grafiche complete** — token colore, scala tipografica, layout e container, raggi/ombre, catalogo dei componenti, animazioni, formati di importi e date — stanno in **[10. Regole Grafiche (Design System)](10-design-system.md)**. Questa pagina resta il racconto dei pattern e delle scelte di UX schermata per schermata.
+
 ## Identità visiva
 
 - **Menta e crema**: sfondo #f8f5ef, testo #203b32, superficie #fffdf8, accento #176b5b, contenitore #dceee4. Dark mode con fondo #121b19, testo #f4f0e8 e accento #94d5b8.
