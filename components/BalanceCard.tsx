@@ -36,7 +36,7 @@ export function BalanceCard({ rows, currentUserId, expenses }: Props) {
         <SpendingRing compact categories={categories}>
           {net === 0 ? (
             <><Check className="mb-1 size-5 text-accent" aria-hidden /><p className="font-display text-xl font-semibold">Siete in pari</p>
-              <p className="mt-2 text-xs text-muted">{expenses.length ? 'Le spese si compensano' : 'Un nuovo inizio, insieme'}</p></>
+              {expenses.length > 0 && <p className="mt-2 text-xs text-muted">Le spese si compensano</p>}</>
           ) : (
             <><p className="max-w-full text-sm text-muted">{net > 0 ? 'Devi ricevere' : 'Devi dare'}</p>
               <AmountDisplay value={Math.abs(net)} className={`mt-1 max-w-full whitespace-nowrap ${Math.abs(net) >= 1000 ? 'text-[1.2rem]' : 'text-[1.65rem]'}`} />
@@ -50,7 +50,6 @@ export function BalanceCard({ rows, currentUserId, expenses }: Props) {
       <details className="border-t border-border">
         <summary className="min-h-12 px-5 py-3 text-sm font-semibold">Categorie e dettagli del saldo</summary>
         <div className="space-y-4 px-5 pb-5 text-sm">
-          <p className="text-muted">L’anello mostra le categorie degli importi totali. Il saldo è la differenza tra quello che ciascuno ha anticipato e la sua quota.</p>
           <div className="space-y-3">
             {[me, other].map((person) => <div key={person.user_id} className="flex items-center gap-3">
               <Avatar name={person.display_name} /><div className="min-w-0 flex-1"><p className="font-semibold">{person.user_id === currentUserId ? 'Tu' : person.display_name}</p><p className="text-xs text-muted">Quota: {formatEur(person.total_owed ?? 0)}</p></div>

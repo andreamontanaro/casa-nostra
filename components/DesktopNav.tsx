@@ -21,7 +21,7 @@ export function DesktopNav() {
           </Link>
         ))}
       </nav>
-      <div className="mt-auto"><p className="mb-3 px-1 text-xs text-muted">Il vostro spazio, ogni giorno.</p><ThemeToggle /></div>
+      <div className="mt-auto"><ThemeToggle /></div>
     </aside>
   )
 }
