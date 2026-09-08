@@ -20,3 +20,36 @@ export function categoryTotals(items: readonly SpendingItem[]): CategoryTotal[] 
 export function selectionContribution(items: readonly SpendingItem[]): number {
   return items.reduce((sum, item) => sum + Math.round((item.my_contribution ?? 0) * 100), 0) / 100
 }
+
+/**
+ * Categoria fittizia della fetta di coda dell'anello: non esiste nel database.
+ * Vive qui, e non in lib/fmt.ts, perche' questo modulo resta senza import —
+ * i test lo transpilano da solo (vedi tests/load-ts.mjs).
+ */
+export const RING_OTHER = '__altre__'
+
+/**
+ * Fette dell'anello. Le categorie sono 9, ma una palette categorica non regge
+ * 9 tinte distinguibili — nemmeno per chi ha visione tricromatica piena — e
+ * inventare hue sempre piu' vicini peggiora solo la lettura. Oltre le prime
+ * `max` posizioni la coda confluisce in un'unica fetta grigia "Altre
+ * categorie", che e' la convenzione dataviz per "Other".
+ *
+ * Il dettaglio completo per categoria resta intatto: le liste e i filtri
+ * continuano a usare categoryTotals(), questa funzione serve solo al disegno.
+ */
+export function ringSegments(categories: readonly CategoryTotal[], max = 6): CategoryTotal[] {
+  if (categories.length <= max) return [...categories]
+  const tail = categories.slice(max - 1)
+  const sum = (pick: (item: CategoryTotal) => number) =>
+    tail.reduce((acc, item) => acc + Math.round(pick(item) * 100), 0) / 100
+  return [
+    ...categories.slice(0, max - 1),
+    {
+      category: RING_OTHER,
+      total: sum((item) => item.total),
+      contribution: sum((item) => item.contribution),
+      count: tail.reduce((acc, item) => acc + item.count, 0),
+    },
+  ]
+}

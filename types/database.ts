@@ -653,8 +653,10 @@ export type Database = {
         | "affitto"
         | "bolletta"
         | "spesa_alimentare"
+        | "ristorazione"
         | "abbonamento"
-        | "manutenzione"
+        | "casa_arredo"
+        | "trasporti"
         | "viaggi"
         | "altro"
       split_rule: "fifty_fifty" | "sixty_forty" | "custom"
@@ -798,8 +800,10 @@ export const Constants = {
         "affitto",
         "bolletta",
         "spesa_alimentare",
+        "ristorazione",
         "abbonamento",
-        "manutenzione",
+        "casa_arredo",
+        "trasporti",
         "viaggi",
         "altro",
       ],

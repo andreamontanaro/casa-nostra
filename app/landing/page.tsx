@@ -33,7 +33,7 @@ const useCases = [
   {
     icon: Receipt,
     title: 'Spese di tutti i giorni',
-    body: 'Affitto, bollette, spesa al supermercato, abbonamenti, manutenzione, viaggi: tutto in un posto solo.',
+    body: 'Affitto, bollette, spesa, ristoranti, casa, trasporti, viaggi: tutto in un posto solo.',
   },
   {
     icon: Scale,
@@ -69,7 +69,7 @@ const features = [
   {
     icon: Wallet,
     title: 'Spese e categorie',
-    body: 'Affitto, bollette, spesa, abbonamenti, manutenzione, viaggi e altro — ognuna con la sua icona.',
+    body: 'Affitto, bollette, spesa, fuori casa, abbonamenti, casa e arredo, trasporti, viaggi — ognuna con la sua icona.',
   },
   {
     icon: Scale,

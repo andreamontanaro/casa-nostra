@@ -3,10 +3,10 @@
 import { useId, useState } from 'react'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
-import { CATEGORY_LABELS, categoryHex, formatEur } from '@/lib/fmt'
+import { CATEGORY_LABELS, RING_OTHER, categoryHex, formatEur } from '@/lib/fmt'
 import { useDarkTheme } from '@/lib/use-dark-theme'
 import { cn } from '@/lib/utils'
-import type { CategoryTotal } from '@/lib/spending'
+import { ringSegments, type CategoryTotal } from '@/lib/spending'
 
 interface Props {
   categories: CategoryTotal[]
@@ -16,10 +16,13 @@ interface Props {
   categoryHref?: (category: string) => string
 }
 
-export function SpendingRing({ categories, children, label = 'Spese da regolare', categoryHref, compact = false }: Props) {
+export function SpendingRing({ categories: allCategories, children, label = 'Spese da regolare', categoryHref, compact = false }: Props) {
   const dark = useDarkTheme()
   const id = useId()
   const [selected, setSelected] = useState<string | null>(null)
+  // Oltre una manciata di fette i colori non sono piu' distinguibili: la coda
+  // confluisce in "Altre categorie". Il totale non cambia.
+  const categories = ringSegments(allCategories)
   const total = categories.reduce((sum, item) => sum + Math.round(item.total * 100), 0) / 100
   const active = categories.find((item) => item.category === selected)
   const segments = categories.map((item, index) => ({
@@ -69,7 +72,7 @@ export function SpendingRing({ categories, children, label = 'Spese da regolare'
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface-raised px-4 py-3 text-sm">
             <div><p className="font-semibold">{CATEGORY_LABELS[active.category]} · {formatEur(active.total)}</p>
               <p className="mt-0.5 text-xs text-muted">{active.count} spese · {Math.round(active.total / total * 100)}% degli importi totali</p></div>
-            {categoryHref && <Link className="flex min-h-11 items-center gap-1 font-semibold text-accent" href={categoryHref(active.category)}>Apri spese <ArrowUpRight className="size-4" aria-hidden /></Link>}
+            {categoryHref && active.category !== RING_OTHER && <Link className="flex min-h-11 items-center gap-1 font-semibold text-accent" href={categoryHref(active.category)}>Apri spese <ArrowUpRight className="size-4" aria-hidden /></Link>}
           </div>
         )}
       </div></>}

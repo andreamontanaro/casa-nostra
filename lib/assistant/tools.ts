@@ -41,9 +41,13 @@ export const createExpenseTool = {
     'esplicitamente di voler aggiungere la spesa e hai tutte le informazioni obbligatorie ' +
     '(importo, descrizione, categoria, chi ha pagato). Se manca qualcosa, chiedila prima; ' +
     'prima di chiamare il tool riepiloga la spesa e attendi un "sì" dell\'utente. ' +
-    'category deve essere una tra: affitto, bolletta, spesa_alimentare, abbonamento, manutenzione, viaggi, altro. ' +
+    'category deve essere una tra: affitto, bolletta, spesa_alimentare, ristorazione, abbonamento, ' +
+    'casa_arredo, trasporti, viaggi, altro. Scegli in base alla NATURA della spesa, non al contesto: ' +
+    'un pranzo e\' "ristorazione" anche in vacanza, la benzina e\' "trasporti" anche in vacanza. ' +
+    'Usa "altro" solo quando nessuna delle altre calza davvero. ' +
     'split_rule (facoltativo) tra: fifty_fifty, sixty_forty, custom; se non lo specifichi viene scelto in automatico ' +
-    '(affitto = 50/50, tutto il resto = 60/40). expense_date facoltativo in formato YYYY-MM-DD (default: oggi). ' +
+    'in base alla categoria. expense_date facoltativo in formato YYYY-MM-DD (default: oggi); ' +
+    'sono ammesse date future, servono per le bollette con addebito posticipato. ' +
     'paid_by deve essere l\'UUID esatto di una delle persone elencate in PERSONE.',
   parameters: {
     type: Type.OBJECT,
@@ -59,7 +63,13 @@ export const createExpenseTool = {
       category: {
         type: Type.STRING,
         description:
-          'Categoria: affitto | bolletta | spesa_alimentare | abbonamento | manutenzione | viaggi | altro.',
+          'Categoria. affitto = canone di locazione. bolletta = utenze e tasse sulla casa (luce, gas, ' +
+          'acqua, TARI). spesa_alimentare = supermercato e negozi di alimentari, incluso il non-food ' +
+          'comprato li\'. ristorazione = mangiare e bere fuori casa (ristorante, bar, pizza, gelato, ' +
+          'colazione, autogrill, asporto). abbonamento = servizi ricorrenti (streaming, internet, ' +
+          'telefono). casa_arredo = arredamento, elettrodomestici, casalinghi, riparazioni e materiali. ' +
+          'trasporti = benzina, pedaggi, parcheggi, mezzi pubblici. viaggi = alloggi, biglietti aerei ' +
+          'e pacchetti vacanza. altro = solo se nessuna delle precedenti calza.',
       },
       paid_by: {
         type: Type.STRING,

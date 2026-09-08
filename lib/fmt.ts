@@ -1,4 +1,7 @@
 import { Constants } from '@/types/database'
+import { RING_OTHER } from '@/lib/spending'
+
+export { RING_OTHER }
 
 export function formatEur(amount: number) {
   return new Intl.NumberFormat('it-IT', {
@@ -44,18 +47,23 @@ export const CATEGORY_LABELS: Record<string, string> = {
   affitto: 'Affitto',
   bolletta: 'Bolletta',
   spesa_alimentare: 'Spesa',
+  ristorazione: 'Fuori casa',
   abbonamento: 'Abbonamento',
-  manutenzione: 'Manutenzione',
+  casa_arredo: 'Casa e arredo',
+  trasporti: 'Trasporti',
   viaggi: 'Viaggi',
   altro: 'Altro',
+  [RING_OTHER]: 'Altre categorie',
 }
 
 export const CATEGORY_ICON: Record<string, string> = {
   affitto: '🏠',
   bolletta: '⚡',
   spesa_alimentare: '🛒',
+  ristorazione: '🍽️',
   abbonamento: '📺',
-  manutenzione: '🔧',
+  casa_arredo: '🛋️',
+  trasporti: '⛽',
   viaggi: '✈️',
   altro: '📦',
 }
@@ -86,15 +94,28 @@ export const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
     hexDark: '#9bcab3',
     container: 'bg-[#45836a]/15 dark:bg-[#45836a]/20',
   },
+  // Indaco e oliva sono gli unici due hue rimasti liberi: la palette era
+  // gia' satura a 7 tinte. Scelti con scripts/validate_palette.js in modo da
+  // non abbassare il pavimento di separazione esistente (vedi dev log).
+  ristorazione: {
+    hex: '#6a6fc9',
+    hexDark: '#a9adea',
+    container: 'bg-[#6a6fc9]/15 dark:bg-[#a9adea]/20',
+  },
   abbonamento: {
     hex: '#876493',
     hexDark: '#c3a3d0',
     container: 'bg-[#876493]/15 dark:bg-[#c3a3d0]/20',
   },
-  manutenzione: {
+  casa_arredo: {
     hex: '#b56b4f',
     hexDark: '#e8ac8a',
     container: 'bg-[#b56b4f]/15 dark:bg-[#e8ac8a]/20',
+  },
+  trasporti: {
+    hex: '#7d8a3c',
+    hexDark: '#c0cb84',
+    container: 'bg-[#7d8a3c]/15 dark:bg-[#c0cb84]/20',
   },
   viaggi: {
     hex: '#a6627f',
@@ -102,6 +123,14 @@ export const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
     container: 'bg-[#a6627f]/15 dark:bg-[#deabc1]/20',
   },
   altro: {
+    hex: '#777f73',
+    hexDark: '#bec4b3',
+    container: 'bg-[#777f73]/15 dark:bg-[#bec4b3]/20',
+  },
+  // Fetta di coda dell'anello (vedi RING_OTHER in lib/spending.ts): non e'
+  // una categoria del database, e' il "resto" aggregato. Grigio come 'altro'
+  // — i due non compaiono mai insieme, la coda assorbe anche 'altro'.
+  [RING_OTHER]: {
     hex: '#777f73',
     hexDark: '#bec4b3',
     container: 'bg-[#777f73]/15 dark:bg-[#bec4b3]/20',
@@ -134,13 +163,18 @@ type Category = (typeof Constants.public.Enums.expense_category)[number]
 type SplitRule = (typeof Constants.public.Enums.split_rule)[number]
 
 // Regola di divisione proposta di default in base alla categoria.
-// Affitto e viaggi 50/50, tutto il resto 60/40 (sempre modificabile dall'utente).
+// Tarata sulle spese realmente inserite nei primi 5 mesi (vedi
+// docs/dev-log-2026-09-08.md): le uscite "a due" — mangiare fuori, benzina,
+// caselli, viaggi — vengono divise a meta' nella quasi totalita' dei casi,
+// mentre le spese di casa seguono il 60/40. Sempre modificabile prima di salvare.
 export const DEFAULT_SPLIT: Record<Category, SplitRule> = {
   affitto: 'fifty_fifty',
   bolletta: 'sixty_forty',
   spesa_alimentare: 'sixty_forty',
+  ristorazione: 'fifty_fifty',
   abbonamento: 'sixty_forty',
-  manutenzione: 'sixty_forty',
+  casa_arredo: 'sixty_forty',
+  trasporti: 'fifty_fifty',
   viaggi: 'fifty_fifty',
   altro: 'sixty_forty',
 }

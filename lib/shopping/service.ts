@@ -420,7 +420,7 @@ async function readReceipt(params: {
                 listBlock,
                 '',
                 'Restituisci anche negozio, data (YYYY-MM-DD) e totale pagato dello scontrino se sono leggibili, altrimenti lasciali vuoti.',
-                `In expense_category indica di che tipo di spesa si tratta nel complesso, scegliendo fra: ${EXPENSE_CATEGORIES.join(', ')}. Un supermercato o un alimentari è "spesa_alimentare"; una ferramenta o un negozio di materiali è "manutenzione"; una farmacia o qualsiasi altra cosa è "altro".`,
+                `In expense_category indica di che tipo di spesa si tratta nel complesso, scegliendo fra: ${EXPENSE_CATEGORIES.join(', ')}. Un supermercato o un alimentari è "spesa_alimentare"; un ristorante, un bar o un fast food è "ristorazione"; un distributore di benzina o un pedaggio è "trasporti"; una ferramenta, un negozio di casalinghi o di arredamento è "casa_arredo"; una farmacia o qualsiasi altra cosa è "altro".`,
               ].join('\n'),
             },
           ],

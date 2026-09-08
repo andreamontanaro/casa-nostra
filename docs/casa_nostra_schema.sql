@@ -12,13 +12,22 @@
 -- 1. ENUMS
 -- ============================================================
 
+-- Categorie di spesa. Tarate sull'uso reale dopo i primi 5 mesi
+-- (vedi docs/migrations/2026-09-08_categorie_spese.sql): 'manutenzione' era
+-- rimasta a zero righe perche' la parola e' troppo stretta, e 'altro'
+-- raccoglieva il 39% delle spese nascondendo due cluster evidenti.
+-- La categoria descrive la NATURA della spesa, non il contesto: un pranzo
+-- e' 'ristorazione' anche in vacanza, la benzina e' 'trasporti' anche in
+-- vacanza. 'viaggi' resta per alloggi, biglietti e pacchetti.
 CREATE TYPE expense_category AS ENUM (
   'affitto',
-  'bolletta',
-  'spesa_alimentare',
-  'abbonamento',
-  'manutenzione',
-  'viaggi',
+  'bolletta',          -- utenze e tasse sulla casa (luce, gas, acqua, TARI)
+  'spesa_alimentare',  -- supermercato e alimentari, incluso il non-food comprato li'
+  'ristorazione',      -- mangiare e bere fuori casa
+  'abbonamento',       -- servizi ricorrenti (streaming, internet, telefono)
+  'casa_arredo',       -- arredamento, elettrodomestici, casalinghi, riparazioni
+  'trasporti',         -- benzina, pedaggi, parcheggi, mezzi pubblici
+  'viaggi',            -- alloggi, biglietti, pacchetti vacanza
   'altro'
 );
 
