@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'motion/react'
-import { Sparkles, X, Send } from 'lucide-react'
+import { Send } from 'lucide-react'
+import { Sheet } from '@/components/ui/Sheet'
+import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { Markdown } from '@/components/ui/Markdown'
-import { toast } from '@/lib/toast'
 import { ASSISTANT_OPEN_EVENT } from '@/lib/assistant/ui'
 import { cn } from '@/lib/utils'
 
@@ -25,7 +25,7 @@ const ACTION_CLOSE = `${NUL}/ACTION${NUL}`
 const CONTROL_MARKERS = [REFRESH_SENTINEL, ACTION_OPEN]
 
 const EXPENSE_SUGGESTIONS = [
-  'Cosa ho comprato ieri?',
+  'Cosa manca nella lista della spesa?',
   'Riepilogo delle spese di questo mese',
   'Chi deve quanto, in questo momento?',
   'Su cosa stiamo spendendo di più?',
@@ -48,19 +48,19 @@ export function AssistantChat() {
   // Frase "in tempo reale" mostrata mentre l'assistente usa uno strumento; null = nessuna.
   const [action, setAction] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const inFlight = useRef(false)
+  const [failure, setFailure] = useState<string | null>(null)
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    scrollRef.current?.scrollIntoView({ block: 'end', behavior: 'instant' })
   }, [messages, loading, action])
-
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 250)
-  }, [open])
 
   async function send(text: string) {
     const trimmed = text.trim()
-    if (!trimmed || loading) return
+    if (!trimmed || inFlight.current) return
+    inFlight.current = true
+    setFailure(null)
 
     const history: ChatMessage[] = [...messages, { role: 'user', text: trimmed }]
     setMessages(history)
@@ -81,16 +81,12 @@ export function AssistantChat() {
       })
 
       if (res.redirected) {
-        toast.error('Sessione scaduta. Ricarica la pagina e riprova.')
-        setLoading(false)
-        return
+        throw new Error('Sessione scaduta. Ricarica la pagina e riprova.')
       }
 
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => null)
-        toast.error(data?.error ?? 'Assistente non disponibile al momento.')
-        setLoading(false)
-        return
+        throw new Error(data?.error ?? 'Assistente non disponibile al momento.')
       }
 
       const reader = res.body.getReader()
@@ -104,7 +100,6 @@ export function AssistantChat() {
         if (!text) return
         if (!started) {
           started = true
-          setLoading(false)
           setAction(null)
           setMessages((prev) => [...prev, { role: 'assistant', text }])
           return
@@ -170,8 +165,13 @@ export function AssistantChat() {
       setAction(null)
       // Una spesa è stata creata: aggiorna i Server Component della pagina sottostante.
       if (needsRefresh) router.refresh()
-    } catch {
-      toast.error('Errore di rete con l\'assistente.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Connessione interrotta.'
+      setFailure(message + ' Se avevi confermato una modifica, controlla il risultato prima di inviarla di nuovo.')
+      setInput((current) => current || trimmed)
+      router.refresh()
+    } finally {
+      inFlight.current = false
       setLoading(false)
       setAction(null)
     }
@@ -188,158 +188,33 @@ export function AssistantChat() {
   }, [])
 
   return (
-    <>
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              key="assistant-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-            />
-            <motion.div
-              key="assistant-panel"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-              className={cn(
-                // Come le sheet: sopra la tastiera, non sotto (vedi <KeyboardInsets>).
-                'fixed inset-x-0 bottom-[var(--keyboard-inset)] z-50 flex flex-col',
-                'h-[88svh] max-h-[calc(100svh-1rem-var(--keyboard-height))]',
-                'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
-              )}
-            >
-              {/* Header */}
-              <div className="flex items-center gap-3 border-b border-border px-5 py-4">
-                <span className="flex size-9 items-center justify-center rounded-full bg-accent-muted text-accent-soft">
-                  <Sparkles className="size-5" strokeWidth={2.25} />
-                </span>
-                <div className="flex-1">
-                  <h2 className="text-base font-semibold text-foreground">Assistente</h2>
-                  <p className="text-xs text-muted">Le tue spese, spiegate</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  aria-label="Chiudi"
-                  className="flex size-9 items-center justify-center rounded-full text-muted transition-[background-color,transform] hover:bg-surface-raised hover:text-foreground active:scale-95"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-
-              {/* Messaggi */}
-              <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                <div className="flex justify-start">
-                  <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-surface-raised px-4 py-2.5 text-sm text-foreground">
-                    {greeting}
-                  </div>
-                </div>
-
-                {messages.length === 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {suggestions.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => send(s)}
-                        className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-foreground transition-[background-color,transform] hover:bg-surface-raised active:scale-95"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}
-                  >
-                    <div
-                      className={cn(
-                        'max-w-[85%] px-4 py-2.5 text-sm',
-                        m.role === 'user'
-                          ? 'whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent text-accent-foreground'
-                          : 'rounded-2xl rounded-bl-md bg-surface-raised text-foreground',
-                      )}
-                    >
-                      {m.role === 'assistant' ? (
-                        m.text ? (
-                          <Markdown onNavigate={() => setOpen(false)}>{m.text}</Markdown>
-                        ) : (
-                          <span className="text-muted">…</span>
-                        )
-                      ) : (
-                        m.text
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {loading && (
-                  <div className="flex justify-start">
-                    <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-surface-raised px-4 py-3 text-muted">
-                      <Spinner size="sm" />
-                      <AnimatePresence mode="wait" initial={false}>
-                        <motion.span
-                          key={action ?? '__thinking__'}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
-                          transition={{ duration: 0.18 }}
-                          className="text-xs"
-                        >
-                          {action ?? 'Sto pensando…'}
-                        </motion.span>
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Input */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  send(input)
-                }}
-                className="flex items-end gap-2 border-t border-border px-4 py-3 pb-[calc(0.75rem+var(--safe-bottom))]"
-              >
-                <input
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Scrivi una domanda…"
-                  inputMode="text"
-                  enterKeyHint="send"
-                  className={cn(
-                    'h-11 flex-1 rounded-2xl border border-border bg-surface px-4 text-base text-foreground',
-                    'placeholder:text-muted shadow-soft',
-                    'focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent',
-                  )}
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !input.trim()}
-                  aria-label="Invia"
-                  className={cn(
-                    'flex size-11 shrink-0 items-center justify-center rounded-2xl',
-                    'bg-accent text-accent-foreground shadow-soft transition-[opacity,transform]',
-                    'active:scale-95 disabled:opacity-40 disabled:active:scale-100',
-                  )}
-                >
-                  <Send className="size-5" strokeWidth={2.25} />
-                </button>
-              </form>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </>
+    <Sheet open={open} onOpenChange={setOpen} title="Assistente" description="Spese, saldo e lista, in parole semplici." size="full"
+      footer={
+        <form onSubmit={(e) => { e.preventDefault(); void send(input) }} className="flex items-end gap-2">
+          <textarea ref={inputRef} data-autofocus aria-label="Messaggio per l’assistente" rows={2} value={input}
+            onChange={(e) => setInput(e.target.value)} placeholder="Scrivi una domanda…" enterKeyHint="send"
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(input) } }}
+            className="min-h-12 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-surface px-3 py-3 text-base placeholder:text-muted" />
+          <Button type="submit" disabled={loading || !input.trim()} aria-label="Invia messaggio" className="size-12 shrink-0 px-0"><Send className="size-5" aria-hidden /></Button>
+        </form>
+      }>
+      <div className="space-y-4 px-4 py-3">
+        <p className="rounded-2xl bg-accent-muted/50 p-4 text-sm leading-relaxed">{greeting}</p>
+        {messages.length === 0 && <div className="grid gap-2">{suggestions.map((s) =>
+          <button key={s} type="button" disabled={loading} onClick={() => void send(s)} className="min-h-12 rounded-2xl border border-border p-3 text-left text-sm hover:bg-surface-raised">{s}</button>)}</div>}
+        <div role="log" aria-label="Conversazione" aria-live="polite" aria-busy={loading} className="space-y-3">
+          {messages.map((m, i) => <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+            <div className={cn('min-w-0 max-w-full break-words rounded-2xl px-4 py-3 text-sm', m.role === 'user' ? 'ml-6 whitespace-pre-wrap rounded-br-md bg-accent text-accent-foreground' : 'w-full rounded-bl-md bg-surface-raised')}>
+              <span className="sr-only">{m.role === 'user' ? 'Tu' : 'Assistente'}: </span>
+              {m.role === 'assistant' ? <Markdown onNavigate={() => setOpen(false)}>{m.text || '…'}</Markdown> : m.text}
+            </div>
+          </div>)}
+        </div>
+        {loading && <div role="status" className="flex items-center gap-2 px-1 text-sm text-muted"><Spinner size="sm" />{action ?? 'Sto preparando la risposta…'}</div>}
+        {failure && <p role="alert" className="rounded-2xl border border-border bg-surface p-4 text-sm">{failure}</p>}
+        {messages.length > 0 && <Button variant="ghost" size="sm" disabled={loading} onClick={() => { setMessages([]); setFailure(null) }}>Nuova conversazione</Button>}
+        <div ref={scrollRef} />
+      </div>
+    </Sheet>
   )
 }

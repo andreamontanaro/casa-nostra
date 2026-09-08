@@ -44,7 +44,7 @@ export function ShoppingItemRow({
   onRestore,
   onDelete,
 }: ShoppingItemRowProps) {
-  const details = [quantity, note].filter(Boolean).join(' · ')
+  const details = [note].filter(Boolean).join(' · ')
 
   return (
     <motion.div
@@ -78,14 +78,15 @@ export function ShoppingItemRow({
         <span className="min-w-0 flex-1">
           <span
             className={cn(
-              'block truncate text-sm font-medium',
+              'block break-words text-base font-semibold',
               bought ? 'text-muted line-through' : 'text-foreground',
             )}
           >
             {name}
           </span>
+          {quantity && <span className="mt-1 inline-block rounded-lg bg-surface-raised px-2 py-1 text-xs font-semibold text-foreground">{quantity}</span>}
           {(details || subtitle) && (
-            <span className="mt-0.5 block truncate text-xs text-muted">
+            <span className="mt-1 block text-sm text-muted">
               {details}
               {details && subtitle ? ' · ' : ''}
               {subtitle}
@@ -112,7 +113,7 @@ export function ShoppingItemRow({
           type="button"
           onClick={onRestore}
           aria-label={`Rimetti "${name}" in lista`}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
         >
           <RotateCcw className="size-4" />
         </button>
@@ -123,7 +124,7 @@ export function ShoppingItemRow({
           type="button"
           onClick={onDelete}
           aria-label={`Elimina "${name}"`}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised hover:text-destructive"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised hover:text-destructive"
         >
           <Trash2 className="size-4" />
         </button>

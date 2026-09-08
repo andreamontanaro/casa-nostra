@@ -46,6 +46,7 @@ export function ItemFormSheet({ open, onOpenChange, item }: ItemFormSheetProps) 
   const [pending, setPending] = useState(false)
 
   async function handleSubmit() {
+    if (pending) return
     const trimmed = name.trim()
     if (!trimmed) {
       toast.error('Scrivi cosa serve.')
@@ -55,8 +56,8 @@ export function ItemFormSheet({ open, onOpenChange, item }: ItemFormSheetProps) 
     setPending(true)
     const payload = { name: trimmed, category, quantity, urgency, note }
     const result = editing
-      ? await updateItemAction(item!.id, payload)
-      : await addItemAction(payload)
+      ? await updateItemAction(item!.id, payload).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
+      : await addItemAction(payload).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
     setPending(false)
 
     if (result.error) {
@@ -71,7 +72,7 @@ export function ItemFormSheet({ open, onOpenChange, item }: ItemFormSheetProps) 
   return (
     <Sheet
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => { if (!pending) onOpenChange(next) }}
       title={editing ? 'Modifica articolo' : 'Cosa serve?'}
       size="auto"
       footer={
@@ -81,7 +82,7 @@ export function ItemFormSheet({ open, onOpenChange, item }: ItemFormSheetProps) 
       }
     >
       <div className="flex flex-col gap-5 px-4 pb-4 pt-1">
-        <Input
+        <Input disabled={pending}
           label="Prodotto"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -94,7 +95,9 @@ export function ItemFormSheet({ open, onOpenChange, item }: ItemFormSheetProps) 
           }}
         />
 
-        <Input
+        <details open={editing || undefined} className="rounded-2xl border border-border p-4"><summary className="min-h-11 text-sm font-semibold">Quantità, categoria e altri dettagli</summary>
+        <div className="mt-2 flex flex-col gap-5">
+        <Input disabled={pending}
           label="Quantità (facoltativa)"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
@@ -105,7 +108,7 @@ export function ItemFormSheet({ open, onOpenChange, item }: ItemFormSheetProps) 
           <span className="text-sm font-medium text-foreground">Tipo di prodotto</span>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((c) => (
-              <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
+              <Chip key={c} disabled={pending} active={category === c} onClick={() => setCategory(c)}>
                 {SHOPPING_CATEGORY_ICON[c]} {SHOPPING_CATEGORY_LABELS[c]}
               </Chip>
             ))}
@@ -116,18 +119,21 @@ export function ItemFormSheet({ open, onOpenChange, item }: ItemFormSheetProps) 
           <span className="text-sm font-medium text-foreground">Urgenza</span>
           <SegmentedControl
             groupId="shopping-urgency"
+            disabled={pending}
+            label="Urgenza del prodotto"
             value={urgency}
             onChange={setUrgency}
             options={URGENCIES.map((u) => ({ value: u, label: SHOPPING_URGENCY_LABELS[u] }))}
           />
         </div>
 
-        <Input
+        <Input disabled={pending}
           label="Nota (facoltativa)"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Quella senza lattosio"
         />
+        </div></details>
       </div>
     </Sheet>
   )

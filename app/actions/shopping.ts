@@ -136,7 +136,7 @@ export async function checkReceiptAction(params: {
 
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    return { ok: false, error: 'Controllo non disponibile: manca la chiave API di Gemini.' }
+    return { ok: false, error: 'Il controllo scontrini non è disponibile al momento. Puoi continuare a usare la lista.' }
   }
 
   const { data: blob, error } = await supabase.storage

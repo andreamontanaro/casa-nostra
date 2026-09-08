@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { parseEuroInput } from '@/lib/expense-input'
 import type { Database } from '@/types/database'
+import { attachReceipt } from '@/lib/shopping/receipt-expense'
+import { RECEIPTS_BUCKET } from '@/lib/shopping/receipts'
 import { ATTACHMENTS_BUCKET } from '@/lib/attachments'
 import { isTelegramConfigured } from '@/lib/telegram/config'
 import {
@@ -22,6 +24,8 @@ export type ExpenseFormState = {
   fieldErrors?: Partial<Record<string, string>>
   ok?: boolean
   expenseId?: string
+  warning?: string
+  existingExpenseId?: string
 }
 
 export async function createExpense(
@@ -64,6 +68,19 @@ export async function createExpense(
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors }
 
+  const sourceReceiptId = String(formData.get('source_receipt_id') ?? '')
+  let sourceReceipt: { storage_path: string; mime_type: string } | null = null
+  if (sourceReceiptId) {
+    if (!/^[0-9a-f-]{36}$/i.test(sourceReceiptId)) return { error: 'Scontrino non valido.' }
+    const { data, error: receiptError } = await supabase.from('shopping_receipt_checks')
+      .select('storage_path, mime_type').eq('id', sourceReceiptId).maybeSingle()
+    if (receiptError || !data) return { error: 'Non riesco a recuperare lo scontrino. Riprova dalla lista.' }
+    sourceReceipt = data
+    const { data: existing, error: duplicateError } = await supabase.from('expenses')
+      .select('id').eq('expense_date', expenseDate).eq('amount', amount).limit(1).maybeSingle()
+    if (duplicateError) return { error: 'Non riesco a verificare se lo scontrino è già registrato. Riprova.' }
+    if (existing) return { error: 'Esiste già una spesa con lo stesso importo e la stessa data. Controllala prima di registrare di nuovo questo scontrino.', existingExpenseId: existing.id }
+  }
   const hasAttachments = formData.get('has_attachments') === '1'
   // Se impostato (form a schermo intero) la action fa redirect alla pagina
   // d'origine; se assente (bottom-sheet) resta in pagina e il client gestisce
@@ -104,6 +121,16 @@ export async function createExpense(
     paidBy,
     expenseDate,
   })
+
+  let warning: string | undefined
+  if (sourceReceipt) {
+    try {
+      const { data: file } = await supabase.storage.from(RECEIPTS_BUCKET).download(sourceReceipt.storage_path)
+      const attached = file && await attachReceipt(supabase, inserted.id, user.id, new Uint8Array(await file.arrayBuffer()), sourceReceipt.mime_type)
+      if (!attached) warning = 'Spesa salvata, ma non riesco ad allegare lo scontrino. Puoi aggiungerlo dal dettaglio.'
+    } catch { warning = 'Spesa salvata, ma il caricamento dello scontrino non è riuscito. Puoi aggiungerlo dal dettaglio.' }
+    return { ok: true, expenseId: inserted.id, warning }
+  }
 
   // Con allegati: niente redirect, il client carica i file e poi naviga.
   if (hasAttachments) {

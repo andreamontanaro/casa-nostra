@@ -24,7 +24,7 @@ function buildComponents(
   a: ({ children, href }) => {
     // I link interni (es. /spese/<id>) navigano in-app col router e chiudono la chat;
     // quelli esterni si aprono in una nuova scheda come prima.
-    const isInternal = !!href && href.startsWith('/')
+    const isInternal = !!href && href.startsWith('/') && !href.startsWith('//')
     if (isInternal) {
       return (
         <a
@@ -69,14 +69,14 @@ function buildComponents(
     </pre>
   ),
   table: ({ children }) => (
-    <div className="my-1.5 overflow-x-auto">
+    <div className="my-3 overflow-x-auto rounded-2xl border border-border bg-surface">
       <table className="w-full border-collapse text-left text-[0.9em]">{children}</table>
     </div>
   ),
   th: ({ children }) => (
-    <th className="border border-border px-2 py-1 font-semibold">{children}</th>
+    <th className="border-b border-border bg-accent-muted/50 px-3 py-2.5 font-semibold">{children}</th>
   ),
-  td: ({ children }) => <td className="border border-border px-2 py-1">{children}</td>,
+  td: ({ children }) => <td className="border-b border-border px-3 py-2.5 align-top">{children}</td>,
   }
 }
 

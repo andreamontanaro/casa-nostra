@@ -151,7 +151,7 @@ export async function createExpenseFromReceipt(
  *
  * @returns true se l'allegato è stato registrato.
  */
-async function attachReceipt(
+export async function attachReceipt(
   db: QueryClient,
   expenseId: string,
   userId: string,

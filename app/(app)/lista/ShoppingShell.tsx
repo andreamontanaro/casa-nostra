@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Plus, ScanLine, AlertTriangle } from 'lucide-react'
+import { Plus, ScanLine, ShoppingBasket } from 'lucide-react'
 import { ItemFormSheet } from '@/components/shopping/ItemFormSheet'
 import { ReceiptCheckSheet } from '@/components/shopping/ReceiptCheckSheet'
 import { ShoppingItemRow } from '@/components/shopping/ShoppingItemRow'
@@ -21,6 +21,7 @@ import { springSnappy } from '@/lib/motion'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import {
+  addItemAction,
   clearBoughtAction,
   deleteItemAction,
   markBoughtAction,
@@ -48,6 +49,9 @@ export function ShoppingShell({
   lastCheck,
   missingSinceCheck,
 }: ShoppingShellProps) {
+  const [quickName, setQuickName] = useState('')
+  const [quickPending, setQuickPending] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ShoppingItem | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ShoppingItem | null>(null)
   // Cambia a ogni apertura: rimonta il form della sheet con i campi giusti
@@ -94,7 +98,7 @@ export function ShoppingShell({
 
   async function handleToggle(item: ShoppingItem) {
     markPending(item.id, true)
-    const result = await markBoughtAction(item.id)
+    const result = await markBoughtAction(item.id).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
     markPending(item.id, false)
 
     if (result.error) {
@@ -109,7 +113,7 @@ export function ShoppingShell({
       action: {
         label: 'Annulla',
         onClick: async () => {
-          const undo = await restoreItemAction(item.id)
+          const undo = await restoreItemAction(item.id).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
           if (undo.error) {
             toast.error(undo.error)
             return
@@ -126,7 +130,7 @@ export function ShoppingShell({
 
   async function handleRestore(item: ShoppingItem) {
     markPending(item.id, true)
-    const result = await restoreItemAction(item.id)
+    const result = await restoreItemAction(item.id).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
     markPending(item.id, false)
     if (result.error) toast.error(result.error)
     else toast.success(`"${item.name}" è di nuovo in lista.`)
@@ -134,7 +138,7 @@ export function ShoppingShell({
 
   async function handleDelete(item: ShoppingItem) {
     markPending(item.id, true)
-    const result = await deleteItemAction(item.id)
+    const result = await deleteItemAction(item.id).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
     markPending(item.id, false)
     if (result.error) toast.error(result.error)
     else toast.success('Eliminato.')
@@ -142,11 +146,24 @@ export function ShoppingShell({
 
   async function handleClearBought() {
     setClearing(true)
-    const result = await clearBoughtAction()
+    const result = await clearBoughtAction().catch(() => ({ error: 'Non riesco a svuotare lo storico. Riprova.' }))
     setClearing(false)
     setConfirmClear(false)
     if (result.error) toast.error(result.error)
     else toast.success('Storico svuotato.')
+  }
+
+  async function quickAdd(event: React.FormEvent) {
+    event.preventDefault()
+    const name = quickName.trim()
+    if (!name || quickPending) return
+    setQuickPending(true)
+    try {
+      const result = await addItemAction({ name, category: 'cibo', urgency: 'media' }).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
+      if (result.error) toast.error(result.error)
+      else { setQuickName(''); toast.success('Aggiunto alla lista.') }
+    } catch { toast.error('Non riesco ad aggiungere il prodotto. Il nome è conservato.') }
+    finally { setQuickPending(false) }
   }
 
   function openNew() {
@@ -163,8 +180,8 @@ export function ShoppingShell({
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-24">
-      <header className="flex items-baseline justify-between px-1">
-        <h1 className="text-title font-semibold text-foreground">Lista della spesa</h1>
+      <header className="flex flex-wrap items-baseline justify-between gap-2 px-1">
+        <h1 className="font-display text-3xl font-semibold text-foreground">La vostra lista</h1>
         <span className="text-sm text-muted">
           {visibleItems.length === 0
             ? 'Non manca niente'
@@ -172,11 +189,17 @@ export function ShoppingShell({
         </span>
       </header>
 
+      <form onSubmit={quickAdd} className="flex items-center gap-2 rounded-3xl border border-border bg-surface p-2">
+        <input aria-label="Prodotto da aggiungere" placeholder="Cosa serve? Es. latte" value={quickName} onChange={(e) => setQuickName(e.target.value)} disabled={quickPending}
+          className="min-h-12 min-w-0 flex-1 rounded-2xl bg-transparent px-3 text-base" enterKeyHint="done" />
+        <Button type="submit" aria-label="Aggiungi prodotto" disabled={!quickName.trim()} loading={quickPending} className="shrink-0 px-4"><Plus className="size-5" aria-hidden /></Button>
+      </form>
+
       {missingSinceCheck.length > 0 && lastCheck && (
-        <Card className="flex flex-col gap-2 border-destructive/30 px-4 py-4">
+        <Card className="flex flex-col gap-2 border-border bg-accent-muted/50 px-4 py-4">
           <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <AlertTriangle className="size-4 text-destructive" />
-            Rimasto fuori dall&apos;ultimo scontrino
+            <ShoppingBasket className="size-4 text-accent" />
+            Da prendere la prossima volta
           </span>
           <p className="text-xs text-muted">
             {lastCheck.checked_at ? formatDate(lastCheck.checked_at) : ''}
@@ -248,7 +271,7 @@ export function ShoppingShell({
                         key={item.id}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className={cn(missingIds.has(item.id) && 'bg-destructive/5')}
+                        className={cn(missingIds.has(item.id) && 'bg-accent-muted/30')}
                       >
                         <ShoppingItemRow
                           name={item.name}
@@ -262,7 +285,7 @@ export function ShoppingShell({
                           pending={pendingIds.has(item.id)}
                           onToggle={() => handleToggle(item)}
                           onEdit={() => openEdit(item)}
-                          onDelete={() => handleDelete(item)}
+                          onDelete={() => setDeleteTarget(item)}
                         />
                       </motion.div>
                     ))}
@@ -275,7 +298,8 @@ export function ShoppingShell({
       )}
 
       {boughtItems.length > 0 && (
-        <section>
+        <details className="rounded-3xl border border-border bg-surface p-4"><summary className="min-h-11 font-semibold">Comprati di recente ({boughtItems.length})</summary>
+        <section className="mt-3">
           <div className="mb-3 flex items-center justify-between px-1">
             <h2 className="text-label font-semibold uppercase tracking-wide text-muted">
               🛍️ Comprati di recente
@@ -306,11 +330,12 @@ export function ShoppingShell({
                   .join(' · ')}
                 pending={pendingIds.has(item.id)}
                 onRestore={() => handleRestore(item)}
-                onDelete={() => handleDelete(item)}
+                onDelete={() => setDeleteTarget(item)}
               />
             ))}
           </Card>
         </section>
+        </details>
       )}
 
       <motion.button
@@ -323,7 +348,7 @@ export function ShoppingShell({
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.9 }}
         className={cn(
-          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30 hide-on-keyboard',
+          'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] app-fab z-30 hide-on-keyboard',
           'flex size-14 items-center justify-center rounded-full',
           'bg-accent text-accent-foreground shadow-fab',
         )}
@@ -339,6 +364,16 @@ export function ShoppingShell({
       />
 
       <ReceiptCheckSheet open={receiptOpen} onOpenChange={setReceiptOpen} />
+
+      <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)}
+        title="Eliminare questo articolo?" description={deleteTarget ? `“${deleteTarget.name}” verrà eliminato dalla lista.` : ''}
+        confirmLabel="Elimina" confirmVariant="destructive"
+        loading={deleteTarget ? pendingIds.has(deleteTarget.id) : false}
+        onConfirm={async () => {
+          if (!deleteTarget) return
+          try { await handleDelete(deleteTarget) } catch { toast.error('Non riesco a eliminare l’articolo. Riprova.') }
+          finally { setDeleteTarget(null) }
+        }} />
 
       <Dialog
         open={confirmClear}

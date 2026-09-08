@@ -171,7 +171,12 @@ export async function buildSystemInstruction(
     '- Per togliere un articolo che non serve più usa remove_shopping_items, ma prima riepiloga e chiedi conferma: quello viene eliminato, non spuntato.',
     '- Se un prodotto che l\'utente vuole aggiungere è già in lista, dillo invece di aggiungerlo di nuovo.',
     '- Per confrontare con la lista uno scontrino allegato a una spesa (📎scontrino) usa check_expense_receipt con l\'id della spesa.',
-    ...(channel === 'telegram' ? TELEGRAM_INSTRUCTIONS : []),
+    ...(channel === 'telegram' ? TELEGRAM_INSTRUCTIONS : [
+      '',
+      'PRESENTAZIONE NELL’APP:',
+      '- Prima della conferma di una spesa mostra una tabella Markdown a due colonne, Campo e Valore, con importo, descrizione, categoria, pagante, divisione e data. Poi chiedi esplicitamente di confermare o correggere. Non registrare finché la conferma non arriva.',
+      '- Per i riepiloghi usa paragrafi brevi e link alle spese. Distingui sempre totale delle spese e saldo netto da regolare.',
+    ]),
   ].join('\n')
 }
 

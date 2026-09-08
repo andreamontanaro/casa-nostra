@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Check, ShoppingBasket } from 'lucide-react'
+import Link from 'next/link'
+import { Camera, Check, FileUp, ShoppingBasket } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -36,11 +37,13 @@ interface ReceiptCheckSheetProps {
 export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const [phase, setPhase] = useState<'idle' | 'working'>('idle')
+  const cameraRef = useRef<HTMLInputElement | null>(null)
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'reading'>('idle')
+  const working = phase !== 'idle'
   const [result, setResult] = useState<CheckResult | null>(null)
 
   function close(next: boolean) {
-    if (phase === 'working') return
+    if (working) return
     if (!next) {
       setResult(null)
       router.refresh()
@@ -59,9 +62,11 @@ export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps
       return
     }
 
-    setPhase('working')
+    if (working) return
+    setPhase('uploading')
     setResult(null)
 
+    try {
     const supabase = createClient()
     const path = buildReceiptPath(file.type)
     const { error: uploadError } = await supabase.storage
@@ -74,6 +79,7 @@ export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps
       return
     }
 
+    setPhase('reading')
     const outcome = await checkReceiptAction({
       storagePath: path,
       fileName: file.name,
@@ -88,6 +94,8 @@ export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps
       return
     }
     router.refresh()
+    } catch { toast.error('Il controllo non è stato completato. Verifica la connessione e riprova.') }
+    finally { setPhase('idle') }
   }
 
   return (
@@ -95,23 +103,20 @@ export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps
       open={open}
       onOpenChange={close}
       title="Controllo scontrino"
-      description="Fotografo, leggo e spunto: quello che resta è quello che manca ancora."
+      description="Confronta lo scontrino con la lista e spunta i prodotti comprati."
       size="auto"
       footer={
         result?.ok ? (
-          <Button className="w-full" size="lg" variant="outline" onClick={() => close(false)}>
-            Chiudi
-          </Button>
+          <div className="space-y-2">
+            <Link href={`/spese/nuova?scontrino=${result.checkId}`} onClick={() => close(false)} className="flex min-h-13 items-center justify-center rounded-2xl bg-accent px-4 py-3 font-semibold text-accent-foreground">Crea spesa da questo scontrino</Link>
+            <p className="text-center text-xs text-muted">Potrai controllare i dati prima di salvare.</p>
+            <Button className="w-full" variant="ghost" onClick={() => close(false)}>Torna alla lista</Button>
+          </div>
         ) : (
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={() => inputRef.current?.click()}
-            loading={phase === 'working'}
-          >
-            <Camera className="size-5" />
-            Scegli o scatta la foto
-          </Button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button size="lg" onClick={() => cameraRef.current?.click()} disabled={working}><Camera className="size-5" />Scatta foto</Button>
+            <Button size="lg" variant="outline" onClick={() => inputRef.current?.click()} disabled={working}><FileUp className="size-5" />Scegli file</Button>
+          </div>
         )
       }
     >
@@ -119,17 +124,17 @@ export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps
         ref={inputRef}
         type="file"
         accept={ACCEPTED_RECEIPT_MIME.join(',')}
-        capture="environment"
         className="hidden"
         onChange={handleFile}
       />
 
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
       <div className="flex flex-col gap-4 px-4 pb-4 pt-1">
-        {phase === 'working' && (
-          <Card className="flex items-center gap-3 px-4 py-6">
+        {working && (
+          <Card role="status" className="flex items-center gap-3 px-4 py-6">
             <Spinner size="sm" />
             <span className="text-sm text-muted">
-              Sto leggendo lo scontrino e lo confronto con la lista…
+              {phase === 'uploading' ? '1 di 2 · Caricamento della foto…' : '2 di 2 · Lettura e confronto con la lista…'}
             </span>
           </Card>
         )}
@@ -226,7 +231,7 @@ function ResultGroup({
               >
                 {item.label}
               </span>
-              {item.hint && <span className="truncate text-xs text-muted">{item.hint}</span>}
+              {item.hint && <span className="min-w-0 break-words text-xs text-muted">{item.hint}</span>}
             </div>
           ))}
         </Card>

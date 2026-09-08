@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { createExpense, type ExpenseFormState } from '@/app/actions/expenses'
@@ -25,9 +26,9 @@ export interface ExpenseDraft {
 }
 interface Props {
   profiles: Profile[]; currentUserId: string; suggestions?: string[]
-  redirectTo?: string; onSuccess?: () => void; initialDraft?: Partial<ExpenseDraft>
+  redirectTo?: string; onSuccess?: () => void; initialDraft?: Partial<ExpenseDraft>; sourceReceiptId?: string
 }
-export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirectTo, onSuccess, initialDraft }: Props) {
+export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirectTo, onSuccess, initialDraft, sourceReceiptId }: Props) {
   const router = useRouter()
   const [draft, setDraft] = useState<ExpenseDraft>({
     amount: '', description: '', category: 'spesa_alimentare', splitRule: 'sixty_forty',
@@ -63,9 +64,11 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
       || typeof d.customOtherShare !== 'string' || typeof d.expenseDate !== 'string') return
     setDraft(d as unknown as ExpenseDraft); setTouched(true)
   }
+  const warningRef = useRef<string | undefined>(undefined)
   function finish() {
     clearDraft(currentUserId)
-    toast.success('Spesa salvata.')
+    if (warningRef.current) toast.warning(warningRef.current, { duration: 8000 })
+    else toast.success('Spesa salvata.')
     onSuccess?.()
     if (redirectTo) router.push(redirectTo)
     router.refresh()
@@ -89,6 +92,7 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
           const result = await createExpense({}, data)
           setState(result)
           if (!result.ok || !result.expenseId) return
+          warningRef.current = result.warning
           expenseId = result.expenseId
           setSavedId(expenseId)
           clearDraft(currentUserId)
@@ -126,7 +130,9 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
           <AttachmentUploader mode="deferred" files={files} onFilesChange={setFiles} disabled={pending} />
         </details>}
       />
+      {sourceReceiptId && <input type="hidden" name="source_receipt_id" value={sourceReceiptId} />}
       <input type="hidden" name="has_attachments" value={files.length ? '1' : '0'} />
+      {state.existingExpenseId && <Link className="mt-4 flex min-h-12 items-center justify-center rounded-2xl bg-accent-muted p-3 text-accent" href={`/spese/${state.existingExpenseId}`}>Controlla la spesa già presente</Link>}
       {state.error && <p role="alert" className="mt-4 rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">{state.error}</p>}
       <div className={cn('mt-5', isSheet && 'sticky bottom-0 z-10 -mx-4 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,var(--safe-bottom))]')}>
         <Button type="submit" size="lg" loading={pending} className="w-full">{savedId ? 'Riprova caricamento allegati' : 'Salva spesa'}</Button>
