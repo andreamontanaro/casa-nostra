@@ -6,7 +6,6 @@ import { Plus } from 'lucide-react'
 import { springSnappy } from '@/lib/motion'
 import { Sheet } from '@/components/ui/Sheet'
 import { ExpenseForm } from '@/app/(app)/spese/nuova/ExpenseForm'
-import type { OptimisticExpense } from '@/app/(app)/spese/nuova/ExpenseForm'
 import { cn } from '@/lib/utils'
 import type { Tables } from '@/types/database'
 
@@ -18,7 +17,6 @@ interface NuovaSpesaFabProps {
   suggestions?: string[]
   // Se passato, l'inserimento avviene in modo ottimistico (Home). In assenza,
   // il form salva e la lista si aggiorna via revalidazione.
-  onOptimisticInsert?: (e: OptimisticExpense) => void
   // Apertura controllata dal parent (per CTA esterne, es. empty state). Se
   // omessa, il componente gestisce lo stato internamente tramite il FAB.
   open?: boolean
@@ -29,7 +27,6 @@ export function NuovaSpesaFab({
   profiles,
   currentUserId,
   suggestions = [],
-  onOptimisticInsert,
   open: openProp,
   onOpenChange,
 }: NuovaSpesaFabProps) {
@@ -71,7 +68,6 @@ export function NuovaSpesaFab({
           profiles={profiles}
           currentUserId={currentUserId}
           suggestions={suggestions}
-          onOptimisticInsert={onOptimisticInsert}
           onSuccess={() => setOpen(false)}
         />
       </Sheet>

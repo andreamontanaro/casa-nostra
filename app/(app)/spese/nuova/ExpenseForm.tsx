@@ -1,269 +1,137 @@
-"use client";
+'use client'
 
-import { useActionState, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createExpense, type ExpenseFormState } from "@/app/actions/expenses";
-import { uploadAttachments } from "@/lib/attachments";
-import { AttachmentUploader } from "@/components/AttachmentUploader";
-import { ExpenseFormFields } from "@/components/expense/ExpenseFormFields";
-import { toast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
-import { DEFAULT_SPLIT, todayISO } from "@/lib/fmt";
-import { Tables, Constants } from "@/types/database";
-import { cn } from "@/lib/utils";
+import { useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
+import { createExpense, type ExpenseFormState } from '@/app/actions/expenses'
+import { uploadAttachments } from '@/lib/attachments'
+import { AttachmentUploader } from '@/components/AttachmentUploader'
+import { ExpenseFormFields } from '@/components/expense/ExpenseFormFields'
+import { ExpenseDraftNotice, saveDraft, clearDraft } from '@/components/expense/ExpenseDraftNotice'
+import { toast } from '@/lib/toast'
+import { Button } from '@/components/ui/Button'
+import { DEFAULT_SPLIT, todayISO } from '@/lib/fmt'
+import { parseEuroInput } from '@/lib/expense-input'
+import type { Tables } from '@/types/database'
+import { Constants } from '@/types/database'
+import { cn } from '@/lib/utils'
 
-type Profile = Tables<"profiles">;
-type Category = (typeof Constants.public.Enums.expense_category)[number];
-type SplitRule = (typeof Constants.public.Enums.split_rule)[number];
-
-export interface OptimisticExpense {
-  id: string;
-  amount: number;
-  description: string;
-  category: Category;
-  split_rule: SplitRule;
-  paid_by: string;
-  expense_date: string;
-  settlement_id: null;
-  created_by: string;
-  custom_other_share: number | null;
-  created_at: string;
-  updated_at: string;
-  paid_by_profile: { display_name: string } | null;
-  __optimistic: true;
+type Profile = Tables<'profiles'>
+type Category = (typeof Constants.public.Enums.expense_category)[number]
+type SplitRule = (typeof Constants.public.Enums.split_rule)[number]
+export interface ExpenseDraft {
+  amount: string; description: string; category: Category; splitRule: SplitRule;
+  paidBy: string; customOtherShare: string; expenseDate: string
 }
-
-interface ExpenseFormProps {
-  profiles: Profile[];
-  currentUserId: string;
-  suggestions?: string[];
-  onOptimisticInsert?: (e: OptimisticExpense) => void;
-  // Path interno dove tornare dopo il salvataggio: se impostato la Server Action
-  // fa redirect (form a schermo intero); se assente resta in pagina (bottom-sheet).
-  redirectTo?: string;
-  // Callback a salvataggio riuscito nel flusso in-page (es. chiudere il sheet).
-  onSuccess?: () => void;
+interface Props {
+  profiles: Profile[]; currentUserId: string; suggestions?: string[]
+  redirectTo?: string; onSuccess?: () => void; initialDraft?: Partial<ExpenseDraft>
 }
+export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirectTo, onSuccess, initialDraft }: Props) {
+  const router = useRouter()
+  const [draft, setDraft] = useState<ExpenseDraft>({
+    amount: '', description: '', category: 'spesa_alimentare', splitRule: 'sixty_forty',
+    paidBy: currentUserId, customOtherShare: '', expenseDate: todayISO(), ...initialDraft,
+  })
+  const [touched, setTouched] = useState(Boolean(initialDraft))
+  const [state, setState] = useState<ExpenseFormState>({})
+  const [files, setFiles] = useState<File[]>([])
+  const [savedId, setSavedId] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+  const submitting = useRef(false)
+  const isSheet = !redirectTo
 
-export function ExpenseForm({
-  profiles,
-  currentUserId,
-  suggestions = [],
-  onOptimisticInsert,
-  redirectTo,
-  onSuccess,
-}: ExpenseFormProps) {
-  const router = useRouter();
-  const [state, action, pending] = useActionState<ExpenseFormState, FormData>(
-    createExpense,
-    {},
-  );
-  const [attachFiles, setAttachFiles] = useState<File[]>([]);
-  const [category, setCategory] = useState<Category>("spesa_alimentare");
-  const [splitRule, setSplitRule] = useState<SplitRule>("sixty_forty");
-  const [paidBy, setPaidBy] = useState(currentUserId);
-  const [rawAmount, setRawAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [customOtherShare, setCustomOtherShare] = useState("");
-  const [expenseDate, setExpenseDate] = useState(todayISO());
-
-  // Nel flusso bottom-sheet (senza redirect) il Salva è una barra sticky in
-  // fondo; a schermo intero (con redirect) resta in coda allo scroll.
-  const isSheet = !redirectTo;
-
-  // Quando createExpense torna un expenseId (caso con allegati) entriamo nella
-  // fase di finalizzazione: upload dei file e poi navigazione.
-  const finalizing = Boolean(state.expenseId);
-
-  function resetForm() {
-    setRawAmount("");
-    setDescription("");
-    setCategory("spesa_alimentare");
-    setSplitRule("sixty_forty");
-    setPaidBy(currentUserId);
-    setCustomOtherShare("");
-    setExpenseDate(todayISO());
-    setAttachFiles([]);
+  function change<K extends keyof ExpenseDraft>(key: K, value: ExpenseDraft[K]) {
+    const next = { ...draft, [key]: value }
+    setTouched(true); setDraft(next); saveDraft(currentUserId, next)
   }
-
-  // Salvataggio riuscito nel flusso in-page (bottom-sheet): un solo toast,
-  // reset del form, chiusura del sheet e revalidazione della rotta corrente.
-  function finalizeSuccess() {
-    toast.success("Spesa salvata.");
-    resetForm();
-    onSuccess?.();
-    router.refresh();
+  function categoryChange(category: Category) {
+    const next = { ...draft, category, splitRule: draft.splitRule === DEFAULT_SPLIT[draft.category] ? DEFAULT_SPLIT[category] : draft.splitRule }
+    if (category === 'affitto') {
+      if (!next.amount.trim()) next.amount = '530,00'
+      if (!next.description.trim()) next.description = 'Affitto ' + new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric', timeZone: 'Europe/Rome' })
+    }
+    setTouched(true); setDraft(next); saveDraft(currentUserId, next)
   }
-
-  // Con allegati createExpense non fa redirect ma torna expenseId: carichiamo
-  // i file e poi finalizziamo (redirect a schermo intero o feedback in-page).
-  useEffect(() => {
-    if (!state.expenseId) return;
-    let cancelled = false;
-    (async () => {
-      if (attachFiles.length > 0) {
-        const results = await uploadAttachments(
-          state.expenseId!,
-          attachFiles,
-          currentUserId,
-        );
-        const failCount = results.filter((r) => !r.ok).length;
-        if (failCount > 0) {
-          toast.error("Spesa salvata, alcuni allegati non sono stati caricati.");
+  function restore(value: unknown) {
+    if (!value || typeof value !== 'object') return
+    const d = value as Record<string, unknown>
+    if (typeof d.amount !== 'string' || typeof d.description !== 'string'
+      || !Constants.public.Enums.expense_category.includes(d.category as Category)
+      || !Constants.public.Enums.split_rule.includes(d.splitRule as SplitRule)
+      || typeof d.paidBy !== 'string' || !profiles.some((p) => p.id === d.paidBy)
+      || typeof d.customOtherShare !== 'string' || typeof d.expenseDate !== 'string') return
+    setDraft(d as unknown as ExpenseDraft); setTouched(true)
+  }
+  function finish() {
+    clearDraft(currentUserId)
+    toast.success('Spesa salvata.')
+    onSuccess?.()
+    if (redirectTo) router.push(redirectTo)
+    router.refresh()
+  }
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (submitting.current) return
+    const data = new FormData(event.currentTarget)
+    const amount = parseEuroInput(draft.amount)
+    const custom = parseEuroInput(draft.customOtherShare)
+    const errors: Record<string, string> = {}
+    if (amount === null) errors.amount = 'Usa un importo positivo, con al massimo due decimali.'
+    if (!draft.description.trim()) errors.description = 'Scrivi a cosa si riferisce la spesa.'
+    if (draft.splitRule === 'custom' && (custom === null || amount === null || custom >= amount)) errors.custom_other_share = 'La quota deve essere positiva e inferiore al totale.'
+    if (Object.keys(errors).length) { setState({ fieldErrors: errors }); return }
+    submitting.current = true
+    startTransition(async () => {
+      try {
+        let expenseId = savedId
+        if (!expenseId) {
+          const result = await createExpense({}, data)
+          setState(result)
+          if (!result.ok || !result.expenseId) return
+          expenseId = result.expenseId
+          setSavedId(expenseId)
+          clearDraft(currentUserId)
         }
-      }
-      if (cancelled) return;
-      if (redirectTo) {
-        router.push(`${redirectTo}?ok=expense-created`);
-        router.refresh();
-      } else {
-        finalizeSuccess();
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.expenseId]);
-
-  // Salvataggio senza allegati e senza redirect (flusso nel bottom-sheet): la
-  // Server Action torna { ok: true }; reagiamo al risultato dell'azione per dare
-  // feedback e chiudere il sheet (setState deliberato in risposta all'evento).
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (state.ok && !state.expenseId) finalizeSuccess();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
-
-  function handleSubmit() {
-    if (!onOptimisticInsert) return;
-
-    const amt = parseFloat(rawAmount.replace(",", "."));
-    if (isNaN(amt) || amt <= 0) return;
-    const desc = description.trim();
-    if (!desc) return;
-    if (!expenseDate) return;
-
-    const payer = profiles.find((p) => p.id === paidBy);
-    const customShareValue =
-      splitRule === "custom"
-        ? parseFloat(customOtherShare.replace(",", "."))
-        : null;
-
-    const now = new Date().toISOString();
-    onOptimisticInsert({
-      id: `optimistic-${Date.now()}`,
-      amount: amt,
-      description: desc,
-      category,
-      split_rule: splitRule,
-      paid_by: paidBy,
-      expense_date: expenseDate,
-      settlement_id: null,
-      created_by: currentUserId,
-      custom_other_share:
-        customShareValue && !isNaN(customShareValue) && customShareValue > 0
-          ? customShareValue
-          : null,
-      created_at: now,
-      updated_at: now,
-      paid_by_profile: payer ? { display_name: payer.display_name } : null,
-      __optimistic: true,
-    });
+        if (files.length) {
+          const results = await uploadAttachments(expenseId, files, currentUserId)
+          const remaining = files.filter((_, i) => !results[i]?.ok)
+          setFiles(remaining)
+          if (remaining.length) {
+            setState({ error: 'La spesa è salvata. Alcuni allegati non sono stati caricati: riprova senza creare una seconda spesa.' })
+            return
+          }
+        }
+        finish()
+      } catch (error) {
+        if (isRedirectError(error)) throw error
+        setState({ error: 'Non riesco a completare il salvataggio. I campi sono conservati: riprova.' })
+      } finally { submitting.current = false }
+    })
   }
-
-  function handleCategoryChange(cat: Category) {
-    // Adegua la divisione al default della nuova categoria SOLO se l'utente non
-    // l'ha personalizzata (cioè coincide ancora col default di quella precedente),
-    // così una scelta manuale non viene mai sovrascritta.
-    if (splitRule === DEFAULT_SPLIT[category]) {
-      setSplitRule(DEFAULT_SPLIT[cat]);
-    }
-    setCategory(cat);
-    // Pre-compilazione affitto: solo se i campi sono ancora vuoti, senza mai
-    // sovrascrivere importo o descrizione già digitati.
-    if (cat === "affitto") {
-      if (rawAmount.trim() === "") setRawAmount("530,00");
-      if (description.trim() === "") {
-        const today = new Date();
-        setDescription(
-          `Affitto ${today.toLocaleString("it-IT", { month: "long", year: "numeric" })}`,
-        );
-      }
-    }
-  }
-
   return (
-    <form
-      action={action}
-      onSubmit={handleSubmit}
-      className={cn("flex flex-col px-4 pt-4", isSheet ? "pb-0" : "pb-6")}
-    >
-      <ExpenseFormFields
-        profiles={profiles}
-        currentUserId={currentUserId}
-        disabled={pending}
-        fieldErrors={state.fieldErrors}
-        suggestions={suggestions}
-        amountFocusOnOpen={isSheet}
-        amount={rawAmount}
-        onAmountChange={setRawAmount}
-        description={description}
-        onDescriptionChange={setDescription}
-        category={category}
-        onCategoryChange={handleCategoryChange}
-        splitRule={splitRule}
-        onSplitRuleChange={setSplitRule}
-        customOtherShare={customOtherShare}
-        onCustomOtherShareChange={setCustomOtherShare}
-        paidBy={paidBy}
-        onPaidByChange={setPaidBy}
-        expenseDate={expenseDate}
-        onExpenseDateChange={setExpenseDate}
-        attachmentsSlot={
-          <div className="flex flex-col gap-2">
-            <span className="text-label font-medium text-muted">
-              Allegati (facoltativi)
-            </span>
-            <AttachmentUploader
-              mode="deferred"
-              files={attachFiles}
-              onFilesChange={setAttachFiles}
-              disabled={pending || finalizing}
-            />
-          </div>
-        }
+    <form onSubmit={submit} className={cn('flex flex-col px-4 pt-4', isSheet ? 'pb-0' : 'pb-6')}>
+      {!touched && <ExpenseDraftNotice userId={currentUserId} onRestore={restore} />}
+      <ExpenseFormFields profiles={profiles} currentUserId={currentUserId} disabled={pending || Boolean(savedId)}
+        fieldErrors={state.fieldErrors} suggestions={suggestions} amountFocusOnOpen={isSheet}
+        amount={draft.amount} onAmountChange={(v) => change('amount', v)}
+        description={draft.description} onDescriptionChange={(v) => change('description', v)}
+        category={draft.category} onCategoryChange={categoryChange}
+        splitRule={draft.splitRule} onSplitRuleChange={(v) => change('splitRule', v)}
+        customOtherShare={draft.customOtherShare} onCustomOtherShareChange={(v) => change('customOtherShare', v)}
+        paidBy={draft.paidBy} onPaidByChange={(v) => change('paidBy', v)}
+        expenseDate={draft.expenseDate} onExpenseDateChange={(v) => change('expenseDate', v)}
+        attachmentsSlot={<details className="rounded-2xl border border-border p-4" open={files.length > 0 || undefined}>
+          <summary className="min-h-11 text-sm font-semibold">Scontrini e allegati <span className="font-normal text-muted">(facoltativi)</span></summary>
+          <AttachmentUploader mode="deferred" files={files} onFilesChange={setFiles} disabled={pending} />
+        </details>}
       />
-
-      <input
-        type="hidden"
-        name="has_attachments"
-        value={attachFiles.length > 0 ? "1" : "0"}
-      />
-      <input type="hidden" name="redirect_to" value={redirectTo ?? ""} />
-
-      {state.error && (
-        <p role="alert" className="mt-4 text-sm text-destructive">
-          {state.error}
-        </p>
-      )}
-
-      <div
-        className={cn(
-          "mt-5",
-          isSheet &&
-            "sticky bottom-0 z-10 -mx-4 mt-4 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,var(--safe-bottom))]",
-        )}
-      >
-        <Button
-          type="submit"
-          size="lg"
-          loading={pending || finalizing}
-          className="w-full"
-        >
-          Salva spesa
-        </Button>
+      <input type="hidden" name="has_attachments" value={files.length ? '1' : '0'} />
+      {state.error && <p role="alert" className="mt-4 rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">{state.error}</p>}
+      <div className={cn('mt-5', isSheet && 'sticky bottom-0 z-10 -mx-4 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,var(--safe-bottom))]')}>
+        <Button type="submit" size="lg" loading={pending} className="w-full">{savedId ? 'Riprova caricamento allegati' : 'Salva spesa'}</Button>
+        {savedId && <Button variant="ghost" className="mt-2 w-full" disabled={pending} onClick={finish}>Completa senza gli allegati mancanti</Button>}
       </div>
     </form>
-  );
+  )
 }

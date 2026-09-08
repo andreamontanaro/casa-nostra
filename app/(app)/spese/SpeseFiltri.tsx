@@ -1,338 +1,87 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, X, SlidersHorizontal } from 'lucide-react'
+import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Chip } from '@/components/ui/Chip'
-import { Sheet } from '@/components/ui/Sheet'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
-import { formatDate, formatEur, CATEGORY_LABELS } from '@/lib/fmt'
-import { Tables, Constants } from '@/types/database'
-import { cn } from '@/lib/utils'
+import { AmountDisplay } from '@/components/ui/AmountDisplay'
+import { formatDate, formatEur, CATEGORY_LABELS, todayISO } from '@/lib/fmt'
+import { Constants } from '@/types/database'
+import type { Tables } from '@/types/database'
 
-type Expense = Tables<'expenses'> & {
-  paid_by_profile: { display_name: string } | null
-}
+type Expense = Tables<'expenses'> & { paid_by_profile: { display_name: string } | null }
+interface Props { expenses: Expense[]; onAddExpense?: () => void }
 
-type StatusFilter = 'tutte' | 'aperte' | 'saldate'
-type RangePreset = 'corrente' | 'scorso' | 'tutti'
-
-interface SpeseFiltriProps {
-  expenses: Expense[]
-  // CTA dell'empty state di primo utilizzo (apre il bottom-sheet Nuova spesa).
-  onAddExpense?: () => void
-}
-
-function groupByDate(expenses: Expense[]): Map<string, Expense[]> {
-  const map = new Map<string, Expense[]>()
-  for (const e of expenses) {
-    const key = e.expense_date
-    if (!map.has(key)) map.set(key, [])
-    map.get(key)!.push(e)
+export function SpeseFiltri({ expenses, onAddExpense }: Props) {
+  const params = useSearchParams()
+  const status = ['aperte', 'saldate'].includes(params.get('stato') ?? '') ? params.get('stato')! : 'tutte'
+  const category = Constants.public.Enums.expense_category.find((c) => c === params.get('cat')) ?? 'tutte'
+  const query = params.get('q') ?? ''
+  const currentMonth = todayISO().slice(0, 7)
+  const period = params.get('periodo')
+  const legacyMonth = period === 'corrente' ? currentMonth : period === 'scorso'
+    ? shiftMonth(currentMonth, -1) : ''
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('mese') ?? '') ? params.get('mese')! : legacyMonth
+  const hasFilter = status !== 'tutte' || category !== 'tutte' || Boolean(month || query)
+  function update(key: string, value: string) {
+    const next = new URLSearchParams(params.toString())
+    if (value && value !== 'tutte') next.set(key, value)
+    else next.delete(key)
+    if (key === 'mese') next.delete('periodo')
+    const suffix = next.toString()
+    window.history.replaceState(null, '', suffix ? '/spese?' + suffix : '/spese')
   }
-  return map
-}
-
-function monthKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function currentMonthKey(): string {
-  return monthKey(new Date())
-}
-
-function previousMonthKey(): string {
-  const d = new Date()
-  d.setMonth(d.getMonth() - 1)
-  return monthKey(d)
-}
-
-// Offset per l'ancoraggio sticky sotto l'AppHeader fisso.
-const STICKY_TOP = 'top-[calc(4rem+env(safe-area-inset-top))]'
-
-export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
-  const searchParams = useSearchParams()
-
-  // I filtri sono inizializzati dall'URL così sopravvivono al tasto "indietro"
-  // (es. dopo aver aperto una spesa e tornato allo storico).
-  const [status, setStatus] = useState<StatusFilter>(() => {
-    const v = searchParams.get('stato')
-    return v === 'aperte' || v === 'saldate' ? v : 'tutte'
-  })
-  const [category, setCategory] = useState<string>(() => {
-    const v = searchParams.get('cat')
-    const valid = (
-      Constants.public.Enums.expense_category as readonly string[]
-    ).includes(v ?? '')
-    return valid ? (v as string) : 'tutte'
-  })
-  const [range, setRange] = useState<RangePreset>(() => {
-    const v = searchParams.get('periodo')
-    return v === 'corrente' || v === 'scorso' ? v : 'tutti'
-  })
-  const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
-  const [filtersOpen, setFiltersOpen] = useState(false)
-
-  // Riflette i filtri nell'URL senza ricaricare la pagina (il filtraggio è
-  // client-side): aggiorna la history così il back li ripristina.
-  useEffect(() => {
-    const params = new URLSearchParams()
-    if (status !== 'tutte') params.set('stato', status)
-    if (category !== 'tutte') params.set('cat', category)
-    if (range !== 'tutti') params.set('periodo', range)
-    const q = query.trim()
-    if (q) params.set('q', q)
-    const qs = params.toString()
-    window.history.replaceState(null, '', qs ? `/spese?${qs}` : '/spese')
-  }, [status, category, range, query])
-
-  function resetFilters() {
-    setStatus('tutte')
-    setCategory('tutte')
-    setRange('tutti')
-    setQuery('')
-  }
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const curMonth = currentMonthKey()
-    const prevMonth = previousMonthKey()
-
-    return expenses.filter((e) => {
-      if (status === 'aperte' && e.settlement_id !== null) return false
-      if (status === 'saldate' && e.settlement_id === null) return false
-      if (category !== 'tutte' && e.category !== category) return false
-
-      if (range !== 'tutti') {
-        const m = e.expense_date.slice(0, 7)
-        if (range === 'corrente' && m !== curMonth) return false
-        if (range === 'scorso' && m !== prevMonth) return false
-      }
-
-      if (q && !e.description.toLowerCase().includes(q)) return false
-      return true
-    })
-  }, [expenses, status, category, range, query])
-
-  const grouped = groupByDate(filtered)
-
-  // Filtri "avanzati" (stato/periodo) → badge sul chip Filtri.
-  const advancedCount =
-    (status !== 'tutte' ? 1 : 0) + (range !== 'tutti' ? 1 : 0)
-  const hasAnyFilter =
-    status !== 'tutte' ||
-    category !== 'tutte' ||
-    range !== 'tutti' ||
-    query.length > 0
-
-  return (
-    <div className="flex flex-col gap-4 pb-24">
-      {/* Ricerca — pill senza bordo */}
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted"
-          strokeWidth={2}
-        />
-        <input
-          type="search"
-          inputMode="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cerca per descrizione…"
-          className={cn(
-            'h-11 w-full rounded-full bg-surface-raised',
-            // text-base (16px): sotto i 16px iOS Safari fa zoom sulla UI al focus.
-            'pl-11 pr-10 text-base text-foreground placeholder:text-muted',
-            'focus:outline-none focus:ring-2 focus:ring-accent',
-          )}
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            aria-label="Cancella ricerca"
-            className="absolute right-2.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-surface-sunken hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Riga chip unica scrollabile */}
-      <div
-        className="-mx-4 overflow-x-auto no-scrollbar"
-        style={{ touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}
-      >
-        <div className="flex items-center gap-2 px-4">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(true)}
-            className={cn(
-              'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium',
-              'transition-colors duration-150 active:scale-[0.97]',
-              advancedCount > 0
-                ? 'bg-accent text-accent-foreground'
-                : 'border border-border-strong text-muted hover:text-foreground',
-            )}
-          >
-            <SlidersHorizontal className="size-4" strokeWidth={2.2} />
-            Filtri
-            {advancedCount > 0 && (
-              <span className="ml-0.5 flex size-4 items-center justify-center rounded-full bg-accent-foreground text-[0.625rem] font-bold text-accent">
-                {advancedCount}
-              </span>
-            )}
-          </button>
-
-          <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
-
-          <Chip
-            active={status === 'aperte'}
-            onClick={() =>
-              setStatus(status === 'aperte' ? 'tutte' : 'aperte')
-            }
-          >
-            Aperte
-          </Chip>
-
-          <Chip active={category === 'tutte'} onClick={() => setCategory('tutte')}>
-            Tutte
-          </Chip>
-          {Constants.public.Enums.expense_category.map((cat) => (
-            <Chip
-              key={cat}
-              active={category === cat}
-              onClick={() => setCategory(cat)}
-            >
-              {CATEGORY_LABELS[cat]}
-            </Chip>
-          ))}
-        </div>
-      </div>
-
-      {/* Lista */}
-      {filtered.length === 0 ? (
-        expenses.length === 0 ? (
-          // Primo utilizzo: nessuna spesa in assoluto.
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-muted text-2xl">
-              💸
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                Nessuna spesa registrata
-              </p>
-              <p className="mt-0.5 text-xs text-muted">
-                Inizia aggiungendo la prima spesa condivisa.
-              </p>
-            </div>
-            {onAddExpense && (
-              <Button size="sm" onClick={onAddExpense} className="mt-1">
-                Aggiungi la prima spesa
-              </Button>
-            )}
-          </div>
-        ) : (
-          // Ci sono spese, ma i filtri non producono risultati.
-          <div className="flex flex-col items-center gap-2 py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-raised text-2xl">
-              🗒️
-            </div>
-            <p className="text-sm font-medium text-foreground">
-              Nessuna spesa trovata
-            </p>
-            <p className="text-xs text-muted">
-              Nessun risultato con i filtri attuali.
-            </p>
-            <Button variant="ghost" size="sm" onClick={resetFilters} className="mt-1">
-              Azzera filtri
-            </Button>
-          </div>
-        )
-      ) : (
-        Array.from(grouped.entries()).map(([date, items]) => {
-          const dayTotal = items.reduce((acc, e) => acc + Number(e.amount), 0)
-          return (
-            <div key={date}>
-              {/* Header giorno sticky: data + totale del giorno (pattern N26) */}
-              <div
-                className={cn(
-                  'sticky z-10 mb-1.5 flex items-center justify-between gap-3',
-                  'bg-background/90 px-1 py-1 backdrop-blur-sm',
-                  STICKY_TOP,
-                )}
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  {formatDate(date)}
-                </p>
-                <p className="text-xs font-semibold tabular-nums text-muted">
-                  {formatEur(dayTotal)}
-                </p>
-              </div>
-              <Card className="divide-y divide-border overflow-hidden p-0">
-                {items.map((e) => (
-                  <ExpenseRow key={e.id} expense={e} />
-                ))}
-              </Card>
-            </div>
-          )
-        })
-      )}
-
-      {/* Sheet filtri esteso */}
-      <Sheet
-        open={filtersOpen}
-        onOpenChange={setFiltersOpen}
-        title="Filtri"
-      >
-        <div className="flex flex-col gap-5 px-4 pt-2 pb-6">
-          <div className="flex flex-col gap-2">
-            <span className="text-label font-medium text-muted">Stato</span>
-            <SegmentedControl
-              groupId="spese-status"
-              value={status}
-              onChange={(v) => setStatus(v as StatusFilter)}
-              options={[
-                { value: 'tutte', label: 'Tutte' },
-                { value: 'aperte', label: 'Aperte' },
-                { value: 'saldate', label: 'Saldate' },
-              ]}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="text-label font-medium text-muted">Periodo</span>
-            <SegmentedControl
-              groupId="spese-range"
-              value={range}
-              onChange={(v) => setRange(v as RangePreset)}
-              options={[
-                { value: 'corrente', label: 'Mese' },
-                { value: 'scorso', label: 'Scorso' },
-                { value: 'tutti', label: 'Tutti' },
-              ]}
-            />
-          </div>
-
-          <div className="flex gap-3 pt-1">
-            <Button
-              variant="outline"
-              size="md"
-              className="flex-1"
-              onClick={resetFilters}
-              disabled={!hasAnyFilter}
-            >
-              Azzera
-            </Button>
-            <Button size="md" className="flex-1" onClick={() => setFiltersOpen(false)}>
-              Fatto
-            </Button>
-          </div>
-        </div>
-      </Sheet>
-    </div>
+  const filtered = expenses.filter((e) =>
+    (status === 'tutte' || (status === 'aperte' ? e.settlement_id === null : e.settlement_id !== null))
+    && (category === 'tutte' || e.category === category)
+    && (!month || e.expense_date.startsWith(month))
+    && (!query.trim() || e.description.toLocaleLowerCase('it').includes(query.trim().toLocaleLowerCase('it'))),
   )
+  const groups = new Map<string, Expense[]>()
+  for (const expense of filtered) groups.set(expense.expense_date, [...(groups.get(expense.expense_date) ?? []), expense])
+  const total = filtered.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100
+  const returnHref = '/spese' + (params.toString() ? '?' + params.toString() : '')
+
+  return <div className="space-y-5 pb-24">
+    <Card className="space-y-4 p-4 sm:p-5">
+      <div className="flex items-center gap-2">
+        <button type="button" aria-label="Mese precedente" className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-surface-raised" onClick={() => update('mese', shiftMonth(month || currentMonth, -1))}><ChevronLeft className="size-5" aria-hidden /></button>
+        <div className="min-w-0 flex-1"><label htmlFor="history-month" className="mb-1 block text-xs text-muted">Periodo</label>
+          <input id="history-month" type="month" value={month} onChange={(e) => update('mese', e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-surface px-3 text-base" /></div>
+        <button type="button" aria-label="Mese successivo" className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-surface-raised" onClick={() => update('mese', shiftMonth(month || currentMonth, 1))}><ChevronRight className="size-5" aria-hidden /></button>
+      </div>
+      <div className="flex gap-2"><Button size="sm" variant={month === currentMonth ? 'secondary' : 'ghost'} onClick={() => update('mese', currentMonth)}>Questo mese</Button><Button size="sm" variant={!month ? 'secondary' : 'ghost'} onClick={() => update('mese', '')}>Tutto lo storico</Button></div>
+      <SegmentedControl groupId="history-status" label="Stato delle spese" value={status} onChange={(v) => update('stato', v)}
+        options={[{ value: 'tutte', label: 'Tutte' }, { value: 'aperte', label: 'Aperte' }, { value: 'saldate', label: 'Saldate' }]} />
+      <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
+        <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
+          <input type="search" aria-label="Cerca una spesa" placeholder="Cerca una spesa…" value={query} onChange={(e) => update('q', e.target.value)} className="h-12 w-full rounded-2xl bg-surface-raised pr-12 pl-10 text-base" />
+          {query && <button aria-label="Cancella ricerca" type="button" onClick={() => update('q', '')} className="absolute top-0.5 right-1 flex size-11 items-center justify-center rounded-full"><X className="size-4" aria-hidden /></button>}
+        </div>
+        <select aria-label="Categoria" value={category} onChange={(e) => update('cat', e.target.value)} className="min-h-12 min-w-0 rounded-2xl border border-border bg-surface px-3 text-base">
+          <option value="tutte">Tutte le categorie</option>{Constants.public.Enums.expense_category.map((cat) => <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>)}
+        </select>
+      </div>
+    </Card>
+    <div className="flex flex-wrap items-end justify-between gap-3 px-1" aria-live="polite">
+      <div><p className="mb-1 text-sm text-muted">{filtered.length} spese {hasFilter ? 'nei risultati' : 'in totale'}</p><AmountDisplay value={total} size="display-sm" /><p className="mt-1 text-xs text-muted">Totale delle spese, prima della divisione</p></div>
+      {hasFilter && <Button variant="ghost" size="sm" onClick={() => window.history.replaceState(null, '', '/spese')}>Azzera filtri</Button>}
+    </div>
+    {filtered.length === 0 ? <Card className="px-5 py-10 text-center"><p className="font-display text-2xl font-semibold">{expenses.length ? 'Nessuna corrispondenza' : 'La prima spesa, insieme.'}</p><p className="mt-3 text-sm text-muted">{expenses.length ? 'Prova un altro periodo o una categoria diversa.' : 'Aggiungi una spesa per iniziare a tenere i conti.'}</p>
+      {!expenses.length && onAddExpense && <Button className="mt-5" onClick={onAddExpense}>Aggiungi spesa</Button>}</Card>
+      : Array.from(groups, ([date, items]) => <section key={date}>
+        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 mb-2 flex justify-between gap-3 bg-background/95 px-1 py-3 text-xs font-semibold backdrop-blur-md">
+          <h2>{formatDate(date)}</h2><span className="tabular-nums">{formatEur(items.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100)}</span>
+        </div>
+        <Card className="divide-y divide-border overflow-hidden">{items.map((e) => <ExpenseRow key={e.id} expense={e} returnHref={returnHref} />)}</Card>
+      </section>)}
+  </div>
+}
+
+function shiftMonth(value: string, offset: number) {
+  const [year, month] = value.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1 + offset, 1))
+  return date.toISOString().slice(0, 7)
 }

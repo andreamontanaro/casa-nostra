@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { parseEuroInput } from '@/lib/expense-input'
 import type { Database } from '@/types/database'
 import { ATTACHMENTS_BUCKET } from '@/lib/attachments'
 import { isTelegramConfigured } from '@/lib/telegram/config'
@@ -41,7 +42,7 @@ export async function createExpense(
 
   const fieldErrors: Record<string, string> = {}
 
-  const amount = parseFloat(rawAmount.replace(',', '.'))
+  const amount = parseEuroInput(rawAmount ?? '') ?? NaN
   if (!rawAmount || isNaN(amount) || amount <= 0) {
     fieldErrors.amount = 'Inserisci un importo valido maggiore di zero.'
   }
@@ -53,7 +54,7 @@ export async function createExpense(
 
   let customOtherShare: number | null = null
   if (splitRule === 'custom') {
-    customOtherShare = parseFloat((rawCustomOtherShare ?? '').replace(',', '.'))
+    customOtherShare = parseEuroInput(rawCustomOtherShare ?? '') ?? NaN
     if (isNaN(customOtherShare) || customOtherShare <= 0) {
       fieldErrors.custom_other_share = "Inserisci la quota dell'altra persona."
     } else if (!isNaN(amount) && customOtherShare >= amount) {
@@ -114,7 +115,7 @@ export async function createExpense(
   if (redirectTo) {
     redirect(`${redirectTo}?ok=expense-created`)
   }
-  return { ok: true }
+  return { ok: true, expenseId: inserted.id }
 }
 
 export async function updateExpense(
@@ -136,7 +137,7 @@ export async function updateExpense(
 
   const fieldErrors: Record<string, string> = {}
 
-  const amount = parseFloat(rawAmount.replace(',', '.'))
+  const amount = parseEuroInput(rawAmount ?? '') ?? NaN
   if (!rawAmount || isNaN(amount) || amount <= 0) {
     fieldErrors.amount = 'Inserisci un importo valido maggiore di zero.'
   }
@@ -144,7 +145,7 @@ export async function updateExpense(
 
   let customOtherShare: number | null = null
   if (splitRule === 'custom') {
-    customOtherShare = parseFloat((rawCustomOtherShare ?? '').replace(',', '.'))
+    customOtherShare = parseEuroInput(rawCustomOtherShare ?? '') ?? NaN
     if (isNaN(customOtherShare) || customOtherShare <= 0) {
       fieldErrors.custom_other_share = "Inserisci la quota dell'altra persona."
     } else if (!isNaN(amount) && customOtherShare >= amount) {

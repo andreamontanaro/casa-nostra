@@ -1,64 +1,18 @@
 'use client'
 
-import { motion } from 'motion/react'
-import { springSnappy } from '@/lib/motion'
 import { cn } from '@/lib/utils'
-
-export interface SegmentedOption {
-  value: string
-  label: string
+export interface SegmentedOption { value: string; label: string }
+interface Props {
+  groupId: string; value: string; onChange: (value: string) => void
+  options: SegmentedOption[]; className?: string; disabled?: boolean; label?: string
 }
-
-interface SegmentedControlProps {
-  // Identificatore univoco: pilota il layoutId della pillola attiva.
-  groupId: string
-  value: string
-  onChange: (value: string) => void
-  options: SegmentedOption[]
-  className?: string
-}
-
-export function SegmentedControl({
-  groupId,
-  value,
-  onChange,
-  options,
-  className,
-}: SegmentedControlProps) {
-  return (
-    <div
-      role="tablist"
-      className={cn(
-        'relative flex rounded-full border border-border bg-surface-sunken p-1',
-        className,
-      )}
-    >
-      {options.map((opt) => {
-        const isActive = value === opt.value
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(opt.value)}
-            className={cn(
-              'relative flex-1 rounded-full px-3 py-1.5 text-sm font-medium',
-              'transition-colors duration-150',
-              isActive ? 'text-foreground' : 'text-muted hover:text-foreground',
-            )}
-          >
-            {isActive && (
-              <motion.span
-                layoutId={`segctl-${groupId}`}
-                transition={springSnappy}
-                className="absolute inset-0 -z-10 rounded-full bg-surface shadow-soft"
-              />
-            )}
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
-  )
+export function SegmentedControl({ groupId, value, onChange, options, className, disabled, label = 'Scegli un’opzione' }: Props) {
+  return <div role="group" aria-label={label} id={groupId} className={cn('flex gap-1 rounded-2xl bg-surface-raised p-1', className)}>
+    {options.map((option) => <button key={option.value} type="button" aria-pressed={value === option.value} disabled={disabled}
+      onClick={() => onChange(option.value)}
+      className={cn('min-h-11 min-w-0 flex-1 rounded-xl px-2 py-2 text-sm font-semibold transition-colors disabled:opacity-50',
+        value === option.value ? 'bg-surface text-accent shadow-soft' : 'text-muted hover:text-foreground')}>
+      {option.label}
+    </button>)}
+  </div>
 }

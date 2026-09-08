@@ -28,7 +28,7 @@ export function romeDateKey(iso: string): string {
 }
 
 export function todayISO() {
-  return new Date().toISOString().slice(0, 10)
+  return romeDateKey(new Date().toISOString())
 }
 
 export function formatBytes(bytes: number) {

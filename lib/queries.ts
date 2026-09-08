@@ -273,3 +273,12 @@ export async function getMissingSinceLastCheck(
   if (error) throw error
   return data ?? []
 }
+
+/** Quote del dettaglio già calcolate dal database, anche per spese saldate. */
+export async function getExpenseShares(expenseId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('v_expense_shares')
+    .select('user_id, user_share').eq('expense_id', expenseId)
+  if (error) throw error
+  return data ?? []
+}

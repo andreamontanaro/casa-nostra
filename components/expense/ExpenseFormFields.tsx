@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Chip } from '@/components/ui/Chip'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { parseEuroInput, previewExpenseShares } from '@/lib/expense-input'
 import { CATEGORY_LABELS, formatEur, todayISO } from '@/lib/fmt'
 import { Tables, Constants } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -21,13 +22,13 @@ type SplitRule = (typeof Constants.public.Enums.split_rule)[number]
 const SPLIT_SEGMENT_LABELS: Record<SplitRule, string> = {
   fifty_fifty: '50/50',
   sixty_forty: '60/40',
-  custom: 'Custom',
+  custom: 'Personalizza',
 }
 
 function isoOffsetFromToday(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' })
 }
 
 export interface ExpenseFormFieldsProps {
@@ -85,8 +86,8 @@ export function ExpenseFormFields({
   onExpenseDateChange,
 }: ExpenseFormFieldsProps) {
   const otherProfile = profiles.find((p) => p.id !== paidBy)
-  const parsedAmount = parseFloat(amount.replace(',', '.'))
-  const parsedCustomShare = parseFloat(customOtherShare.replace(',', '.'))
+  const parsedAmount = parseEuroInput(amount) ?? NaN
+  const parsedCustomShare = parseEuroInput(customOtherShare) ?? NaN
   const showCustomPreview =
     splitRule === 'custom' &&
     !isNaN(parsedAmount) &&
@@ -143,8 +144,8 @@ export function ExpenseFormFields({
       {/* Categoria — riga scroll di CategoryIcon + label */}
       <div className="flex flex-col gap-2">
         <span className="text-label font-medium text-muted">Categoria</span>
-        <div className="-mx-4 overflow-x-auto no-scrollbar">
-          <div className="flex gap-2 px-4">
+        <div>
+          <div className="grid grid-cols-3 gap-2">
             {Constants.public.Enums.expense_category.map((cat) => {
               const isActive = category === cat
               return (
@@ -155,7 +156,7 @@ export function ExpenseFormFields({
                   disabled={disabled}
                   aria-pressed={isActive}
                   className={cn(
-                    'flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5 rounded-2xl border px-1 py-2.5',
+                    'flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border px-1 py-2.5',
                     'transition-[border-color,background-color,transform] duration-150 active:scale-[0.97]',
                     'disabled:opacity-50',
                     isActive
@@ -166,7 +167,7 @@ export function ExpenseFormFields({
                   <CategoryIcon category={cat} size="sm" />
                   <span
                     className={cn(
-                      'w-full truncate text-center text-xs font-medium',
+                      'w-full break-words text-center text-xs font-medium',
                       isActive ? 'text-accent-soft' : 'text-muted',
                     )}
                   >
@@ -185,6 +186,8 @@ export function ExpenseFormFields({
         <span className="text-label font-medium text-muted">Divisione</span>
         <SegmentedControl
           groupId="expense-split"
+          label="Divisione della spesa"
+          disabled={disabled}
           value={splitRule}
           onChange={(v) => onSplitRuleChange(v as SplitRule)}
           options={Constants.public.Enums.split_rule.map((rule) => ({
@@ -217,7 +220,7 @@ export function ExpenseFormFields({
             />
             {showCustomPreview && (
               <p className="mt-1.5 text-xs tabular-nums text-muted">
-                La tua quota: {formatEur(parsedAmount - parsedCustomShare)}
+                Quota di {profiles.find((p) => p.id === paidBy)?.display_name ?? 'chi ha pagato'}: {formatEur(parsedAmount - parsedCustomShare)}
               </p>
             )}
           </motion.div>
@@ -225,6 +228,14 @@ export function ExpenseFormFields({
       </AnimatePresence>
       {splitRule !== 'custom' && (
         <input type="hidden" name="custom_other_share" value="" />
+      )}
+
+      {parsedAmount > 0 && (splitRule !== 'custom' || showCustomPreview) && (
+        <div className="grid grid-cols-2 gap-3 rounded-2xl bg-accent-muted p-4" aria-live="polite" aria-label="Anteprima delle quote">
+          {previewExpenseShares(parsedAmount, splitRule, paidBy, parsedCustomShare, profiles).map((person) => (
+            <div key={person.id}><p className="break-words text-xs text-accent-soft">{person.id === currentUserId ? 'La tua quota' : person.display_name}</p><p className="mt-1 text-lg font-semibold tabular-nums text-accent-soft">{formatEur(person.share)}</p></div>
+          ))}
+        </div>
       )}
 
       {/* Pagato da */}

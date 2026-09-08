@@ -10,8 +10,6 @@ import { BalanceCard } from '@/components/BalanceCard'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
 import { Card } from '@/components/ui/Card'
-import { Spinner } from '@/components/ui/Spinner'
-import type { OptimisticExpense as OptimisticExpenseShape } from '@/app/(app)/spese/nuova/ExpenseForm'
 import { formatDateShort } from '@/lib/fmt'
 import type { Tables } from '@/types/database'
 
@@ -21,7 +19,6 @@ type Expense = Tables<'expenses'> & {
 type Profile = Tables<'profiles'>
 type BalanceRow = Tables<'v_user_open_balance'>
 
-export type OptimisticExpense = OptimisticExpenseShape
 
 interface HomeShellProps {
   openExpenses: OpenExpenseWithContribution[]
@@ -41,18 +38,7 @@ export function HomeShell({
   suggestions,
 }: HomeShellProps) {
   const [formOpen, setFormOpen] = useState(false)
-  const [optimistic, setOptimistic] = useState<OptimisticExpense[]>([])
-  const [optimisticBaseKey, setOptimisticBaseKey] = useState('')
-  const recentExpensesKey = recentExpenses.map((expense) => expense.id).join('|')
-  const visibleOptimistic =
-    optimisticBaseKey === recentExpensesKey ? optimistic : []
-
-  function pushOptimistic(e: OptimisticExpense) {
-    setOptimisticBaseKey(recentExpensesKey)
-    setOptimistic((prev) => [e, ...prev])
-  }
-
-  const combined = [...visibleOptimistic, ...recentExpenses].slice(0, 5)
+  const combined = recentExpenses.slice(0, 5)
 
   return (
     <div className="px-4 pt-6 pb-24 lg:pb-6">
@@ -87,11 +73,10 @@ export function HomeShell({
           <Card className="divide-y divide-border overflow-hidden p-0">
             <AnimatePresence initial={false}>
               {combined.map((expense) => {
-                const isOpt = '__optimistic' in expense
                 return (
                   <motion.div
                     key={expense.id}
-                    initial={isOpt ? { opacity: 0, y: -8 } : false}
+                    initial={false}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
@@ -101,14 +86,7 @@ export function HomeShell({
                       expense={expense}
                       dateLabel={formatDateShort(expense.expense_date)}
                     />
-                    {isOpt && (
-                      <span
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
-                        aria-label="In salvataggio"
-                      >
-                        <Spinner size="sm" />
-                      </span>
-                    )}
+
                   </motion.div>
                 )
               })}
@@ -125,7 +103,6 @@ export function HomeShell({
         profiles={profiles}
         currentUserId={userId}
         suggestions={suggestions}
-        onOptimisticInsert={pushOptimistic}
       />
     </div>
   )
