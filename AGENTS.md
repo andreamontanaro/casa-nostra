@@ -68,7 +68,7 @@ L'app è mobile-first, comoda con una sola mano, e segue le linee guida di **Mat
 
 Alcune linee guida concrete:
 
-**Tipografia.** Usa il system font stack (`ui-sans-serif, system-ui, -apple-system, ...`) così su iOS diventa San Francisco e su Android Roboto. Tailwind lo fa già di default con `font-sans`.
+**Tipografia.** Redesign approvato l’8 settembre 2026: Manrope locale per l’interfaccia, Fraunces locale per titoli e importi principali. Fallback system font stack. Vedi `docs/wiki/08-patterns.md`.
 
 **Touch target.** Minimo 44px (linea guida iOS) / 48dp (Android). Con Tailwind, `h-11` è il minimo ragionevole per bottoni e row tappabili.
 
@@ -86,7 +86,7 @@ Alcune linee guida concrete:
 
 ## Navigazione
 
-Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* le schermate. La **barra in basso** è solo un accesso rapido alle quattro più frequenti (Home, Storico, Lista, Casa). Le voci di entrambe stanno in `lib/nav.ts`: aggiungendo una schermata va aggiunta lì, e finisce nel menu senza toccare la barra — la barra non cresce.
+Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* le schermate. La **barra in basso** è solo un accesso rapido alle tre più frequenti (Home, Storico, Lista). Il modulo Casa è deprecato e non va reintrodotto. Su desktop la navigazione è laterale. Le voci di entrambe stanno in `lib/nav.ts`: aggiungendo una schermata va aggiunta lì, e finisce nel menu senza toccare la barra — la barra non cresce.
 
 ## Schermate principali
 
@@ -107,7 +107,7 @@ Queste sono scritte come lista apposta perché sono il tipo di errore che è fac
 - Non ricalcolare il saldo lato client: usa `v_user_open_balance`
 - Non scrivere logica custom per il conguaglio: chiama la RPC `register_settlement`
 - Non creare una pagina di signup pubblica: i due utenti sono gestiti manualmente
-- Non aggiungere funzionalità fuori scope MVP (grafici, export CSV, budget mensili, spese ricorrenti automatiche): la sezione 8 dei requisiti le elenca esplicitamente come evoluzioni future. Le notifiche e le foto degli scontrini erano in quell'elenco ma sono state realizzate su richiesta esplicita: vedi "Integrazione Telegram" qui sotto. Stesso discorso per la lista della spesa: vedi "Lista della spesa" più sotto
+- Non aggiungere funzionalità fuori scope MVP (export CSV, budget mensili, spese ricorrenti automatiche): la sezione 8 dei requisiti le elenca esplicitamente come evoluzioni future. Grafici e statistiche sono stati realizzati su richiesta esplicita; il redesign del settembre 2026 include l’anello per categorie. Le notifiche e le foto degli scontrini erano in quell'elenco ma sono state realizzate su richiesta esplicita: vedi "Integrazione Telegram" qui sotto. Stesso discorso per la lista della spesa: vedi "Lista della spesa" più sotto
 - Non modificare lo schema SQL senza aggiornare anche `casa_nostra_schema.sql`
 - Non duplicare le policy RLS con controlli client-side come se fossero sicurezza: la sicurezza è in DB
 

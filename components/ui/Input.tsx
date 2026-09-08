@@ -29,6 +29,8 @@ export function Input({
       <input
         ref={ref}
         id={inputId}
+        aria-invalid={Boolean(error) || undefined}
+        aria-describedby={error ? inputId + '-error' : undefined}
         className={cn(
           'h-12 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground',
           'placeholder:text-muted',
@@ -41,7 +43,7 @@ export function Input({
         )}
         {...props}
       />
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p id={inputId + "-error"} className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }

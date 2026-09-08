@@ -54,7 +54,7 @@ La struttura del progetto segue la convenzione standard di Next.js:
 
 * `app/` → `app/`: Contiene le rotte, i layout e le Server Actions.
   * `(app)/` → `app/(app)/`: Rotte private protette da autenticazione (home, spese, conguaglio, impostazioni, statistiche).
-  * `actions/` → `app/actions/`: Server Actions per le mutazioni dei dati (es. `expenses.ts`, `auth.ts`, `chores.ts`).
+  * `actions/` → `app/actions/`: Server Actions per le mutazioni dei dati (es. `expenses.ts`, `auth.ts`, `shopping.ts`).
   * `api/` → `app/api/`: Endpoint API serverless (l'assistente IA e il webhook del bot Telegram).
   * `landing/` → `app/landing/`: Landing page pubblica per utenti non autenticati.
   * `login/` → `app/login/`: Pagina di login.
@@ -88,8 +88,6 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/spese` → `app/(app)/spese/page.tsx`: Storico completo delle spese con filtri avanzati.
 * `/spese/[id]` → `app/(app)/spese/[id]/page.tsx`: Dettaglio e modifica/eliminazione di una singola spesa.
 * `/lista` → `app/(app)/lista/page.tsx`: Lista della spesa — cosa manca in casa, raggruppato per tipo di prodotto, con controllo dello scontrino → `app/(app)/lista/ShoppingShell.tsx`.
-* `/casa` → `app/(app)/casa/page.tsx`: Modulo "Gestione casa" — faccende "Da fare", "Gesti" (cadenza libera) e feed "Fatto di recente", con registrazione in un tap → `components/chores/ChoreShell.tsx`.
-* `/casa/catalogo` → `app/(app)/casa/catalogo/page.tsx`: Gestione del catalogo delle faccende (creare, modificare, disattivare) → `app/(app)/casa/catalogo/CatalogoClient.tsx`. Raggiungibile dal menu dell'header, non dalla bottom nav.
 * `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio. Raggiungibile dal menu dell'header e dalla CTA "Conguaglia" in home, non dalla bottom nav (è l'azione più rara: vedi `08-patterns.md`).
 * `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu dell'header (non dalla bottom nav: vedi `08-patterns.md`).
 * `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password, collegamento dell'account Telegram).
@@ -120,5 +118,5 @@ Caricano i dati direttamente sul server ed effettuano il rendering iniziale in H
 ### Client Components (`'use client'`)
 Gestiscono l'interattività e lo stato lato browser. Esempi:
 * `ShoppingShell.tsx` → `app/(app)/lista/ShoppingShell.tsx`: Gestisce filtri per categoria, spunta ottimistica con "Annulla" nel toast e le due sheet (form articolo, controllo scontrino).
-* `HomeShell.tsx` → `components/HomeShell.tsx`: Gestisce lo stato della modale ("Sheet") per l'inserimento rapido di una spesa e inserisce una spesa ottimistica ("Optimistic UI") nella lista prima del completamento della Server Action.
+* `HomeShell.tsx` → `components/HomeShell.tsx`: Gestisce lo stato della modale ("Sheet") per l'inserimento rapido di una spesa e aggiorna la lista soltanto dopo il salvataggio; bozze ed errori restano nel form.
 * `ExpenseForm.tsx` → `app/(app)/spese/nuova/ExpenseForm.tsx`: Gestisce la selezione dinamica dei chip e i messaggi di validazione istantanei.

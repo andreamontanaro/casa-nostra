@@ -21,8 +21,7 @@ export function TelegramForm({ currentTelegramId, configured }: Props) {
   if (!configured) {
     return (
       <p className="text-sm text-muted">
-        Le notifiche Telegram non sono ancora attive: mancano le variabili
-        d&apos;ambiente del bot sul server.
+        Le notifiche Telegram non sono ancora attive. Le spese e la lista restano disponibili nell’app.
       </p>
     )
   }

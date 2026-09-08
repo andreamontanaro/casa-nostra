@@ -23,12 +23,14 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
   const legacyMonth = period === 'corrente' ? currentMonth : period === 'scorso'
     ? shiftMonth(currentMonth, -1) : ''
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('mese') ?? '') ? params.get('mese')! : legacyMonth
-  const hasFilter = status !== 'tutte' || category !== 'tutte' || Boolean(month || query)
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(params.get('da') ?? '') ? params.get('da')! : ''
+  const until = /^\d{4}-\d{2}-\d{2}$/.test(params.get('a') ?? '') ? params.get('a')! : ''
+  const hasFilter = status !== 'tutte' || category !== 'tutte' || Boolean(month || query || from || until)
   function update(key: string, value: string) {
     const next = new URLSearchParams(params.toString())
     if (value && value !== 'tutte') next.set(key, value)
     else next.delete(key)
-    if (key === 'mese') next.delete('periodo')
+    if (key === 'mese') { next.delete('periodo'); next.delete('da'); next.delete('a') }
     const suffix = next.toString()
     window.history.replaceState(null, '', suffix ? '/spese?' + suffix : '/spese')
   }
@@ -36,6 +38,7 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
     (status === 'tutte' || (status === 'aperte' ? e.settlement_id === null : e.settlement_id !== null))
     && (category === 'tutte' || e.category === category)
     && (!month || e.expense_date.startsWith(month))
+    && (!from || e.expense_date >= from) && (!until || e.expense_date <= until)
     && (!query.trim() || e.description.toLocaleLowerCase('it').includes(query.trim().toLocaleLowerCase('it'))),
   )
   const groups = new Map<string, Expense[]>()
@@ -50,6 +53,7 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
         <span>Filtri e ricerca{hasFilter ? ' · attivi' : ''}</span><span className="ml-auto text-muted group-open:hidden">Apri</span><span className="ml-auto hidden text-muted group-open:inline">Chiudi</span>
       </summary>
       <div className="space-y-4 border-t border-border p-4 sm:p-5">
+      {(from || until) && <p className="text-sm text-muted">Periodo dalle statistiche: {from ? formatDate(from) : "inizio storico"} – {until ? formatDate(until) : "oggi"}. Scegli un mese per cambiarlo.</p>}
       <div className="flex items-center gap-2">
         <button type="button" aria-label="Mese precedente" className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-surface-raised" onClick={() => update('mese', shiftMonth(month || currentMonth, -1))}><ChevronLeft className="size-5" aria-hidden /></button>
         <div className="min-w-0 flex-1"><label htmlFor="history-month" className="mb-1 block text-xs text-muted">Periodo</label>

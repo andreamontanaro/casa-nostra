@@ -1,3 +1,4 @@
+import { SharedDataRefresh } from '@/components/SharedDataRefresh'
 import { DesktopNav } from '@/components/DesktopNav'
 import { Suspense } from 'react'
 import { AppHeader } from '@/components/AppHeader'
@@ -14,6 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppHeader />
       <DesktopNav />
       <main id="main-content" className="mx-auto w-full max-w-lg pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))] md:max-w-3xl lg:max-w-6xl lg:pl-60 lg:pb-8">
+        <SharedDataRefresh />
         <PullToRefresh>
           <PageTransition>{children}</PageTransition>
         </PullToRefresh>

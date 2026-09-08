@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { updatePassword, type ProfileFormState } from '@/app/actions/profile'
-import { Input } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Button } from '@/components/ui/Button'
 
 const initialState: ProfileFormState = {}
@@ -20,7 +20,7 @@ export function PasswordForm() {
 
   return (
     <form ref={formRef} action={action} className="flex flex-col gap-4">
-      <Input
+      <PasswordInput
         label="Password attuale"
         name="current_password"
         type="password"
@@ -29,7 +29,7 @@ export function PasswordForm() {
         disabled={pending}
         error={state.fieldErrors?.current_password}
       />
-      <Input
+      <PasswordInput
         label="Nuova password"
         name="new_password"
         type="password"
@@ -38,7 +38,7 @@ export function PasswordForm() {
         disabled={pending}
         error={state.fieldErrors?.new_password}
       />
-      <Input
+      <PasswordInput
         label="Conferma nuova password"
         name="confirm_password"
         type="password"

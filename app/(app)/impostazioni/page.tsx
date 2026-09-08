@@ -20,8 +20,8 @@ export default async function ImpostazioniPage() {
     .single()
 
   return (
-    <div className="flex flex-col gap-5 px-4 pt-6 pb-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Impostazioni</h1>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-6 pb-8">
+      <h1 className="font-display text-3xl font-semibold tracking-tight">Impostazioni</h1>
 
       <Section title="Profilo">
         <ProfileForm

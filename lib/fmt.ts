@@ -12,6 +12,7 @@ export function formatDate(dateStr: string) {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Rome',
   }).format(new Date(dateStr))
 }
 
@@ -19,6 +20,7 @@ export function formatDateShort(dateStr: string) {
   return new Intl.DateTimeFormat('it-IT', {
     day: 'numeric',
     month: 'short',
+    timeZone: 'Europe/Rome',
   }).format(new Date(dateStr))
 }
 
@@ -59,7 +61,7 @@ export const CATEGORY_ICON: Record<string, string> = {
 }
 
 // Palette categorica — UNICA fonte di verità (icone categoria + grafici).
-// Validata CVD (protan/deutan) su banda lightness in light e dark.
+// Le categorie hanno anche icona e nome: il colore non è l’unico indicatore.
 //  · hex/hexDark → fill dei grafici (Recharts) nei due temi
 //  · container   → classi Tailwind per il tondo dietro l'emoji (stessa tinta ~15%)
 export interface CategoryVisual {
@@ -71,7 +73,7 @@ export interface CategoryVisual {
 export const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
   affitto: {
     hex: '#527a9c',
-    hexDark: '#527a9c',
+    hexDark: '#a2bfd8',
     container: 'bg-[#527a9c]/15 dark:bg-[#527a9c]/20',
   },
   bolletta: {
@@ -81,7 +83,7 @@ export const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
   },
   spesa_alimentare: {
     hex: '#45836a',
-    hexDark: '#45836a',
+    hexDark: '#9bcab3',
     container: 'bg-[#45836a]/15 dark:bg-[#45836a]/20',
   },
   abbonamento: {

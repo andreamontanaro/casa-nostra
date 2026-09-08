@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 /**
  * Header con il menu di navigazione completo. È il menu, non la barra in
  * basso, a contenere *tutte* le schermate: la barra resta un accesso rapido
- * alle quattro più frequenti, e ogni nuova sezione dell'app entra qui senza
+ * alle tre più frequenti, e ogni nuova sezione dell'app entra qui senza
  * doverne spostare un'altra (`lib/nav.ts`).
  */
 export function AppHeader() {

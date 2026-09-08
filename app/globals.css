@@ -22,7 +22,7 @@
   --surface-raised: #efeee5;
   --surface-sunken: #e7e9df;
 
-  /* Primary — teal "denaro" più profondo (AA 6.50:1 su bianco) */
+  /* Primario menta profonda, su superfici crema */
   --accent: #176b5b;
   --accent-foreground: #fffdf8;
   --accent-muted: #dceee4;
@@ -45,7 +45,7 @@
   --positive-soft: #174f40;
 
   /* Glass (vetro/blur) — solo header + bottom nav */
-  --glass-bg: rgb(246 248 247 / 0.72);
+  --glass-bg: rgb(248 245 239 / 0.88);
   --glass-border: rgb(255 255 255 / 0.6);
   --glass-blur: 20px;
 
@@ -80,7 +80,7 @@
   --dk-positive-muted: #2a493a;
   --dk-positive-soft: #d0efde;
 
-  --dk-glass-bg: rgb(18 24 23 / 0.7);
+  --dk-glass-bg: rgb(18 27 25 / 0.88);
   --dk-glass-border: rgb(255 255 255 / 0.08);
   --dk-glass-blur: 24px;
 

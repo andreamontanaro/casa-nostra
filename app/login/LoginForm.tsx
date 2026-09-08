@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { login, type LoginState } from '@/app/actions/auth'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 
@@ -21,7 +22,7 @@ export function LoginForm() {
         required
         disabled={pending}
       />
-      <Input
+      <PasswordInput
         label="Password"
         name="password"
         type="password"

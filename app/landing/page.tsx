@@ -21,7 +21,7 @@ import { Reveal, CtaLink, Typewriter } from './LandingReveal'
 export const metadata: Metadata = {
   title: 'Casa Nostra — Le spese di casa, in chiaro tra voi due',
   description:
-    'App mobile-first per gestire le spese condivise tra conviventi: divisione personalizzabile per ogni tipologia di spesa, saldo sempre aggiornato, conguaglio in un tap e un assistente IA che capisce le tue spese.',
+    'App mobile-first per gestire le spese condivise tra conviventi: divisione personalizzabile per ogni tipologia di spesa, saldo sempre aggiornato, conguaglio guidato e un assistente IA che capisce le tue spese.',
 }
 
 const useCases = [
@@ -56,11 +56,11 @@ const steps = [
   {
     n: '3',
     title: 'Il saldo è sempre aggiornato',
-    body: 'In ogni momento vedi chi deve quanto all’altro. Calcolato dal server, mai approssimato.',
+    body: 'In ogni momento vedi chi deve quanto all’altro. Con il dettaglio delle quote di ciascuno.',
   },
   {
     n: '4',
-    title: 'Conguaglio in un tap',
+    title: 'Regola il saldo',
     body: 'Quando uno bonifica all’altro la differenza, chiudi tutto e riparti da zero.',
   },
 ]
@@ -152,7 +152,7 @@ export default function LandingPage() {
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-pretty text-base leading-relaxed text-muted sm:text-lg">
           Ogni spesa è condivisa per definizione. La divisione è personalizzabile per ogni
-          tipologia di spesa, con un saldo sempre aggiornato e il conguaglio in un tap.
+          tipologia di spesa, con un saldo sempre aggiornato e il conguaglio guidato.
         </p>
 
         <div className="mt-7 flex flex-col items-center gap-3">
