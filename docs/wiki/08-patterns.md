@@ -31,7 +31,7 @@ Il conguaglio completo usa il saldo della vista. La selezione parziale è un’a
 - Importo prominente con tastiera decimale, parsing condiviso tra form e Server Actions (`lib/expense-input.ts`).
 - Categorie in griglia con etichette intere, divisione modificabile e anteprima nominativa delle quote. I default di dominio già presenti restano invariati.
 - Bozza recuperabile esplicitamente da sessionStorage per utente. Dopo un errore i campi restano nel form.
-- Salvataggio senza riga fittizia nella lista. Gli allegati vengono caricati sull’id restituito; i tentativi successivi caricano soltanto i file mancanti.
+- Salvataggio senza riga fittizia nella lista. Gli allegati vengono caricati sull’id restituito; i tentativi successivi caricano soltanto i file mancanti. La sheet di inserimento resta aperta durante il salvataggio e si sblocca dopo l’esito.
 - Storico: mese libero, stato, categoria e ricerca nell’URL; intervalli `da/a` dai grafici. Dettaglio in consultazione e modifica esplicita in sheet; ritorno allo storico conserva i filtri.
 - Spese saldate in consultazione. Eliminazioni con conferma.
 

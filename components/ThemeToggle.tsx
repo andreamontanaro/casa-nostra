@@ -39,10 +39,10 @@ export function ThemeToggle() {
     } catch {}
   }
   return (
-    <div role="group" aria-label="Aspetto dell’app" className="flex gap-1 rounded-2xl bg-surface-raised p-1">
+    <div role="group" aria-label="Aspetto dell’app" className="grid grid-cols-3 gap-1 rounded-2xl bg-surface-raised p-1">
       {options.map(({ value, label, icon: Icon }) => (
         <button key={value} type="button" aria-pressed={theme === value} onClick={() => change(value)}
-          className={cn('flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-2 text-sm font-medium transition-colors',
+          className={cn('flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs font-medium transition-colors',
             theme === value ? 'bg-surface text-accent shadow-soft' : 'text-muted hover:text-foreground')}>
           <Icon className="size-4" aria-hidden />{label}
         </button>

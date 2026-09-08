@@ -26,9 +26,9 @@ export interface ExpenseDraft {
 }
 interface Props {
   profiles: Profile[]; currentUserId: string; suggestions?: string[]
-  redirectTo?: string; onSuccess?: () => void; initialDraft?: Partial<ExpenseDraft>; sourceReceiptId?: string
+  redirectTo?: string; onSuccess?: () => void; initialDraft?: Partial<ExpenseDraft>; sourceReceiptId?: string; onPendingChange?: (pending: boolean) => void
 }
-export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirectTo, onSuccess, initialDraft, sourceReceiptId }: Props) {
+export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirectTo, onSuccess, initialDraft, sourceReceiptId, onPendingChange }: Props) {
   const router = useRouter()
   const [draft, setDraft] = useState<ExpenseDraft>({
     amount: '', description: '', category: 'spesa_alimentare', splitRule: 'sixty_forty',
@@ -85,6 +85,7 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
     if (draft.splitRule === 'custom' && (custom === null || amount === null || custom >= amount)) errors.custom_other_share = 'La quota deve essere positiva e inferiore al totale.'
     if (Object.keys(errors).length) { setState({ fieldErrors: errors }); return }
     submitting.current = true
+    onPendingChange?.(true)
     startTransition(async () => {
       try {
         let expenseId = savedId
@@ -110,7 +111,7 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
       } catch (error) {
         if (isRedirectError(error)) throw error
         setState({ error: 'Non riesco a completare il salvataggio. I campi sono conservati: riprova.' })
-      } finally { submitting.current = false }
+      } finally { submitting.current = false; onPendingChange?.(false) }
     })
   }
   return (

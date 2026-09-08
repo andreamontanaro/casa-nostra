@@ -32,7 +32,7 @@ export function SpendingRing({ categories, children, label = 'Spese da regolare'
     <div className="min-w-0">
       <div className={cn("relative mx-auto aspect-square w-full", compact ? "max-w-[11.5rem]" : "max-w-[17rem]")}>
         <svg viewBox="0 0 200 200" className="size-full -rotate-90" aria-labelledby={id}>
-          <title id={id}>{label}: {formatEur(total)}. La composizione delle spese è distinta dal saldo al centro. {categories.map((c) => `${CATEGORY_LABELS[c.category]}: ${formatEur(c.total)}`).join('; ')}</title>
+          <title id={id}>{`${label}: ${formatEur(total)}. La composizione delle spese è distinta dal saldo al centro. ${categories.map((c) => `${CATEGORY_LABELS[c.category]}: ${formatEur(c.total)}`).join('; ')}`}</title>
           <circle cx="100" cy="100" r="89" fill="none" stroke="var(--surface-sunken)" strokeWidth="11" />
           {segments.map((item) => (
             <circle key={item.category} cx="100" cy="100" r="89" pathLength="100" fill="none"

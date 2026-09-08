@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { Plus } from 'lucide-react'
 import { springSnappy } from '@/lib/motion'
@@ -28,10 +28,12 @@ export function NuovaSpesaFab({
   open: openProp,
   onOpenChange,
 }: NuovaSpesaFabProps) {
+  const saving = useRef(false)
   const [openState, setOpenState] = useState(false)
   const isControlled = openProp !== undefined
   const open = isControlled ? openProp : openState
   const setOpen = (o: boolean) => {
+    if (!o && saving.current) return
     if (!isControlled) setOpenState(o)
     onOpenChange?.(o)
   }
@@ -66,7 +68,8 @@ export function NuovaSpesaFab({
           profiles={profiles}
           currentUserId={currentUserId}
           suggestions={suggestions}
-          onSuccess={() => setOpen(false)}
+          onPendingChange={(pending) => { saving.current = pending }}
+          onSuccess={() => { saving.current = false; setOpen(false) }}
         />
       </Sheet>
     </>

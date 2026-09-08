@@ -39,7 +39,7 @@ export function BalanceCard({ rows, currentUserId, expenses }: Props) {
               {expenses.length > 0 && <p className="mt-2 text-xs text-muted">Le spese si compensano</p>}</>
           ) : (
             <><p className="max-w-full text-sm text-muted">{net > 0 ? 'Devi ricevere' : 'Devi dare'}</p>
-              <AmountDisplay value={Math.abs(net)} className={`mt-1 max-w-full whitespace-nowrap ${Math.abs(net) >= 1000 ? 'text-[1.2rem]' : 'text-[1.65rem]'}`} />
+              <AmountDisplay value={Math.abs(net)} className={`mt-1 max-w-full whitespace-nowrap ${Math.abs(net) >= 1000000 ? 'text-[.8rem]' : Math.abs(net) >= 10000 ? 'text-[1rem]' : Math.abs(net) >= 1000 ? 'text-[1.2rem]' : 'text-[1.65rem]'}`} />
               <p className="mt-2 max-w-full break-words text-sm font-medium">{net > 0 ? 'da' : 'a'} {otherName}</p></>
           )}
         </SpendingRing>

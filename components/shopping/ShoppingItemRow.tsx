@@ -68,13 +68,12 @@ export function ShoppingItemRow({
       <button
         type="button"
         onClick={onEdit}
-        disabled={!onEdit}
+        disabled={!onEdit || pending}
         className={cn(
           'flex min-w-0 flex-1 items-center gap-2.5 py-3 text-left',
           onEdit && 'transition-colors hover:opacity-80',
         )}
       >
-        {!bought && <ShoppingIcon category={category} size="sm" />}
         <span className="min-w-0 flex-1">
           <span
             className={cn(
@@ -84,7 +83,10 @@ export function ShoppingItemRow({
           >
             {name}
           </span>
-          {quantity && <span className="mt-1 inline-block rounded-lg bg-surface-raised px-2 py-1 text-xs font-semibold text-foreground">{quantity}</span>}
+<span className="mt-1 flex flex-wrap items-center gap-2">
+            {quantity && <span className="rounded-lg bg-surface-raised px-2 py-1 text-xs font-semibold text-foreground">{quantity}</span>}
+            {!bought && urgency === 'alta' && <span className={cn('rounded-full px-2 py-1 text-xs font-semibold', SHOPPING_URGENCY_CLASS[urgency])}>{SHOPPING_URGENCY_SHORT[urgency]}</span>}
+          </span>
           {(details || subtitle) && (
             <span className="mt-1 block text-sm text-muted">
               {details}
@@ -95,23 +97,13 @@ export function ShoppingItemRow({
         </span>
       </button>
 
-      {!bought && urgency === 'alta' && (
-        <span
-          className={cn(
-            'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
-            SHOPPING_URGENCY_CLASS[urgency],
-          )}
-        >
-          {SHOPPING_URGENCY_SHORT[urgency]}
-        </span>
-      )}
-
       {pending && <Spinner size="sm" />}
 
       {onRestore && (
         <button
           type="button"
           onClick={onRestore}
+          disabled={pending}
           aria-label={`Rimetti "${name}" in lista`}
           className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
         >
@@ -123,6 +115,7 @@ export function ShoppingItemRow({
         <button
           type="button"
           onClick={onDelete}
+          disabled={pending}
           aria-label={`Elimina "${name}"`}
           className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised hover:text-destructive"
         >

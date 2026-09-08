@@ -51,7 +51,7 @@ export function ConguaglioClient({ expenses, otherUserName, telegramEnabled, off
   }
   function request() {
     startRequest(async () => {
-      const result = await requestSettlementOnTelegram()
+      const result = await requestSettlementOnTelegram().catch(() => ({ ok: false as const, error: 'Non riesco a confermare l’invio. Controlla il gruppo prima di riprovare.' }))
       if (result.ok) toast.success('Promemoria inviato nel gruppo Telegram.')
       else toast.error(result.error)
     })
@@ -64,7 +64,7 @@ export function ConguaglioClient({ expenses, otherUserName, telegramEnabled, off
         if (result?.error) { toast.error(result.error); setConfirmation(null) }
       } catch (error) {
         if (isRedirectError(error)) throw error
-        toast.error('Il conguaglio non è stato registrato. Riprova.')
+        toast.error('Non riesco a confermare la registrazione. Aggiorna il saldo prima di riprovare.')
         setConfirmation(null)
       }
     })

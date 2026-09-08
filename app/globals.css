@@ -335,7 +335,7 @@ dialog::backdrop {
 
 /* Identità menta e crema, accessibilità e shell adattiva. */
 .font-display { font-variation-settings: "SOFT" 100, "WONK" 1; font-optical-sizing: auto; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@layer base { :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; } }
 button, a, input, summary { -webkit-tap-highlight-color: transparent; }
 summary { cursor: pointer; }
 ::selection { background: var(--accent-muted); color: var(--accent-soft); }

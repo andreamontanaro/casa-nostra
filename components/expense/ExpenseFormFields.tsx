@@ -233,7 +233,7 @@ export function ExpenseFormFields({
       {parsedAmount > 0 && (splitRule !== 'custom' || showCustomPreview) && (
         <div className="grid grid-cols-2 gap-3 rounded-2xl bg-accent-muted p-4" aria-live="polite" aria-label="Anteprima delle quote">
           {previewExpenseShares(parsedAmount, splitRule, paidBy, parsedCustomShare, profiles).map((person) => (
-            <div key={person.id}><p className="break-words text-xs text-accent-soft">{person.id === currentUserId ? 'La tua quota' : person.display_name}</p><p className="mt-1 text-lg font-semibold tabular-nums text-accent-soft">{formatEur(person.share)}</p></div>
+            <div key={person.id}><p className="break-words text-xs text-accent-soft">{person.id === currentUserId ? 'La tua quota' : person.display_name}</p><p className="mt-1 break-words text-[clamp(.75rem,4vw,1.125rem)] font-semibold tabular-nums text-accent-soft">{formatEur(person.share)}</p></div>
           ))}
         </div>
       )}
@@ -252,7 +252,7 @@ export function ExpenseFormFields({
                 disabled={disabled}
                 aria-pressed={isActive}
                 className={cn(
-                  'flex flex-1 items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-medium',
+                  'flex min-w-0 flex-1 items-center justify-center gap-2 break-words rounded-2xl border px-2 py-3 text-sm font-medium',
                   'transition-[border-color,background-color,color,transform] duration-150 active:scale-[0.97]',
                   'disabled:opacity-50',
                   isActive
