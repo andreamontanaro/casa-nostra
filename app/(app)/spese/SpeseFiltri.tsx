@@ -1,12 +1,11 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
-import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { formatDate, formatEur, CATEGORY_LABELS, todayISO } from '@/lib/fmt'
 import { Constants } from '@/types/database'
 import type { Tables } from '@/types/database'
@@ -44,8 +43,13 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
   const total = filtered.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100
   const returnHref = '/spese' + (params.toString() ? '?' + params.toString() : '')
 
-  return <div className="space-y-5 pb-24">
-    <Card className="space-y-4 p-4 sm:p-5">
+  return <div className="space-y-3 pb-24">
+    <details className="group rounded-2xl border border-border bg-surface">
+      <summary className="flex min-h-13 cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+        <SlidersHorizontal className="size-4 text-accent" aria-hidden />
+        <span>Filtri e ricerca{hasFilter ? ' · attivi' : ''}</span><span className="ml-auto text-muted group-open:hidden">Apri</span><span className="ml-auto hidden text-muted group-open:inline">Chiudi</span>
+      </summary>
+      <div className="space-y-4 border-t border-border p-4 sm:p-5">
       <div className="flex items-center gap-2">
         <button type="button" aria-label="Mese precedente" className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-surface-raised" onClick={() => update('mese', shiftMonth(month || currentMonth, -1))}><ChevronLeft className="size-5" aria-hidden /></button>
         <div className="min-w-0 flex-1"><label htmlFor="history-month" className="mb-1 block text-xs text-muted">Periodo</label>
@@ -64,9 +68,10 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
           <option value="tutte">Tutte le categorie</option>{Constants.public.Enums.expense_category.map((cat) => <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>)}
         </select>
       </div>
-    </Card>
-    <div className="flex flex-wrap items-end justify-between gap-3 px-1" aria-live="polite">
-      <div><p className="mb-1 text-sm text-muted">{filtered.length} spese {hasFilter ? 'nei risultati' : 'in totale'}</p><AmountDisplay value={total} size="display-sm" /><p className="mt-1 text-xs text-muted">Totale delle spese, prima della divisione</p></div>
+      </div>
+    </details>
+    <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm" aria-live="polite">
+      <p className="text-muted">{filtered.length} movimenti · <span className="font-semibold tabular-nums text-foreground">{formatEur(total)}</span> totali</p>
       {hasFilter && <Button variant="ghost" size="sm" onClick={() => window.history.replaceState(null, '', '/spese')}>Azzera filtri</Button>}
     </div>
     {filtered.length === 0 ? <Card className="px-5 py-10 text-center"><p className="font-display text-2xl font-semibold">{expenses.length ? 'Nessuna corrispondenza' : 'La prima spesa, insieme.'}</p><p className="mt-3 text-sm text-muted">{expenses.length ? 'Prova un altro periodo o una categoria diversa.' : 'Aggiungi una spesa per iniziare a tenere i conti.'}</p>

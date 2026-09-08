@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, ShoppingBasket, ArrowUpRight } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import type { OpenExpenseWithContribution } from '@/lib/queries'
 import { AnimatePresence, motion } from 'motion/react'
 import { BalanceCard } from '@/components/BalanceCard'
@@ -41,17 +39,13 @@ export function HomeShell({
   const combined = recentExpenses.slice(0, 5)
 
   return (
-    <div className="px-4 pt-6 pb-24 lg:pb-6">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4 px-1">
-        <div><p className="mb-1 text-sm text-muted">Le piccole cose, insieme.</p><h1 className="font-display text-3xl font-semibold tracking-tight">Ciao, {profiles.find((p) => p.id === userId)?.display_name.split(' ')[0] ?? 'bentornato'}.</h1></div>
-        <Button onClick={() => setFormOpen(true)}><Plus className="size-5" aria-hidden />Aggiungi spesa</Button>
+    <div className="px-4 pt-4 pb-24 lg:pb-6">
+      <header className="mb-4 px-1">
+        <div><h1 className="font-display text-3xl font-semibold tracking-tight">Ciao, {profiles.find((p) => p.id === userId)?.display_name.split(' ')[0] ?? 'bentornato'}.</h1></div>
       </header>
-      <div className="grid items-start gap-6 xl:grid-cols-[1.1fr_1fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.3fr]">
       <BalanceCard rows={balanceRows} currentUserId={userId} expenses={openExpenses} />
       <div className="flex min-w-0 flex-col gap-5">
-      <Link href="/lista" className="flex min-h-20 items-center gap-3 rounded-3xl bg-accent-muted p-5 text-accent-soft">
-        <ShoppingBasket className="size-6" aria-hidden /><div className="flex-1"><p className="font-semibold">Cosa manca in casa?</p><p className="mt-1 text-sm">Apri la lista della spesa</p></div><ArrowUpRight className="size-5" aria-hidden />
-      </Link>
 
       <section>
         <div className="mb-3 flex items-center justify-between px-1">

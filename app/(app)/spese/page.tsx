@@ -18,7 +18,7 @@ export default async function SpesePage() {
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-6 pb-4">
-      <h1 className="text-xl font-semibold text-foreground">Storico spese</h1>
+      <h1 className="font-display text-3xl font-semibold text-foreground">Storico spese</h1>
 
       <StoricoShell
         expenses={expenses}

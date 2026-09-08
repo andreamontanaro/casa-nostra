@@ -15,8 +15,6 @@ interface NuovaSpesaFabProps {
   profiles: Profile[]
   currentUserId: string
   suggestions?: string[]
-  // Se passato, l'inserimento avviene in modo ottimistico (Home). In assenza,
-  // il form salva e la lista si aggiorna via revalidazione.
   // Apertura controllata dal parent (per CTA esterne, es. empty state). Se
   // omessa, il componente gestisce lo stato internamente tramite il FAB.
   open?: boolean

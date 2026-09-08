@@ -11,11 +11,12 @@ import type { CategoryTotal } from '@/lib/spending'
 interface Props {
   categories: CategoryTotal[]
   children: React.ReactNode
+  compact?: boolean
   label?: string
   categoryHref?: (category: string) => string
 }
 
-export function SpendingRing({ categories, children, label = 'Spese da regolare', categoryHref }: Props) {
+export function SpendingRing({ categories, children, label = 'Spese da regolare', categoryHref, compact = false }: Props) {
   const dark = useDarkTheme()
   const id = useId()
   const [selected, setSelected] = useState<string | null>(null)
@@ -29,26 +30,26 @@ export function SpendingRing({ categories, children, label = 'Spese da regolare'
 
   return (
     <div className="min-w-0">
-      <div className="relative mx-auto aspect-square w-full max-w-[17rem]">
+      <div className={cn("relative mx-auto aspect-square w-full", compact ? "max-w-[11.5rem]" : "max-w-[17rem]")}>
         <svg viewBox="0 0 200 200" className="size-full -rotate-90" aria-labelledby={id}>
-          <title id={id}>{label}: {formatEur(total)}. La composizione delle spese è distinta dal saldo al centro.</title>
+          <title id={id}>{label}: {formatEur(total)}. La composizione delle spese è distinta dal saldo al centro. {categories.map((c) => `${CATEGORY_LABELS[c.category]}: ${formatEur(c.total)}`).join('; ')}</title>
           <circle cx="100" cy="100" r="89" fill="none" stroke="var(--surface-sunken)" strokeWidth="11" />
           {segments.map((item) => (
             <circle key={item.category} cx="100" cy="100" r="89" pathLength="100" fill="none"
               stroke={categoryHex(item.category, dark)} strokeWidth={selected === item.category ? 15 : 11}
               strokeDasharray={`${Math.max(0, item.share - (segments.length > 1 ? Math.min(1, item.share * .12) : 0))} 100`}
               strokeDashoffset={-item.offset}
-              className="cursor-pointer transition-[stroke-width,opacity] duration-150"
+              className={cn("transition-[stroke-width,opacity] duration-150", !compact && "cursor-pointer")}
               opacity={active && selected !== item.category ? .4 : 1}
-              onClick={() => setSelected(selected === item.category ? null : item.category)}
+              onClick={compact ? undefined : () => setSelected(selected === item.category ? null : item.category)}
               aria-hidden />
           ))}
         </svg>
-        <div className="absolute inset-9 flex min-w-0 flex-col items-center justify-center text-center">
+        <div className={cn("absolute flex min-w-0 flex-col items-center justify-center text-center", compact ? "inset-6" : "inset-9")}>
           {children}
         </div>
       </div>
-      <p className="mt-2 text-center text-sm text-muted">{label} <span className="whitespace-nowrap font-semibold text-foreground">{formatEur(total)}</span></p>
+      {!compact && <><p className="mt-2 text-center text-sm text-muted">{label} <span className="whitespace-nowrap font-semibold text-foreground">{formatEur(total)}</span></p>
       {categories.length > 0 && (
         <div className="mt-4 flex flex-wrap justify-center gap-1" role="group" aria-label="Categorie delle spese">
           {categories.map((item) => (
@@ -71,7 +72,7 @@ export function SpendingRing({ categories, children, label = 'Spese da regolare'
             {categoryHref && <Link className="flex min-h-11 items-center gap-1 font-semibold text-accent" href={categoryHref(active.category)}>Apri spese <ArrowUpRight className="size-4" aria-hidden /></Link>}
           </div>
         )}
-      </div>
+      </div></>}
     </div>
   )
 }
