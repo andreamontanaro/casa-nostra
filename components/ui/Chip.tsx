@@ -21,8 +21,9 @@ export function Chip({
   return (
     <button
       type="button"
+      aria-pressed={variant === 'filter' ? active : undefined}
       className={cn(
-        'shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium',
+        'min-h-11 shrink-0 rounded-full px-3.5 py-2 text-sm font-medium',
         'transition-[border-color,background-color,color,transform] duration-150',
         'active:scale-[0.97]',
         'disabled:opacity-50 disabled:pointer-events-none',

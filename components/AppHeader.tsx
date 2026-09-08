@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, ChevronRight } from 'lucide-react'
+import { Menu, ChevronRight, House, Sparkles } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import {
@@ -12,6 +12,7 @@ import {
   activeNavHref,
   type NavItem,
 } from '@/lib/nav'
+import { openAssistant } from '@/lib/assistant/ui'
 import { cn } from '@/lib/utils'
 
 /**
@@ -32,25 +33,31 @@ export function AppHeader() {
       <header
         className={cn(
           'fixed top-0 inset-x-0 z-40 border-b border-border',
-          'bg-surface/70 backdrop-blur-xl backdrop-saturate-150',
-          'supports-[backdrop-filter]:bg-surface/65',
+          'bg-background/95 backdrop-blur-md',
           'pt-[env(safe-area-inset-top)]',
         )}
       >
-        <div className="mx-auto flex h-14 w-full max-w-lg items-center gap-1 px-2">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-2 px-4">
           <button
             type="button"
             onClick={() => setOpen(true)}
             aria-label="Apri menu"
             className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-2xl text-foreground',
+              'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-foreground',
               'transition-[background-color,transform] duration-150',
               'hover:bg-surface-raised active:scale-95',
             )}
           >
             <Menu className="size-6" />
           </button>
-          <span className="text-base font-semibold text-foreground">Casa Nostra</span>
+          <Link href="/" className="flex min-w-0 items-center gap-2.5">
+            <span className="hidden size-9 items-center justify-center rounded-2xl bg-accent-muted text-accent sm:flex"><House className="size-5" aria-hidden /></span>
+            <span className="font-display text-xl font-semibold tracking-tight text-foreground">Casa Nostra<span className="text-accent">.</span></span>
+          </Link>
+          <button type="button" onClick={() => openAssistant()} aria-label="Apri l’assistente"
+            className="ml-auto flex min-h-11 items-center gap-2 rounded-full bg-accent-muted px-3 text-sm font-semibold text-accent-soft">
+            <Sparkles className="size-4" aria-hidden /><span className="hidden sm:inline">Assistente</span>
+          </button>
         </div>
       </header>
 

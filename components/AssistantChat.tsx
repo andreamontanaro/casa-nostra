@@ -7,6 +7,7 @@ import { Sparkles, X, Send } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 import { Markdown } from '@/components/ui/Markdown'
 import { toast } from '@/lib/toast'
+import { ASSISTANT_OPEN_EVENT } from '@/lib/assistant/ui'
 import { cn } from '@/lib/utils'
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string }
@@ -176,30 +177,18 @@ export function AssistantChat() {
     }
   }
 
+  useEffect(() => {
+    const openFromContext = (event: Event) => {
+      const prompt = (event as CustomEvent<unknown>).detail
+      if (typeof prompt === 'string') setInput(prompt)
+      setOpen(true)
+    }
+    window.addEventListener(ASSISTANT_OPEN_EVENT, openFromContext)
+    return () => window.removeEventListener(ASSISTANT_OPEN_EVENT, openFromContext)
+  }, [])
+
   return (
     <>
-      {/* Nuvoletta flottante, sopra il FAB / la bottom nav */}
-      <motion.button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Apri l'assistente"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 22, delay: 0.2 }}
-        whileTap={{ scale: 0.92 }}
-        className={cn(
-          // right-5 (1.25rem) allinea il centro di questo bottone (size-12) a
-          // quello del FAB (right-4 + size-14); bottom 10rem lascia ~1rem di gap
-          // sopra il FAB, che termina a 9rem dal fondo.
-          'fixed right-5 z-40 hide-on-keyboard',
-          'bottom-[calc(10rem+env(safe-area-inset-bottom))]',
-          'flex size-12 items-center justify-center rounded-full',
-          'bg-surface text-accent border border-border shadow-card',
-        )}
-      >
-        <Sparkles className="size-5" strokeWidth={2.25} />
-      </motion.button>
-
       <AnimatePresence>
         {open && (
           <>

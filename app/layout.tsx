@@ -2,17 +2,26 @@ import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import NextTopLoader from 'nextjs-toploader'
 import { Toaster } from '@/lib/toast'
+import { MotionProvider } from '@/components/MotionProvider'
 import { KeyboardInsets } from '@/components/KeyboardInsets'
 import { THEME_COLOR_DARK, THEME_COLOR_LIGHT } from '@/lib/theme'
 import './globals.css'
 
-// Inter self-hostato come file locale (variable, range 100–900).
+// Font locali: nessuna richiesta esterna durante build o navigazione.
 // Evita il fetch build-time da Google Fonts (che su alcuni ambienti Windows
 // fa crashare Node nello store certificati) e garantisce build riproducibili.
-const inter = localFont({
-  src: './fonts/inter-latin-wght-normal.woff2',
+const manrope = localFont({
+  src: './fonts/manrope.woff2',
   display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-manrope',
+  weight: '200 800',
+  style: 'normal',
+})
+
+const fraunces = localFont({
+  src: './fonts/fraunces.woff2',
+  display: 'swap',
+  variable: '--font-fraunces',
   weight: '100 900',
   style: 'normal',
 })
@@ -46,14 +55,14 @@ const themeInitScript = `(function(){try{var t=localStorage.getItem('theme');if(
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="it" className={`h-full ${inter.variable}`}>
+    <html lang="it" className={`h-full ${manrope.variable} ${fraunces.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full bg-background text-foreground antialiased">
         <NextTopLoader color="var(--accent)" showSpinner={false} height={2} />
         <KeyboardInsets />
-        {children}
+        <MotionProvider>{children}</MotionProvider>
         <Toaster />
       </body>
     </html>

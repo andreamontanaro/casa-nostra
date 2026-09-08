@@ -135,7 +135,7 @@ export function ExpenseForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit() {
     if (!onOptimisticInsert) return;
 
     const amt = parseFloat(rawAmount.replace(",", "."));

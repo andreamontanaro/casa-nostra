@@ -19,12 +19,12 @@ export function BottomNav() {
 
   return (
     <nav
+      aria-label="Accesso rapido"
       className={cn(
         // Nascosta mentre si scrive: sotto la tastiera è invisibile su iOS e
         // su Android ruberebbe 4rem al form (vedi .hide-on-keyboard).
-        'fixed bottom-0 inset-x-0 z-40 border-t border-border hide-on-keyboard',
-        'bg-surface/70 backdrop-blur-xl backdrop-saturate-150',
-        'supports-[backdrop-filter]:bg-surface/65',
+        'fixed bottom-0 inset-x-0 z-40 border-t border-border hide-on-keyboard lg:hidden',
+        'bg-surface/95 backdrop-blur-md',
         'pb-[env(safe-area-inset-bottom)]',
         'shadow-nav',
       )}

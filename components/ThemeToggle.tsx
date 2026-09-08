@@ -1,85 +1,52 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Theme = 'light' | 'dark' | 'system'
-
-const STORAGE_KEY = 'theme'
-
-const options: { value: Theme; label: string; icon: typeof Sun }[] = [
+const options = [
   { value: 'light', label: 'Chiaro', icon: Sun },
   { value: 'dark', label: 'Scuro', icon: Moon },
   { value: 'system', label: 'Sistema', icon: Monitor },
-]
+] as const
 
 function readTheme(): Theme {
-  if (typeof window === 'undefined') return 'system'
-  try {
-    const v = localStorage.getItem(STORAGE_KEY)
-    if (v === 'light' || v === 'dark') return v
-  } catch {}
-  return 'system'
+  const value = document.documentElement.dataset.theme
+  return value === 'light' || value === 'dark' ? value : 'system'
 }
 
-function applyTheme(theme: Theme) {
-  const root = document.documentElement
-  if (theme === 'system') {
-    root.removeAttribute('data-theme')
-    try {
-      localStorage.removeItem(STORAGE_KEY)
-    } catch {}
-  } else {
-    root.setAttribute('data-theme', theme)
-    try {
-      localStorage.setItem(STORAGE_KEY, theme)
-    } catch {}
+function subscribe(callback: () => void) {
+  const observer = new MutationObserver(callback)
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+  const syncStorage = (event: StorageEvent) => {
+    if (event.key !== 'theme') return
+    if (event.newValue === 'light' || event.newValue === 'dark') document.documentElement.setAttribute('data-theme', event.newValue)
+    else document.documentElement.removeAttribute('data-theme')
   }
+  window.addEventListener('storage', syncStorage)
+  return () => { observer.disconnect(); window.removeEventListener('storage', syncStorage) }
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('system')
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setTheme(readTheme())
-    setMounted(true)
-  }, [])
-
-  function handleChange(next: Theme) {
-    setTheme(next)
-    applyTheme(next)
+  const theme = useSyncExternalStore(subscribe, readTheme, () => 'system')
+  function change(next: Theme) {
+    if (next === 'system') document.documentElement.removeAttribute('data-theme')
+    else document.documentElement.setAttribute('data-theme', next)
+    try {
+      if (next === 'system') localStorage.removeItem('theme')
+      else localStorage.setItem('theme', next)
+    } catch {}
   }
-
   return (
-    <div
-      role="radiogroup"
-      aria-label="Tema"
-      className="flex w-full rounded-2xl border border-border bg-surface-sunken p-1"
-    >
-      {options.map(({ value, label, icon: Icon }) => {
-        const active = mounted && theme === value
-        return (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => handleChange(value)}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-xl h-10 text-sm font-medium',
-              'transition-colors duration-150',
-              active
-                ? 'bg-surface text-foreground shadow-soft'
-                : 'text-muted hover:text-foreground',
-            )}
-          >
-            <Icon className="size-4" />
-            {label}
-          </button>
-        )
-      })}
+    <div role="group" aria-label="Aspetto dell’app" className="flex gap-1 rounded-2xl bg-surface-raised p-1">
+      {options.map(({ value, label, icon: Icon }) => (
+        <button key={value} type="button" aria-pressed={theme === value} onClick={() => change(value)}
+          className={cn('flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-2 text-sm font-medium transition-colors',
+            theme === value ? 'bg-surface text-accent shadow-soft' : 'text-muted hover:text-foreground')}>
+          <Icon className="size-4" aria-hidden />{label}
+        </button>
+      ))}
     </div>
   )
 }

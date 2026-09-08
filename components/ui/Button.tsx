@@ -29,8 +29,8 @@ const buttonVariants = cva(
           'bg-destructive text-destructive-foreground hover:[background-color:color-mix(in_oklab,var(--destructive),#000_8%)] active:[background-color:color-mix(in_oklab,var(--destructive),#000_14%)]',
       },
       size: {
-        sm: 'h-9 px-4 text-sm rounded-full',
-        md: 'h-11 px-5 text-base rounded-full',
+        sm: 'min-h-11 py-2 px-4 text-sm rounded-full',
+        md: 'min-h-12 py-2 px-5 text-base rounded-full',
         lg: 'h-13 px-6 text-base font-semibold rounded-full',
       },
     },
@@ -62,6 +62,7 @@ export function Button({
     <button
       ref={ref}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={cn(buttonVariants({ variant, size }), className)}
       {...props}
     >

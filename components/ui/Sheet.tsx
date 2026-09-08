@@ -84,13 +84,14 @@ export function Sheet({
           ref={contentRef}
           onOpenAutoFocus={handleOpenAutoFocus}
           onCloseAutoFocus={handleCloseAutoFocus}
+          {...(!description ? { 'aria-describedby': undefined } : {})}
           className={cn(
             // Sopra la tastiera invece che sotto: `bottom` la scavalca e
             // l'altezza si accorcia dello spazio che ruba. Sono due misure
             // diverse — vedi lib/keyboard.ts — perché quando iOS spinge su la
             // pagina da sé il fondo è già a posto ma l'altezza no, e la testa
             // della sheet (intestazione e primi campi) finirebbe fuori schermo.
-            'fixed inset-x-0 bottom-[var(--keyboard-inset)] z-50 flex flex-col',
+            'fixed inset-x-0 bottom-[var(--keyboard-inset)] z-50 mx-auto flex max-w-xl flex-col',
             'rounded-t-[28px] border-t border-border/60 bg-surface shadow-dialog',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom',
@@ -108,7 +109,7 @@ export function Sheet({
             </div>
 
             {(title || description) && (
-              <div className="px-5 pt-1 pb-3">
+              <div className="pl-5 pr-16 pt-1 pb-3">
                 {title && (
                   <DialogPrimitive.Title className="text-title font-semibold text-foreground">
                     {title}
@@ -124,7 +125,7 @@ export function Sheet({
 
             <DialogPrimitive.Close
               aria-label="Chiudi"
-              className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface-raised hover:text-foreground active:scale-95 transition-[background-color,transform]"
+              className="absolute right-3 top-3 z-20 flex size-11 items-center justify-center rounded-full text-muted hover:bg-surface-raised hover:text-foreground active:scale-95 transition-[background-color,transform]"
             >
               <X className="size-5" />
             </DialogPrimitive.Close>

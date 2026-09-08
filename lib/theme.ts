@@ -6,7 +6,7 @@
  */
 
 /** themeColor status bar — light (== --background light). */
-export const THEME_COLOR_LIGHT = '#f6f8f7'
+export const THEME_COLOR_LIGHT = '#f8f5ef'
 
 /** themeColor status bar — dark (== --dk-background). */
-export const THEME_COLOR_DARK = '#0b100f'
+export const THEME_COLOR_DARK = '#121b19'

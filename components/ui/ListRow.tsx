@@ -30,11 +30,11 @@ export function ListRow({
     <>
       {leading}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-foreground">
+        <div className="line-clamp-2 break-words text-sm font-semibold text-foreground">
           {title}
         </div>
         {subtitle && (
-          <div className="mt-0.5 truncate text-xs text-muted">{subtitle}</div>
+          <div className="mt-1 text-xs text-muted">{subtitle}</div>
         )}
       </div>
       {trailing && <div className="shrink-0 text-right">{trailing}</div>}

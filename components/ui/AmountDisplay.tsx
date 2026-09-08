@@ -5,8 +5,8 @@ type AmountSize = 'display' | 'display-sm' | 'title'
 type AmountTone = 'neutral' | 'positive' | 'negative'
 
 const sizeClass: Record<AmountSize, string> = {
-  display: 'text-display font-extrabold tracking-[-0.03em]',
-  'display-sm': 'text-display-sm font-bold tracking-[-0.02em]',
+  display: 'font-display text-display font-semibold tracking-[-0.04em]',
+  'display-sm': 'font-display text-display-sm font-semibold tracking-[-0.03em]',
   title: 'text-title font-semibold tracking-[-0.01em]',
 }
 

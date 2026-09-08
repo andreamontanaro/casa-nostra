@@ -63,6 +63,9 @@ export function AmountInput({
         <input
           id={inputId}
           name={name}
+          aria-label={label ?? 'Importo in euro'}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${inputId}-error` : undefined}
           type="text"
           inputMode="decimal"
           placeholder={placeholder}
@@ -76,12 +79,12 @@ export function AmountInput({
             'placeholder:font-medium placeholder:text-muted/50',
             'focus:outline-none',
             isHero
-              ? 'w-full max-w-[7ch] text-display-sm tracking-[-0.02em] text-center'
+              ? 'w-full font-display text-display-sm tracking-[-0.02em] text-center'
               : 'flex-1 text-xl',
           )}
         />
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p id={`${inputId}-error`} role="alert" className="text-sm text-destructive">{error}</p>}
     </div>
   )
 }

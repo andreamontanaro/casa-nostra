@@ -51,7 +51,7 @@ function previousMonthKey(): string {
 }
 
 // Offset per l'ancoraggio sticky sotto l'AppHeader fisso.
-const STICKY_TOP = 'top-[calc(3.5rem+env(safe-area-inset-top))]'
+const STICKY_TOP = 'top-[calc(4rem+env(safe-area-inset-top))]'
 
 export function SpeseFiltri({ expenses, onAddExpense }: SpeseFiltriProps) {
   const searchParams = useSearchParams()

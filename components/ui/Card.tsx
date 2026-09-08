@@ -26,7 +26,7 @@ export function Card({
     <div
       ref={ref}
       className={cn(
-        'rounded-2xl border border-border shadow-card',
+        'rounded-3xl border border-border shadow-card',
         toneClass[tone],
         className,
       )}
