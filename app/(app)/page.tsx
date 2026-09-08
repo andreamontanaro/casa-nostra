@@ -1,5 +1,6 @@
 import {
   getOpenBalance,
+  getOpenExpensesWithContribution,
   getRecentExpenses,
   getCurrentUser,
   getProfiles,
@@ -18,10 +19,12 @@ export default async function HomePage() {
     ])
 
   if (!user) return null
+  const openExpenses = await getOpenExpensesWithContribution(user.id)
 
   return (
     <HomeShell
       userId={user.id}
+      openExpenses={openExpenses}
       balanceRows={balanceRows}
       recentExpenses={recentExpenses}
       profiles={profiles}

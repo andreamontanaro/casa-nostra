@@ -1,4 +1,5 @@
 import {
+  getOpenBalance,
   getCurrentUser,
   getOpenExpensesWithContribution,
   getProfiles,
@@ -10,9 +11,10 @@ export default async function ConguaglioPage() {
   const user = await getCurrentUser()
   if (!user) return null
 
-  const [profiles, expenses] = await Promise.all([
+  const [profiles, expenses, balances] = await Promise.all([
     getProfiles(),
     getOpenExpensesWithContribution(user.id),
+    getOpenBalance(),
   ])
 
   const other = profiles.find((p) => p.id !== user.id)
@@ -20,9 +22,10 @@ export default async function ConguaglioPage() {
 
   return (
     <div className="flex flex-col gap-5 px-4 pt-6">
-      <h1 className="text-xl font-semibold text-foreground">Conguaglio</h1>
+      <header className="px-1"><p className="mb-1 text-sm text-muted">Un conto in meno a cui pensare.</p><h1 className="font-display text-3xl font-semibold">Regola il saldo</h1></header>
       <ConguaglioClient
         expenses={expenses}
+        officialNet={balances.find((b) => b.user_id === user.id)?.net_position ?? 0}
         otherUserName={otherUserName}
         telegramEnabled={isTelegramConfigured()}
       />

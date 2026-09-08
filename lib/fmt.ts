@@ -70,39 +70,39 @@ export interface CategoryVisual {
 
 export const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
   affitto: {
-    hex: '#2a78d6',
-    hexDark: '#2a78d6',
-    container: 'bg-[#2a78d6]/15 dark:bg-[#2a78d6]/20',
+    hex: '#527a9c',
+    hexDark: '#527a9c',
+    container: 'bg-[#527a9c]/15 dark:bg-[#527a9c]/20',
   },
   bolletta: {
-    hex: '#eda100',
-    hexDark: '#c48300',
-    container: 'bg-[#eda100]/15 dark:bg-[#c48300]/25',
+    hex: '#a67c22',
+    hexDark: '#ddba64',
+    container: 'bg-[#a67c22]/15 dark:bg-[#ddba64]/25',
   },
   spesa_alimentare: {
-    hex: '#1baf7a',
-    hexDark: '#1baf7a',
-    container: 'bg-[#1baf7a]/15 dark:bg-[#1baf7a]/20',
+    hex: '#45836a',
+    hexDark: '#45836a',
+    container: 'bg-[#45836a]/15 dark:bg-[#45836a]/20',
   },
   abbonamento: {
-    hex: '#4a3aa7',
-    hexDark: '#8b76e8',
-    container: 'bg-[#4a3aa7]/15 dark:bg-[#8b76e8]/20',
+    hex: '#876493',
+    hexDark: '#c3a3d0',
+    container: 'bg-[#876493]/15 dark:bg-[#c3a3d0]/20',
   },
   manutenzione: {
-    hex: '#eb6834',
-    hexDark: '#dd5c2a',
-    container: 'bg-[#eb6834]/15 dark:bg-[#dd5c2a]/20',
+    hex: '#b56b4f',
+    hexDark: '#e8ac8a',
+    container: 'bg-[#b56b4f]/15 dark:bg-[#e8ac8a]/20',
   },
   viaggi: {
-    hex: '#e87ba4',
-    hexDark: '#d5628f',
-    container: 'bg-[#e87ba4]/15 dark:bg-[#d5628f]/20',
+    hex: '#a6627f',
+    hexDark: '#deabc1',
+    container: 'bg-[#a6627f]/15 dark:bg-[#deabc1]/20',
   },
   altro: {
-    hex: '#71717a',
-    hexDark: '#8b8b93',
-    container: 'bg-[#71717a]/15 dark:bg-[#8b8b93]/20',
+    hex: '#777f73',
+    hexDark: '#bec4b3',
+    container: 'bg-[#777f73]/15 dark:bg-[#bec4b3]/20',
   },
 }
 

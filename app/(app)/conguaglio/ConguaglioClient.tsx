@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Bell, Check } from 'lucide-react'
+import { ArrowRight, Bell, Check, ArrowLeft } from 'lucide-react'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { registerSettlement } from '@/app/actions/settlement'
 import { requestSettlementOnTelegram } from '@/app/actions/telegram'
@@ -12,271 +12,121 @@ import { Card } from '@/components/ui/Card'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { Sheet } from '@/components/ui/Sheet'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { SpendingRing } from '@/components/SpendingRing'
 import { toast } from '@/lib/toast'
-import { CATEGORY_LABELS, formatDate, formatEur } from '@/lib/fmt'
-import { cn } from '@/lib/utils'
+import { formatDateShort, formatEur } from '@/lib/fmt'
+import { categoryTotals, selectionContribution } from '@/lib/spending'
 import type { OpenExpenseWithContribution } from '@/lib/queries'
 
-interface ConguaglioClientProps {
+interface Props {
   expenses: OpenExpenseWithContribution[]
   otherUserName: string
-  /** Il bot Telegram è configurato: si può sollecitare il conguaglio nel gruppo. */
   telegramEnabled: boolean
+  /** Posizione ufficiale dalla vista SQL, usata per la selezione completa. */
+  officialNet: number
 }
+interface Confirmation { fingerprint: string; amount: number }
 
-function DirectionPill({ payer, receiver }: { payer: string; receiver: string }) {
-  return (
-    <div className="inline-flex items-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium">
-      <span className="text-foreground">{payer}</span>
-      <ArrowRight className="size-4 shrink-0 text-muted" strokeWidth={2.5} />
-      <span className="text-foreground">{receiver}</span>
-    </div>
-  )
-}
-
-export function ConguaglioClient({
-  expenses,
-  otherUserName,
-  telegramEnabled,
-}: ConguaglioClientProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    () => new Set(expenses.map((e) => e.id)),
-  )
-  const [confirmOpen, setConfirmOpen] = useState(false)
+export function ConguaglioClient({ expenses, otherUserName, telegramEnabled, officialNet }: Props) {
+  const [excluded, setExcluded] = useState<Set<string>>(new Set())
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isRequesting, startRequest] = useTransition()
-
-  const net = useMemo(() => {
-    let sum = 0
-    for (const e of expenses) {
-      if (selectedIds.has(e.id)) sum += e.my_contribution
-    }
-    return Math.round(sum * 100) / 100
-  }, [expenses, selectedIds])
-
+  const selected = expenses.filter((e) => !excluded.has(e.id))
+  const allSelected = selected.length === expenses.length
+  const net = allSelected ? officialNet : selectionContribution(selected)
   const absAmount = Math.abs(net)
-  const hasBalance = net !== 0
-  const isCredit = net > 0
-  const payer = isCredit ? otherUserName : 'Tu'
-  const receiver = isCredit ? 'Te' : otherUserName
-
-  const selectedCount = selectedIds.size
-  const totalCount = expenses.length
-  const allSelected = selectedCount === totalCount
+  const payer = net > 0 ? otherUserName : 'Tu'
+  const receiver = net > 0 ? 'te' : otherUserName
+  const fingerprint = selected.map((e) => e.id + ':' + e.updated_at + ':' + e.my_contribution).join('|')
+  const stale = Boolean(confirmation && (confirmation.fingerprint !== fingerprint || confirmation.amount !== net))
 
   function toggle(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
+    setExcluded((previous) => {
+      const next = new Set(previous)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
   }
-
-  function toggleAll() {
-    setSelectedIds((prev) =>
-      prev.size === totalCount ? new Set() : new Set(expenses.map((e) => e.id)),
-    )
-  }
-
-  // Manda solo un promemoria nel gruppo: il conguaglio si registra qui, dopo
-  // che il bonifico è partito.
-  function handleRequest() {
+  function request() {
     startRequest(async () => {
       const result = await requestSettlementOnTelegram()
-      if (result.ok) toast.success('Richiesta inviata nel gruppo Telegram.')
+      if (result.ok) toast.success('Promemoria inviato nel gruppo Telegram.')
       else toast.error(result.error)
     })
   }
-
-  function handleConfirm() {
-    if (!hasBalance) return
-    const ids = expenses
-      .filter((e) => selectedIds.has(e.id))
-      .map((e) => e.id)
+  function confirm() {
+    if (!confirmation || stale || net === 0 || isPending) return
     startTransition(async () => {
       try {
-        await registerSettlement(undefined, ids)
-      } catch (e) {
-        if (isRedirectError(e)) throw e
-        toast.error('Errore durante il conguaglio. Riprova.')
-        setConfirmOpen(false)
+        const result = await registerSettlement(undefined, selected.map((e) => e.id))
+        if (result?.error) { toast.error(result.error); setConfirmation(null) }
+      } catch (error) {
+        if (isRedirectError(error)) throw error
+        toast.error('Il conguaglio non è stato registrato. Riprova.')
+        setConfirmation(null)
       }
     })
   }
 
   return (
     <>
-      {/* Hero saldo netto */}
-      {!hasBalance ? (
-        <div className="flex flex-col items-center gap-3 px-1 py-6">
-          <div className="flex size-12 items-center justify-center rounded-full bg-positive-muted text-positive-soft">
-            <Check className="size-6" strokeWidth={2.5} />
-          </div>
-          <div className="text-center">
-            <p className="text-base font-semibold text-foreground">
-              {totalCount === 0 || selectedCount === 0
-                ? 'Siete pari'
-                : 'Nessun saldo sulla selezione'}
-            </p>
-            <p className="mt-0.5 text-sm text-muted">
-              {totalCount === 0
-                ? 'Niente da conguagliare.'
-                : selectedCount === 0
-                  ? 'Seleziona almeno una spesa.'
-                  : 'Le spese selezionate si compensano.'}
-            </p>
-          </div>
-          {totalCount === 0 && (
-            <Link
-              href="/"
-              className="mt-1 text-sm font-medium text-accent hover:underline"
-            >
-              Torna alla home
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-3 py-2">
-          <p className="text-label font-medium uppercase tracking-wider text-muted">
-            Saldo netto
-          </p>
-          <AmountDisplay value={absAmount} size="display" />
-          <DirectionPill payer={payer} receiver={receiver} />
-          {telegramEnabled && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRequest}
-              loading={isRequesting}
-            >
-              <Bell className="size-4" strokeWidth={2.5} />
-              Richiedi conguaglio
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="grid items-start gap-6 xl:grid-cols-[1fr_1.15fr]">
+        <Card className="p-5">
+          <SpendingRing categories={categoryTotals(selected)} label={allSelected ? 'Spese da regolare' : 'Spese selezionate'}>
+            {selected.length === 0 ? <><p className="font-display text-2xl font-semibold">{expenses.length ? 'Scegli le spese' : 'Siete in pari'}</p><p className="mt-2 text-xs text-muted">{expenses.length ? 'Nessuna selezionata' : 'Niente da regolare'}</p></>
+              : net === 0 ? <><Check className="size-6 text-accent" aria-hidden /><p className="mt-2 font-display text-2xl font-semibold">Saldo zero</p><p className="mt-2 text-xs text-muted">Le spese si compensano</p></>
+              : <><p className="text-sm text-muted">{net > 0 ? 'Devi ricevere' : 'Devi dare'}</p><AmountDisplay value={absAmount} className={`mt-2 whitespace-nowrap ${absAmount >= 10000 ? 'text-[1.8rem]' : 'text-[2.5rem]'}`} /><p className="mt-2 break-words text-sm">{net > 0 ? 'da' : 'a'} {otherUserName}</p></>}
+          </SpendingRing>
+          {!allSelected && <p className="mt-4 rounded-2xl bg-accent-muted p-3 text-sm text-accent-soft">Stai regolando {selected.length} spese su {expenses.length}. Le altre resteranno aperte.</p>}
+          <p className="mt-4 text-sm leading-relaxed text-muted">Prima esegui il bonifico, poi registralo qui. L’app tiene i conti e non trasferisce denaro.</p>
+          {telegramEnabled && officialNet !== 0 && <div className="mt-3">
+            <Button variant="ghost" size="sm" className="w-full" disabled={!allSelected} loading={isRequesting} onClick={request}><Bell className="size-4" aria-hidden />Invia promemoria su Telegram</Button>
+            {!allSelected && <p className="mt-1 text-xs text-muted">Il promemoria riguarda il saldo completo.</p>}
+          </div>}
+        </Card>
 
-      {/* Lista spese con checkbox */}
-      {totalCount > 0 && (
-        <section>
-          <div className="mb-2 flex items-center justify-between gap-3 px-1">
-            <h2 className="text-label font-semibold uppercase tracking-wide text-muted">
-              Spese ({selectedCount}/{totalCount})
-            </h2>
-            <button
-              type="button"
-              onClick={toggleAll}
-              className="text-sm font-medium text-accent hover:underline"
-            >
+        <section className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
+            <h2 className="font-semibold">Spese da includere <span className="text-sm font-normal text-muted">({selected.length}/{expenses.length})</span></h2>
+            {expenses.length > 0 && <button type="button" className="min-h-11 rounded-full px-3 text-sm font-semibold text-accent"
+              onClick={() => setExcluded(allSelected ? new Set(expenses.map((e) => e.id)) : new Set())}>
               {allSelected ? 'Deseleziona tutte' : 'Seleziona tutte'}
-            </button>
+            </button>}
           </div>
-          <Card className="divide-y divide-border overflow-hidden p-0">
-            {expenses.map((e) => {
-              const checked = selectedIds.has(e.id)
-              return (
-                <label
-                  key={e.id}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-2 py-2 pl-1 pr-4 transition-opacity',
-                    !checked && 'opacity-60',
-                  )}
-                >
-                  <Checkbox checked={checked} onChange={() => toggle(e.id)} />
-                  <CategoryIcon category={e.category} size="md" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {e.description}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {formatDate(e.expense_date)} · {CATEGORY_LABELS[e.category]}
-                    </p>
-                  </div>
-                  <span className="ml-2 shrink-0 text-sm font-semibold tabular-nums text-foreground">
-                    {formatEur(e.amount)}
-                  </span>
-                </label>
-              )
-            })}
-          </Card>
+          <p className="mb-4 px-1 text-sm text-muted">Il contributo indica quanto ogni spesa è a tuo favore o a favore del partner.</p>
+          {expenses.length === 0 ? <Card className="p-6 text-center"><p className="text-muted">Non ci sono spese aperte.</p><Link href="/" className="mt-4 inline-flex min-h-11 items-center gap-2 font-semibold text-accent"><ArrowLeft className="size-4" aria-hidden />Torna alla home</Link></Card>
+            : <Card className="divide-y divide-border overflow-hidden">
+              {expenses.map((e) => <label key={e.id} className="flex cursor-pointer items-start gap-2 py-4 pr-4 pl-1">
+                <Checkbox checked={!excluded.has(e.id)} onChange={() => toggle(e.id)} disabled={isPending} aria-label={`Includi ${e.description}`} />
+                <div className="pt-1"><CategoryIcon category={e.category} /></div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1"><p className="break-words text-sm font-semibold">{e.description}</p><span className="text-sm font-semibold tabular-nums">{formatEur(e.amount)}</span></div>
+                  <p className="mt-1 text-xs text-muted">{formatDateShort(e.expense_date)} · {e.paid_by_profile?.display_name ?? '—'} ha pagato</p>
+                  <p className="mt-2 text-xs"><span className="font-semibold tabular-nums">{e.my_contribution > 0 ? '+' : ''}{formatEur(e.my_contribution)}</span><span className="text-muted"> · {e.my_contribution > 0 ? 'a tuo favore' : e.my_contribution < 0 ? 'a favore del partner' : 'nessun contributo'}</span></p>
+                </div>
+              </label>)}
+            </Card>}
         </section>
-      )}
+      </div>
 
-      {/* Barra azione solida, fusa con la BottomNav (un solo border-t) */}
-      {totalCount > 0 && (
-        <div
-          className={cn(
-            'sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4',
-            'border-t border-border bg-background px-4 pt-3 pb-3',
-          )}
-        >
-          {hasBalance ? (
-            <div className="flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-muted">
-                  {selectedCount} {selectedCount === 1 ? 'spesa' : 'spese'}
-                </p>
-                <p className="text-sm font-semibold tabular-nums text-foreground">
-                  {formatEur(absAmount)}
-                </p>
-              </div>
-              <Button
-                size="lg"
-                className="flex-[2]"
-                onClick={() => setConfirmOpen(true)}
-              >
-                Conguaglia
-              </Button>
-            </div>
-          ) : (
-            <p className="text-center text-sm text-muted">
-              {selectedCount === 0
-                ? 'Seleziona almeno una spesa per conguagliare.'
-                : 'Le spese selezionate si compensano, niente da conguagliare.'}
-            </p>
-          )}
+      {expenses.length > 0 && <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-md lg:bottom-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm"><p className="font-semibold">{selected.length} spese selezionate</p><p className="mt-1 text-muted">{net !== 0 ? `${payer} → ${receiver} · ${formatEur(absAmount)}` : selected.length ? 'Niente da versare' : 'Seleziona almeno una spesa'}</p></div>
+          <Button size="lg" disabled={net === 0 || selected.length === 0} onClick={() => setConfirmation({ fingerprint, amount: net })}>Registra bonifico effettuato</Button>
         </div>
-      )}
+      </div>}
 
-      {/* Sheet payment-confirm */}
-      <Sheet
-        open={confirmOpen}
-        onOpenChange={(o) => {
-          if (!isPending) setConfirmOpen(o)
-        }}
-        title="Conferma conguaglio"
-        footer={
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex-1"
-              onClick={() => setConfirmOpen(false)}
-              disabled={isPending}
-            >
-              Annulla
-            </Button>
-            <Button
-              size="lg"
-              className="flex-1"
-              onClick={handleConfirm}
-              loading={isPending}
-            >
-              Conferma
-            </Button>
-          </div>
-        }
-      >
-        <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-2">
+      <Sheet open={Boolean(confirmation)} onOpenChange={(open) => { if (!open && !isPending) setConfirmation(null) }}
+        title="Il bonifico è già stato fatto?"
+        description="Conferma per segnare queste spese come saldate."
+        footer={<div className="flex flex-wrap gap-3"><Button variant="outline" className="flex-1" disabled={isPending} onClick={() => setConfirmation(null)}>Torna al riepilogo</Button><Button className="flex-1" disabled={stale} loading={isPending} onClick={confirm}>Sì, registra</Button></div>}>
+        <div className="space-y-5 px-5 py-6 text-center">
           <AmountDisplay value={absAmount} size="display-sm" />
-          <DirectionPill payer={payer} receiver={receiver} />
-          <p className="text-center text-sm text-muted">
-            {allSelected
-              ? `Verranno marcate come saldate tutte le ${selectedCount} spese aperte.`
-              : `Verranno marcate come saldate le ${selectedCount} spese selezionate; le altre resteranno aperte.`}
-            {' '}Assicurati che il bonifico sia già avvenuto.
-          </p>
+          <p className="flex items-center justify-center gap-3 font-semibold">{payer}<ArrowRight className="size-4" aria-hidden />{receiver}</p>
+          <p className="text-sm text-muted">{allSelected ? 'Tutte le spese aperte' : `Le ${selected.length} spese selezionate`} verranno segnate come saldate.{!allSelected && ' Le altre restano nel saldo corrente.'}</p>
+          {stale && <p role="alert" className="rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">Le spese sono cambiate. Torna al riepilogo prima di confermare.</p>}
         </div>
       </Sheet>
     </>

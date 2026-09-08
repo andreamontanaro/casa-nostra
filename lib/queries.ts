@@ -130,35 +130,22 @@ export type OpenExpenseWithContribution = Awaited<
 
 export async function getOpenExpensesWithContribution(userId: string) {
   const supabase = await createClient()
-
-  const [profileRes, expensesRes] = await Promise.all([
-    supabase.from('profiles').select('higher_income').eq('id', userId).single(),
-    supabase
-      .from('expenses')
+  const [expensesRes, sharesRes] = await Promise.all([
+    supabase.from('expenses')
       .select('*, paid_by_profile:profiles!expenses_paid_by_fkey(display_name)')
       .is('settlement_id', null)
-      .order('expense_date', { ascending: false })
-      .order('created_at', { ascending: false }),
+      .order('expense_date', { ascending: false }).order('created_at', { ascending: false }),
+    supabase.from('v_expense_shares').select('expense_id, user_share')
+      .eq('user_id', userId).is('settlement_id', null),
   ])
-
-  if (profileRes.error) throw profileRes.error
   if (expensesRes.error) throw expensesRes.error
-
-  const higherIncome = profileRes.data.higher_income
-
-  return (expensesRes.data ?? []).map((e) => {
-    let myShare: number
-    if (e.split_rule === 'fifty_fifty') {
-      myShare = e.amount * 0.5
-    } else if (e.split_rule === 'sixty_forty') {
-      myShare = e.amount * (higherIncome ? 0.6 : 0.4)
-    } else {
-      const otherShare = e.custom_other_share ?? 0
-      myShare = e.paid_by === userId ? e.amount - otherShare : otherShare
-    }
-    const anticipated = e.paid_by === userId ? e.amount : 0
-    const myContribution = Math.round((anticipated - myShare) * 100) / 100
-    return { ...e, my_contribution: myContribution }
+  if (sharesRes.error) throw sharesRes.error
+  const shares = new Map((sharesRes.data ?? []).map((s) => [s.expense_id, s.user_share]))
+  return (expensesRes.data ?? []).map((expense) => {
+    const share = shares.get(expense.id)
+    if (share == null) throw new Error('Quota della spesa non disponibile. Aggiorna la pagina.')
+    const anticipated = expense.paid_by === userId ? expense.amount : 0
+    return { ...expense, my_contribution: (Math.round(anticipated * 100) - Math.round(share * 100)) / 100 }
   })
 }
 

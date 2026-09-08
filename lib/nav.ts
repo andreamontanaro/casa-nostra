@@ -33,7 +33,7 @@ export const NAV_PRIMARY: NavItem[] = [
   },
   {
     href: '/conguaglio',
-    label: 'Conguaglio',
+    label: 'Regola il saldo',
     description: 'Chiudi il saldo dopo il bonifico',
     icon: ArrowLeftRight,
   },

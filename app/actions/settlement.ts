@@ -17,7 +17,7 @@ export async function registerSettlement(
     p_expense_ids: expenseIds,
   })
 
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
 
   revalidatePath('/')
   revalidatePath('/spese')
