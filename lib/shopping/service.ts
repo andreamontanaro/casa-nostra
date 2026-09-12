@@ -30,11 +30,14 @@ export type AddItemResult =
   | { ok: true; id: string; name: string; urgency: ShoppingUrgency }
   | { ok: false; error: string; duplicate?: boolean }
 
-function normalizeCategory(value: unknown): ShoppingCategory {
+function normalizeCategory(
+  value: unknown,
+  fallback: ShoppingCategory = 'altro',
+): ShoppingCategory {
   const v = String(value ?? '').trim()
   return (SHOPPING_CATEGORIES as readonly string[]).includes(v)
     ? (v as ShoppingCategory)
-    : 'altro'
+    : fallback
 }
 
 function normalizeUrgency(value: unknown): ShoppingUrgency {
@@ -221,6 +224,136 @@ export async function clearBoughtShoppingItems(
 
   if (error) return { ok: false, error: 'Errore durante la pulizia. Riprova.' }
   return { ok: true, count: (data ?? []).length }
+}
+
+// ------------------------------------------------------------
+// Lettura della barra rapida
+// ------------------------------------------------------------
+
+/**
+ * Categoria di ripiego quando la categoria la deve indovinare il modello:
+ * "cibo" è quello che finisce in lista nove volte su dieci, ed è la stessa
+ * default che propone il form. Sbagliarla costa un tap di modifica — molto
+ * meno che far fallire l'aggiunta o parcheggiare tutto in "altro".
+ */
+export const FALLBACK_CATEGORY: ShoppingCategory = 'cibo'
+
+/** Oltre questo tempo si aggiunge quello che è stato scritto, così com'è. */
+const QUICK_PARSE_TIMEOUT_MS = 4000
+
+/**
+ * Le stesse definizioni che l'assistente ha nel suo tool: la categoria di un
+ * prodotto non può dipendere da dove lo si è scritto.
+ */
+const CATEGORY_HINTS = [
+  'cibo = alimenti di ogni tipo, freschi o confezionati (pane, pasta, carne, verdura, latte, formaggi, surgelati, dolci, caffè)',
+  'bevande = quello che si beve per dissetarsi: acqua, bibite, succhi, birra, vino, alcolici',
+  'cura_casa = pulizia e manutenzione della casa: detersivi, ammorbidente, sgrassatori, spugne, carta casa, sacchi della spazzatura',
+  'igiene_persona = cura della persona: dentifricio, shampoo, bagnoschiuma, deodorante, rasoi, assorbenti, carta igienica',
+  'farmacia = medicinali, integratori, cerotti e prodotti sanitari',
+  'casalinghi = oggetti durevoli per la casa: lampadine, pile, utensili da cucina, piccola ferramenta',
+  'altro = solo se nessuna delle precedenti calza davvero',
+].join('\n')
+
+export interface QuickItemReading {
+  /** Nome del prodotto, senza la quantità. */
+  name: string
+  /** Quantità in testo libero, come la scrive il form ("2", "2 kg", "6 bottiglie"). */
+  quantity: string | null
+  category: ShoppingCategory
+}
+
+/**
+ * Ripiego: quello che è stato scritto diventa il nome, senza quantità e in
+ * "cibo". È anche il comportamento dell'app senza `GEMINI_API_KEY`.
+ */
+function fallbackReading(text: string): QuickItemReading {
+  return { name: text, quantity: null, category: FALLBACK_CATEGORY }
+}
+
+/**
+ * Legge una riga della barra rapida — l'unico campo della lista, dove si
+ * scrive "scottex" o "x2 mele" e basta — e ne ricava nome, quantità e
+ * categoria, cioè i tre campi che il form chiederebbe uno per uno.
+ *
+ * Non solleva mai: qualunque intoppo (chiave assente, modello lento, JSON
+ * storto, categoria inventata, nome sparito) ricade su `fallbackReading`.
+ * Interpretare quello che è stato scritto è un di più, aggiungerlo no.
+ */
+export async function readQuickItemInput(params: {
+  /** Testo grezzo della barra rapida. */
+  text: string
+  /** Chiave API Gemini; assente, si usa direttamente il ripiego. */
+  apiKey?: string | null
+  /** Modello Gemini da usare (lo stesso dell'assistente). */
+  model: string
+}): Promise<QuickItemReading> {
+  const text = String(params.text ?? '').trim()
+  if (!text || !params.apiKey) return fallbackReading(text)
+
+  // Il timeout è lato client: la barra rapida non può restare appesa a Gemini.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), QUICK_PARSE_TIMEOUT_MS)
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: params.apiKey })
+    const result = await ai.models.generateContent({
+      model: params.model,
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: [
+                'Una coppia italiana tiene una lista della spesa condivisa. Questa è una riga scritta di fretta nel campo rapido della lista: ricavane i campi del prodotto.',
+                '',
+                'name: il nome del prodotto SENZA la quantità. Togli la quantità e niente altro: marche e nomi colloquiali restano come sono stati scritti ("scottex" resta "scottex", non diventa "carta casa").',
+                'quantity: la quantità se c\'è, in testo libero e con l\'unità di misura quando indicata ("x2 mele" → "2"; "2 kg di patate" → "2 kg"; "6 bottiglie d\'acqua" → "6 bottiglie"; "latte" → nessuna quantità). Non inventarla: se non è scritta, lasciala vuota.',
+                'category: il tipo di prodotto, fra queste:',
+                CATEGORY_HINTS,
+                '',
+                `RIGA: ${text}`,
+              ].join('\n'),
+            },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0,
+        abortSignal: controller.signal,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            quantity: { type: Type.STRING },
+            category: { type: Type.STRING, enum: [...SHOPPING_CATEGORIES] },
+          },
+          required: ['name', 'category'],
+        },
+      },
+    })
+
+    const output = result.text
+    if (!output) return fallbackReading(text)
+
+    const parsed = JSON.parse(output) as { name?: string; quantity?: string; category?: string }
+
+    // Il nome è l'unico campo che non si può perdere: se il modello lo
+    // restituisce vuoto si riparte dalla riga scritta, non da niente.
+    const name = String(parsed.name ?? '').trim() || text
+
+    return {
+      name,
+      quantity: cleanOptional(parsed.quantity),
+      category: normalizeCategory(parsed.category, FALLBACK_CATEGORY),
+    }
+  } catch (e) {
+    console.warn('[spesa] lettura della barra rapida non riuscita:', e)
+    return fallbackReading(text)
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // ------------------------------------------------------------

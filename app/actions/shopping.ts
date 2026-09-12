@@ -8,9 +8,11 @@ import {
   clearBoughtShoppingItems,
   deleteShoppingItem,
   markShoppingItemsBought,
+  readQuickItemInput,
   restoreShoppingItem,
   runReceiptCheck,
   updateShoppingItem,
+  type QuickItemReading,
   type ReceiptCheckResult,
   type ShoppingItemInput,
 } from '@/lib/shopping/service'
@@ -56,6 +58,38 @@ export async function addItemAction(
   }
 
   return { id: result.id }
+}
+
+/**
+ * Aggiunta dalla barra rapida: nel campo si scrive una riga sola ("x2 mele")
+ * e i campi che il form chiederebbe uno per uno — nome, quantità, categoria —
+ * li ricava il modello. È l'unico posto dove serve: nel form li compila
+ * l'utente, nell'assistente li ricava già lui interpretando la frase.
+ *
+ * L'interpretazione non è mai un ostacolo: se Gemini non è configurato, è
+ * lento o sbaglia, `readQuickItemInput` restituisce la riga così com'è
+ * scritta, senza quantità e in "cibo", e l'articolo entra comunque. Quello
+ * che è stato letto torna al chiamante per dirlo nel toast: una scelta fatta
+ * da altri va mostrata, e si corregge con un tap sulla riga.
+ */
+export async function addQuickItemAction(
+  text: string,
+): Promise<{ error?: string; id?: string; reading?: QuickItemReading }> {
+  const reading = await readQuickItemInput({
+    text,
+    apiKey: process.env.GEMINI_API_KEY,
+    model: MODEL,
+  })
+
+  const result = await addItemAction({
+    name: reading.name,
+    quantity: reading.quantity,
+    category: reading.category,
+    urgency: 'media',
+  })
+  if (result.error) return { error: result.error }
+
+  return { id: result.id, reading }
 }
 
 export async function updateItemAction(

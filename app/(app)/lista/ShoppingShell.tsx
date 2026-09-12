@@ -21,7 +21,7 @@ import { springSnappy } from '@/lib/motion'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import {
-  addItemAction,
+  addQuickItemAction,
   clearBoughtAction,
   deleteItemAction,
   markBoughtAction,
@@ -153,15 +153,30 @@ export function ShoppingShell({
     else toast.success('Storico svuotato.')
   }
 
+  /**
+   * Barra rapida: si scrive una riga sola ("x2 mele") e nome, quantità e
+   * categoria li ricava il modello lato server — con ripiego sulla riga così
+   * com'è scritta, in "cibo", se non risponde. Il toast dice cos'ha capito
+   * — «"mele" (2) aggiunto a 🍎 Cibo» — perché campi compilati da altri vanno
+   * mostrati: se ha sbagliato, la riga è lì sotto a un tap.
+   */
   async function quickAdd(event: React.FormEvent) {
     event.preventDefault()
-    const name = quickName.trim()
-    if (!name || quickPending) return
+    const text = quickName.trim()
+    if (!text || quickPending) return
     setQuickPending(true)
     try {
-      const result = await addItemAction({ name, category: 'cibo', urgency: 'media' }).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
+      const result = await addQuickItemAction(text).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.', reading: undefined }))
       if (result.error) toast.error(result.error)
-      else { setQuickName(''); toast.success('Aggiunto alla lista.') }
+      else {
+        setQuickName('')
+        const reading = result.reading
+        toast.success(
+          reading
+            ? `"${reading.name}"${reading.quantity ? ` (${reading.quantity})` : ''} aggiunto a ${SHOPPING_CATEGORY_ICON[reading.category]} ${SHOPPING_CATEGORY_LABELS[reading.category]}.`
+            : 'Aggiunto alla lista.',
+        )
+      }
     } catch { toast.error('Non riesco ad aggiungere il prodotto. Il nome è conservato.') }
     finally { setQuickPending(false) }
   }
@@ -190,7 +205,7 @@ export function ShoppingShell({
       </header>
 
       <form onSubmit={quickAdd} className="flex items-center gap-2 rounded-3xl border border-border bg-surface p-2">
-        <input aria-label="Prodotto da aggiungere" placeholder="Cosa serve? Es. latte" value={quickName} onChange={(e) => setQuickName(e.target.value)} disabled={quickPending}
+        <input aria-label="Prodotto da aggiungere" placeholder="Cosa serve? Es. x2 mele" value={quickName} onChange={(e) => setQuickName(e.target.value)} disabled={quickPending}
           className="min-h-12 min-w-0 flex-1 rounded-2xl bg-transparent px-3 text-base" enterKeyHint="done" />
         <Button type="submit" aria-label="Aggiungi prodotto" disabled={!quickName.trim()} loading={quickPending} className="shrink-0 px-4"><Plus className="size-5" aria-hidden /></Button>
       </form>
