@@ -55,6 +55,17 @@ Intervalli basati sui giorni Europe/Rome; confronto fino al giorno equivalente d
 
 Importi totali e conguagli restano distinti. Barre mensili con tabella consultabile e link ai movimenti; categorie con nome, importo, percentuale e link allo storico filtrato. Somme aggregate in centesimi.
 
+## Attesa e scheletri
+
+Ogni schermata privata ha il suo `loading.tsx`: `/`, `/spese`, `/spese/[id]`, `/spese/nuova`, `/lista`, `/conguaglio`, `/statistiche`, `/impostazioni`.
+
+- **Lo scheletro ricalca il layout fisso della pagina che sta caricando**, non una lista generica di barre: stesse classi del contenitore (padding, `gap`, `max-width`, griglie `xl:`), stessi elementi fermi (barra dei filtri chiusa, barra sticky del conguaglio, intestazioni dei gruppi) e stesso numero di righe atteso. Quando i dati arrivano non si sposta niente sotto il dito.
+- **Le altezze si fissano con `min-h-*` sul contenitore** — l'altezza vera viene dal box di testo o dal touch target da 44/48 px — e le barre dentro restano più sottili: sembrano testo, non blocchi pieni.
+- **Quello che è disegnato dal bordo resta disegnato dal bordo**: chip, bottoni `outline` e la pista del `SegmentedControl` mantengono bordo e superficie veri, shimmera solo l'etichetta. Una pillola piena sembrerebbe un chip già selezionato.
+- Niente segnaposto per il FAB: è fisso, non sposta nulla, e un cerchio che non risponde al tocco durante l'attesa confonde.
+- Primitive in `components/ui/Skeleton.tsx` (`Skeleton`, `SkeletonPage`, `SkeletonListRow`, `SkeletonIconButton`, `SkeletonField`, `SkeletonChip`, `SkeletonSegmented`) e due segnaposto di dominio, `ExpenseRowSkeleton` e `SpendingRingSkeleton`, condivisi dalle schermate che mostrano gli stessi oggetti.
+- Accessibilità: le barre sono `aria-hidden`, `SkeletonPage` marca `aria-busy` e annuncia l'attesa una volta sola con una riga `role="status"` in `sr-only`.
+
 ## Accessibilità e aggiornamenti
 
 - Controlli tattili almeno 44 px, generalmente 48 px; focus visibile, nomi accessibili e collegamento tra errori e campi.
