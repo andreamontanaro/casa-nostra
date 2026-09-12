@@ -24,6 +24,8 @@ Aggiornamento del redesign approvato l’8 settembre 2026. Il modulo **Casa è d
 
 L’anello compatto della home ha un testo alternativo con gli importi; il pannello espandibile mostra quote, anticipi, importi delle categorie e contributi al saldo con collegamenti allo storico. L’anello del conguaglio offre una legenda selezionabile anche da tastiera.
 
+All'apertura la home si compone nell'ordine in cui si legge — saluto, card del saldo, titolo della sezione, poi le spese una dopo l'altra — e l'anello si disegna una fetta alla volta in senso orario. Sono animazioni CSS (`.reveal-up` e `.ring-draw` in `app/globals.css`, scala dei ritardi in `lib/motion.ts`), non `motion`: un'entrata in JS serializza `opacity: 0` nell'HTML e lascerebbe la pagina invisibile fino all'idratazione — è la ragione per cui `PageTransition` monta con `initial={false}`. Il passo è di 60 ms e l'ultima riga arriva entro i 400 ms. Il benvenuto è solo della home: `SpendingRing` disegna l'anello solo con `reveal`, e il conguaglio — dove si arriva per fare qualcosa — lo mostra completo al primo fotogramma.
+
 Il conguaglio completo usa il saldo della vista. La selezione parziale è un’anteprima della somma in centesimi dei contributi ottenuti da `v_expense_shares`; la RPC `register_settlement` con `p_expense_ids` ricalcola e registra atomicamente. Selezione vuota e saldo compensato sono stati distinti. La conferma chiede che il bonifico sia già stato eseguito; un riepilogo cambiato mentre la conferma è aperta richiede una nuova verifica.
 
 ## Spese
@@ -54,6 +56,18 @@ Le istruzioni di presentazione nell’app chiedono una tabella Campo/Valore per 
 Intervalli basati sui giorni Europe/Rome; confronto fino al giorno equivalente del periodo precedente, con fine mese e anno bisestile gestiti. Le date effettive sono sempre visibili. Nessuna percentuale quando il termine precedente è zero.
 
 Importi totali e conguagli restano distinti. Barre mensili con tabella consultabile e link ai movimenti; categorie con nome, importo, percentuale e link allo storico filtrato. Somme aggregate in centesimi.
+
+## Attesa e scheletri
+
+Ogni schermata privata ha il suo `loading.tsx`: `/`, `/spese`, `/spese/[id]`, `/spese/nuova`, `/lista`, `/conguaglio`, `/statistiche`, `/impostazioni`.
+
+- **Lo scheletro ricalca il layout fisso della pagina che sta caricando**, non una lista generica di barre: stesse classi del contenitore (padding, `gap`, `max-width`, griglie `xl:`), stessi elementi fermi (barra dei filtri chiusa, barra sticky del conguaglio, intestazioni dei gruppi) e stesso numero di righe atteso. Quando i dati arrivano non si sposta niente sotto il dito.
+- **Le altezze si fissano con `min-h-*` sul contenitore** — l'altezza vera viene dal box di testo o dal touch target da 44/48 px — e le barre dentro restano più sottili: sembrano testo, non blocchi pieni.
+- **Quello che è disegnato dal bordo resta disegnato dal bordo**: chip, bottoni `outline` e la pista del `SegmentedControl` mantengono bordo e superficie veri, shimmera solo l'etichetta. Una pillola piena sembrerebbe un chip già selezionato.
+- Niente segnaposto per il FAB: è fisso, non sposta nulla, e un cerchio che non risponde al tocco durante l'attesa confonde.
+- Primitive in `components/ui/Skeleton.tsx` (`Skeleton`, `SkeletonPage`, `SkeletonListRow`, `SkeletonIconButton`, `SkeletonField`, `SkeletonChip`, `SkeletonSegmented`) e due segnaposto di dominio, `ExpenseRowSkeleton` e `SpendingRingSkeleton`, condivisi dalle schermate che mostrano gli stessi oggetti.
+- Accessibilità: le barre sono `aria-hidden`, `SkeletonPage` marca `aria-busy` e annuncia l'attesa una volta sola con una riga `role="status"` in `sr-only`.
+- Quando i dati arrivano, in home lo scheletro lascia il posto all'entrata a cascata descritta in "Home e conguaglio": stesse posizioni, nessuno spostamento.
 
 ## Accessibilità e aggiornamenti
 

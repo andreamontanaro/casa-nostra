@@ -17,9 +17,11 @@ interface Props {
   rows: Tables<'v_user_open_balance'>[]
   currentUserId: string
   expenses: OpenExpenseWithContribution[]
+  /** In home l'anello si disegna all'apertura della schermata. */
+  reveal?: boolean
 }
 
-export function BalanceCard({ rows, currentUserId, expenses }: Props) {
+export function BalanceCard({ rows, currentUserId, expenses, reveal = false }: Props) {
   const me = rows.find((r) => r.user_id === currentUserId)
   const other = rows.find((r) => r.user_id !== currentUserId)
   if (!me || !other) return (
@@ -33,7 +35,7 @@ export function BalanceCard({ rows, currentUserId, expenses }: Props) {
   return (
     <Card className="overflow-hidden">
       <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-3 p-4">
-        <SpendingRing compact categories={categories}>
+        <SpendingRing compact reveal={reveal} categories={categories}>
           {net === 0 ? (
             <><Check className="mb-1 size-5 text-accent" aria-hidden /><p className="font-display text-xl font-semibold">Siete in pari</p>
               {expenses.length > 0 && <p className="mt-2 text-xs text-muted">Le spese si compensano</p>}</>

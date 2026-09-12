@@ -9,6 +9,7 @@ import { ExpenseRow } from '@/components/ExpenseRow'
 import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
 import { Card } from '@/components/ui/Card'
 import { formatDateShort } from '@/lib/fmt'
+import { revealDelay } from '@/lib/motion'
 import type { Tables } from '@/types/database'
 
 type Expense = Tables<'expenses'> & {
@@ -37,18 +38,19 @@ export function HomeShell({
 }: HomeShellProps) {
   const [formOpen, setFormOpen] = useState(false)
   const combined = recentExpenses.slice(0, 5)
-
   return (
     <div className="px-4 pt-4 pb-24 lg:pb-6">
-      <header className="mb-4 px-1">
+      <header className="mb-4 px-1 reveal-up">
         <div><h1 className="font-display text-3xl font-semibold tracking-tight">Ciao, {profiles.find((p) => p.id === userId)?.display_name.split(' ')[0] ?? 'bentornato'}.</h1></div>
       </header>
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.3fr]">
-      <BalanceCard rows={balanceRows} currentUserId={userId} expenses={openExpenses} />
+      <div className="min-w-0 reveal-up" style={revealDelay(1)}>
+        <BalanceCard rows={balanceRows} currentUserId={userId} expenses={openExpenses} reveal />
+      </div>
       <div className="flex min-w-0 flex-col gap-5">
 
       <section>
-        <div className="mb-3 flex items-center justify-between px-1">
+        <div className="mb-3 flex items-center justify-between px-1 reveal-up" style={revealDelay(2)}>
           <h2 className="text-base font-semibold text-foreground">
             Ultime spese
           </h2>
@@ -58,15 +60,17 @@ export function HomeShell({
         </div>
 
         {combined.length === 0 ? (
-          <Card>
-            <p className="px-4 py-8 text-center text-sm text-muted">
-              Nessuna spesa ancora. Aggiungine una!
-            </p>
-          </Card>
+          <div className="reveal-up" style={revealDelay(3)}>
+            <Card>
+              <p className="px-4 py-8 text-center text-sm text-muted">
+                Nessuna spesa ancora. Aggiungine una!
+              </p>
+            </Card>
+          </div>
         ) : (
-          <Card className="divide-y divide-border overflow-hidden p-0">
+          <Card className="divide-y divide-border overflow-hidden p-0 reveal-up" style={revealDelay(3)}>
             <AnimatePresence initial={false}>
-              {combined.map((expense) => {
+              {combined.map((expense, index) => {
                 return (
                   <motion.div
                     key={expense.id}
@@ -74,7 +78,8 @@ export function HomeShell({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="relative"
+                    className="relative reveal-up"
+                    style={revealDelay(3 + index * 0.5)}
                   >
                     <ExpenseRow
                       expense={expense}

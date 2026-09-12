@@ -14,9 +14,16 @@ interface Props {
   compact?: boolean
   label?: string
   categoryHref?: (category: string) => string
+  /**
+   * Disegna l'anello all'apertura della schermata, una fetta dopo l'altra in
+   * senso orario (animazione CSS, vedi `.ring-draw`). Lo usa la home come
+   * benvenuto; altrove l'anello è completo al primo fotogramma, perché ci si
+   * arriva per fare qualcosa — il conguaglio — non per essere accolti.
+   */
+  reveal?: boolean
 }
 
-export function SpendingRing({ categories: allCategories, children, label = 'Spese da regolare', categoryHref, compact = false }: Props) {
+export function SpendingRing({ categories: allCategories, children, label = 'Spese da regolare', categoryHref, compact = false, reveal = false }: Props) {
   const dark = useDarkTheme()
   const id = useId()
   const [selected, setSelected] = useState<string | null>(null)
@@ -37,16 +44,26 @@ export function SpendingRing({ categories: allCategories, children, label = 'Spe
         <svg viewBox="0 0 200 200" className="size-full -rotate-90" aria-labelledby={id}>
           <title id={id}>{`${label}: ${formatEur(total)}. La composizione delle spese è distinta dal saldo al centro. ${categories.map((c) => `${CATEGORY_LABELS[c.category]}: ${formatEur(c.total)}`).join('; ')}`}</title>
           <circle cx="100" cy="100" r="89" fill="none" stroke="var(--surface-sunken)" strokeWidth="11" />
-          {segments.map((item) => (
-            <circle key={item.category} cx="100" cy="100" r="89" pathLength="100" fill="none"
+          {segments.map((item) => {
+            const length = Math.max(0, item.share - (segments.length > 1 ? Math.min(1, item.share * .12) : 0))
+            // In `reveal` la lunghezza del tratto passa dalla custom property
+            // animata da `.ring-draw`, e ogni fetta parte dove finisce la
+            // precedente: il ritardo segue la posizione sull'anello, non
+            // l'indice, così il disegno gira in senso orario a velocità
+            // costante (`app/globals.css`).
+            const style = reveal
+              ? ({ '--ring-dash': length, '--ring-delay': `${Math.round(120 + item.offset * 3.2)}ms`, strokeDasharray: 'var(--ring-dash) 100' } as React.CSSProperties)
+              : undefined
+            return <circle key={item.category} cx="100" cy="100" r="89" pathLength="100" fill="none"
               stroke={categoryHex(item.category, dark)} strokeWidth={selected === item.category ? 15 : 11}
-              strokeDasharray={`${Math.max(0, item.share - (segments.length > 1 ? Math.min(1, item.share * .12) : 0))} 100`}
+              strokeDasharray={reveal ? undefined : `${length} 100`}
               strokeDashoffset={-item.offset}
-              className={cn("transition-[stroke-width,opacity] duration-150", !compact && "cursor-pointer")}
+              style={style}
+              className={cn("transition-[stroke-width,opacity] duration-150", reveal && "ring-draw", !compact && "cursor-pointer")}
               opacity={active && selected !== item.category ? .4 : 1}
               onClick={compact ? undefined : () => setSelected(selected === item.category ? null : item.category)}
               aria-hidden />
-          ))}
+          })}
         </svg>
         <div className={cn("absolute flex min-w-0 flex-col items-center justify-center text-center", compact ? "inset-6" : "inset-9")}>
           {children}
