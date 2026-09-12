@@ -30,11 +30,14 @@ export type AddItemResult =
   | { ok: true; id: string; name: string; urgency: ShoppingUrgency }
   | { ok: false; error: string; duplicate?: boolean }
 
-function normalizeCategory(value: unknown): ShoppingCategory {
+function normalizeCategory(
+  value: unknown,
+  fallback: ShoppingCategory = 'altro',
+): ShoppingCategory {
   const v = String(value ?? '').trim()
   return (SHOPPING_CATEGORIES as readonly string[]).includes(v)
     ? (v as ShoppingCategory)
-    : 'altro'
+    : fallback
 }
 
 function normalizeUrgency(value: unknown): ShoppingUrgency {
@@ -221,6 +224,106 @@ export async function clearBoughtShoppingItems(
 
   if (error) return { ok: false, error: 'Errore durante la pulizia. Riprova.' }
   return { ok: true, count: (data ?? []).length }
+}
+
+// ------------------------------------------------------------
+// Categoria automatica
+// ------------------------------------------------------------
+
+/**
+ * Categoria di ripiego quando la categoria la deve indovinare il modello:
+ * "cibo" è quello che finisce in lista nove volte su dieci, ed è la stessa
+ * default che propone il form. Sbagliarla costa un tap di modifica — molto
+ * meno che far fallire l'aggiunta o parcheggiare tutto in "altro".
+ */
+export const FALLBACK_CATEGORY: ShoppingCategory = 'cibo'
+
+/** Oltre questo tempo si aggiunge con la categoria di ripiego e si tira avanti. */
+const CATEGORY_TIMEOUT_MS = 4000
+
+/**
+ * Le stesse definizioni che l'assistente ha nel suo tool: la categoria di un
+ * prodotto non può dipendere da dove lo si è scritto.
+ */
+const CATEGORY_HINTS = [
+  'cibo = alimenti di ogni tipo, freschi o confezionati (pane, pasta, carne, verdura, latte, formaggi, surgelati, dolci, caffè)',
+  'bevande = quello che si beve per dissetarsi: acqua, bibite, succhi, birra, vino, alcolici',
+  'cura_casa = pulizia e manutenzione della casa: detersivi, ammorbidente, sgrassatori, spugne, carta casa, sacchi della spazzatura',
+  'igiene_persona = cura della persona: dentifricio, shampoo, bagnoschiuma, deodorante, rasoi, assorbenti, carta igienica',
+  'farmacia = medicinali, integratori, cerotti e prodotti sanitari',
+  'casalinghi = oggetti durevoli per la casa: lampadine, pile, utensili da cucina, piccola ferramenta',
+  'altro = solo se nessuna delle precedenti calza davvero',
+].join('\n')
+
+/**
+ * Propone la categoria di un prodotto a partire dal solo nome: serve alla
+ * barra rapida della lista, dove si scrive "scottex" e basta.
+ *
+ * Non solleva mai: qualunque intoppo (chiave assente, modello lento, JSON
+ * storto, categoria inventata) si risolve in `FALLBACK_CATEGORY`. Indovinare
+ * la categoria è un di più, aggiungere l'articolo no.
+ */
+export async function suggestShoppingCategory(params: {
+  name: string
+  /** Chiave API Gemini; assente, si usa direttamente il ripiego. */
+  apiKey?: string | null
+  /** Modello Gemini da usare (lo stesso dell'assistente). */
+  model: string
+}): Promise<ShoppingCategory> {
+  const name = String(params.name ?? '').trim()
+  if (!name || !params.apiKey) return FALLBACK_CATEGORY
+
+  // Il timeout è lato client: la barra rapida non può restare appesa a Gemini.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), CATEGORY_TIMEOUT_MS)
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: params.apiKey })
+    const result = await ai.models.generateContent({
+      model: params.model,
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: [
+                'Classifica un prodotto appena scritto nella lista della spesa di una coppia italiana.',
+                'Il nome può essere abbreviato, colloquiale o una marca ("scottex" = carta casa, "nutella" = cibo).',
+                '',
+                'CATEGORIE:',
+                CATEGORY_HINTS,
+                '',
+                `PRODOTTO: ${name}`,
+              ].join('\n'),
+            },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0,
+        abortSignal: controller.signal,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            category: { type: Type.STRING, enum: [...SHOPPING_CATEGORIES] },
+          },
+          required: ['category'],
+        },
+      },
+    })
+
+    const text = result.text
+    if (!text) return FALLBACK_CATEGORY
+
+    const parsed = JSON.parse(text) as { category?: string }
+    return normalizeCategory(parsed.category, FALLBACK_CATEGORY)
+  } catch (e) {
+    console.warn('[spesa] categoria automatica non riuscita:', e)
+    return FALLBACK_CATEGORY
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // ------------------------------------------------------------

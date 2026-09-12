@@ -21,7 +21,7 @@ import { springSnappy } from '@/lib/motion'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import {
-  addItemAction,
+  addQuickItemAction,
   clearBoughtAction,
   deleteItemAction,
   markBoughtAction,
@@ -153,15 +153,29 @@ export function ShoppingShell({
     else toast.success('Storico svuotato.')
   }
 
+  /**
+   * Barra rapida: si scrive solo il nome e la categoria la sceglie il modello
+   * lato server (con ripiego su "cibo" se non risponde). Il toast la dice ad
+   * alta voce — "Aggiunto a 🧽 Cura della casa" — perché una categoria decisa
+   * da altri va mostrata: se ha sbagliato, la riga è lì sotto a un tap.
+   */
   async function quickAdd(event: React.FormEvent) {
     event.preventDefault()
     const name = quickName.trim()
     if (!name || quickPending) return
     setQuickPending(true)
     try {
-      const result = await addItemAction({ name, category: 'cibo', urgency: 'media' }).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
+      const result = await addQuickItemAction(name).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.', category: undefined }))
       if (result.error) toast.error(result.error)
-      else { setQuickName(''); toast.success('Aggiunto alla lista.') }
+      else {
+        setQuickName('')
+        const category = result.category
+        toast.success(
+          category
+            ? `Aggiunto a ${SHOPPING_CATEGORY_ICON[category]} ${SHOPPING_CATEGORY_LABELS[category]}.`
+            : 'Aggiunto alla lista.',
+        )
+      }
     } catch { toast.error('Non riesco ad aggiungere il prodotto. Il nome è conservato.') }
     finally { setQuickPending(false) }
   }

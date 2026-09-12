@@ -10,8 +10,10 @@ import {
   markShoppingItemsBought,
   restoreShoppingItem,
   runReceiptCheck,
+  suggestShoppingCategory,
   updateShoppingItem,
   type ReceiptCheckResult,
+  type ShoppingCategory,
   type ShoppingItemInput,
 } from '@/lib/shopping/service'
 import { RECEIPTS_BUCKET } from '@/lib/shopping/receipts'
@@ -56,6 +58,32 @@ export async function addItemAction(
   }
 
   return { id: result.id }
+}
+
+/**
+ * Aggiunta dalla barra rapida: l'utente scrive solo il nome, la categoria la
+ * indovina il modello. È l'unico posto dove serve: nel form e nell'assistente
+ * la categoria c'è già (la sceglie l'utente, o il modello mentre interpreta
+ * la frase).
+ *
+ * La proposta non è mai un ostacolo: se Gemini non è configurato, è lento o
+ * sbaglia, `suggestShoppingCategory` ripiega su "cibo" e l'articolo entra
+ * comunque. La categoria torna al chiamante per dirla nel toast, così chi
+ * aggiunge vede subito dov'è finita la roba e può correggerla con un tap.
+ */
+export async function addQuickItemAction(
+  name: string,
+): Promise<{ error?: string; id?: string; category?: ShoppingCategory }> {
+  const category = await suggestShoppingCategory({
+    name,
+    apiKey: process.env.GEMINI_API_KEY,
+    model: MODEL,
+  })
+
+  const result = await addItemAction({ name, category, urgency: 'media' })
+  if (result.error) return { error: result.error }
+
+  return { id: result.id, category }
 }
 
 export async function updateItemAction(
