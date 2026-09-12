@@ -8,12 +8,12 @@ import {
   clearBoughtShoppingItems,
   deleteShoppingItem,
   markShoppingItemsBought,
+  readQuickItemInput,
   restoreShoppingItem,
   runReceiptCheck,
-  suggestShoppingCategory,
   updateShoppingItem,
+  type QuickItemReading,
   type ReceiptCheckResult,
-  type ShoppingCategory,
   type ShoppingItemInput,
 } from '@/lib/shopping/service'
 import { RECEIPTS_BUCKET } from '@/lib/shopping/receipts'
@@ -61,29 +61,35 @@ export async function addItemAction(
 }
 
 /**
- * Aggiunta dalla barra rapida: l'utente scrive solo il nome, la categoria la
- * indovina il modello. È l'unico posto dove serve: nel form e nell'assistente
- * la categoria c'è già (la sceglie l'utente, o il modello mentre interpreta
- * la frase).
+ * Aggiunta dalla barra rapida: nel campo si scrive una riga sola ("x2 mele")
+ * e i campi che il form chiederebbe uno per uno — nome, quantità, categoria —
+ * li ricava il modello. È l'unico posto dove serve: nel form li compila
+ * l'utente, nell'assistente li ricava già lui interpretando la frase.
  *
- * La proposta non è mai un ostacolo: se Gemini non è configurato, è lento o
- * sbaglia, `suggestShoppingCategory` ripiega su "cibo" e l'articolo entra
- * comunque. La categoria torna al chiamante per dirla nel toast, così chi
- * aggiunge vede subito dov'è finita la roba e può correggerla con un tap.
+ * L'interpretazione non è mai un ostacolo: se Gemini non è configurato, è
+ * lento o sbaglia, `readQuickItemInput` restituisce la riga così com'è
+ * scritta, senza quantità e in "cibo", e l'articolo entra comunque. Quello
+ * che è stato letto torna al chiamante per dirlo nel toast: una scelta fatta
+ * da altri va mostrata, e si corregge con un tap sulla riga.
  */
 export async function addQuickItemAction(
-  name: string,
-): Promise<{ error?: string; id?: string; category?: ShoppingCategory }> {
-  const category = await suggestShoppingCategory({
-    name,
+  text: string,
+): Promise<{ error?: string; id?: string; reading?: QuickItemReading }> {
+  const reading = await readQuickItemInput({
+    text,
     apiKey: process.env.GEMINI_API_KEY,
     model: MODEL,
   })
 
-  const result = await addItemAction({ name, category, urgency: 'media' })
+  const result = await addItemAction({
+    name: reading.name,
+    quantity: reading.quantity,
+    category: reading.category,
+    urgency: 'media',
+  })
   if (result.error) return { error: result.error }
 
-  return { id: result.id, category }
+  return { id: result.id, reading }
 }
 
 export async function updateItemAction(

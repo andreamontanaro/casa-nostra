@@ -227,7 +227,7 @@ export async function clearBoughtShoppingItems(
 }
 
 // ------------------------------------------------------------
-// Categoria automatica
+// Lettura della barra rapida
 // ------------------------------------------------------------
 
 /**
@@ -238,8 +238,8 @@ export async function clearBoughtShoppingItems(
  */
 export const FALLBACK_CATEGORY: ShoppingCategory = 'cibo'
 
-/** Oltre questo tempo si aggiunge con la categoria di ripiego e si tira avanti. */
-const CATEGORY_TIMEOUT_MS = 4000
+/** Oltre questo tempo si aggiunge quello che è stato scritto, così com'è. */
+const QUICK_PARSE_TIMEOUT_MS = 4000
 
 /**
  * Le stesse definizioni che l'assistente ha nel suo tool: la categoria di un
@@ -255,27 +255,45 @@ const CATEGORY_HINTS = [
   'altro = solo se nessuna delle precedenti calza davvero',
 ].join('\n')
 
+export interface QuickItemReading {
+  /** Nome del prodotto, senza la quantità. */
+  name: string
+  /** Quantità in testo libero, come la scrive il form ("2", "2 kg", "6 bottiglie"). */
+  quantity: string | null
+  category: ShoppingCategory
+}
+
 /**
- * Propone la categoria di un prodotto a partire dal solo nome: serve alla
- * barra rapida della lista, dove si scrive "scottex" e basta.
+ * Ripiego: quello che è stato scritto diventa il nome, senza quantità e in
+ * "cibo". È anche il comportamento dell'app senza `GEMINI_API_KEY`.
+ */
+function fallbackReading(text: string): QuickItemReading {
+  return { name: text, quantity: null, category: FALLBACK_CATEGORY }
+}
+
+/**
+ * Legge una riga della barra rapida — l'unico campo della lista, dove si
+ * scrive "scottex" o "x2 mele" e basta — e ne ricava nome, quantità e
+ * categoria, cioè i tre campi che il form chiederebbe uno per uno.
  *
  * Non solleva mai: qualunque intoppo (chiave assente, modello lento, JSON
- * storto, categoria inventata) si risolve in `FALLBACK_CATEGORY`. Indovinare
- * la categoria è un di più, aggiungere l'articolo no.
+ * storto, categoria inventata, nome sparito) ricade su `fallbackReading`.
+ * Interpretare quello che è stato scritto è un di più, aggiungerlo no.
  */
-export async function suggestShoppingCategory(params: {
-  name: string
+export async function readQuickItemInput(params: {
+  /** Testo grezzo della barra rapida. */
+  text: string
   /** Chiave API Gemini; assente, si usa direttamente il ripiego. */
   apiKey?: string | null
   /** Modello Gemini da usare (lo stesso dell'assistente). */
   model: string
-}): Promise<ShoppingCategory> {
-  const name = String(params.name ?? '').trim()
-  if (!name || !params.apiKey) return FALLBACK_CATEGORY
+}): Promise<QuickItemReading> {
+  const text = String(params.text ?? '').trim()
+  if (!text || !params.apiKey) return fallbackReading(text)
 
   // Il timeout è lato client: la barra rapida non può restare appesa a Gemini.
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), CATEGORY_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), QUICK_PARSE_TIMEOUT_MS)
 
   try {
     const ai = new GoogleGenAI({ apiKey: params.apiKey })
@@ -287,13 +305,14 @@ export async function suggestShoppingCategory(params: {
           parts: [
             {
               text: [
-                'Classifica un prodotto appena scritto nella lista della spesa di una coppia italiana.',
-                'Il nome può essere abbreviato, colloquiale o una marca ("scottex" = carta casa, "nutella" = cibo).',
+                'Una coppia italiana tiene una lista della spesa condivisa. Questa è una riga scritta di fretta nel campo rapido della lista: ricavane i campi del prodotto.',
                 '',
-                'CATEGORIE:',
+                'name: il nome del prodotto SENZA la quantità. Togli la quantità e niente altro: marche e nomi colloquiali restano come sono stati scritti ("scottex" resta "scottex", non diventa "carta casa").',
+                'quantity: la quantità se c\'è, in testo libero e con l\'unità di misura quando indicata ("x2 mele" → "2"; "2 kg di patate" → "2 kg"; "6 bottiglie d\'acqua" → "6 bottiglie"; "latte" → nessuna quantità). Non inventarla: se non è scritta, lasciala vuota.',
+                'category: il tipo di prodotto, fra queste:',
                 CATEGORY_HINTS,
                 '',
-                `PRODOTTO: ${name}`,
+                `RIGA: ${text}`,
               ].join('\n'),
             },
           ],
@@ -306,21 +325,32 @@ export async function suggestShoppingCategory(params: {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
+            name: { type: Type.STRING },
+            quantity: { type: Type.STRING },
             category: { type: Type.STRING, enum: [...SHOPPING_CATEGORIES] },
           },
-          required: ['category'],
+          required: ['name', 'category'],
         },
       },
     })
 
-    const text = result.text
-    if (!text) return FALLBACK_CATEGORY
+    const output = result.text
+    if (!output) return fallbackReading(text)
 
-    const parsed = JSON.parse(text) as { category?: string }
-    return normalizeCategory(parsed.category, FALLBACK_CATEGORY)
+    const parsed = JSON.parse(output) as { name?: string; quantity?: string; category?: string }
+
+    // Il nome è l'unico campo che non si può perdere: se il modello lo
+    // restituisce vuoto si riparte dalla riga scritta, non da niente.
+    const name = String(parsed.name ?? '').trim() || text
+
+    return {
+      name,
+      quantity: cleanOptional(parsed.quantity),
+      category: normalizeCategory(parsed.category, FALLBACK_CATEGORY),
+    }
   } catch (e) {
-    console.warn('[spesa] categoria automatica non riuscita:', e)
-    return FALLBACK_CATEGORY
+    console.warn('[spesa] lettura della barra rapida non riuscita:', e)
+    return fallbackReading(text)
   } finally {
     clearTimeout(timer)
   }
