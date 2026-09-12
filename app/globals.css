@@ -333,6 +333,45 @@ dialog::backdrop {
   animation: shimmer 1.6s ease-in-out infinite;
 }
 
+/* Benvenuto della home: i blocchi arrivano nell'ordine in cui si leggono.
+
+   È CSS e non `motion` di proposito. Un'entrata in JS serializza lo stato
+   iniziale nell'HTML — `opacity: 0` — e la pagina resta invisibile fino
+   all'idratazione: è la ragione per cui `PageTransition` monta con
+   `initial={false}`. Un'animazione CSS parte invece al primo fotogramma,
+   anche prima che il bundle sia pronto, quindi non c'è nessuna finestra di
+   pagina bianca.
+
+   `backwards` (e non `both`) tiene lo stato iniziale durante il ritardo ma
+   lascia l'elemento ai suoi stili normali quando ha finito: così le uscite
+   animate delle righe, che scrivono `opacity` inline, continuano a vedersi. */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+.reveal-up {
+  animation: reveal-up 0.42s cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* L'anello del saldo si disegna una fetta alla volta, in senso orario.
+   `--ring-dash` è registrata con @property perché una custom property non
+   tipizzata si animerebbe a scatti (interpolazione discreta). */
+@property --ring-dash {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes ring-draw {
+  from { --ring-dash: 0; }
+}
+
+.ring-draw {
+  animation: ring-draw 0.42s ease-out backwards;
+  animation-delay: var(--ring-delay, 0ms);
+}
+
 /* Identità menta e crema, accessibilità e shell adattiva. */
 .font-display { font-variation-settings: "SOFT" 100, "WONK" 1; font-optical-sizing: auto; }
 @layer base { :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; } }
@@ -341,5 +380,5 @@ summary { cursor: pointer; }
 ::selection { background: var(--accent-muted); color: var(--accent-soft); }
 .app-fab { right: max(1rem, calc((100vw - 72rem) / 2 + 1rem)); }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
