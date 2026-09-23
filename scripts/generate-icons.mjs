@@ -1,4 +1,5 @@
-// Genera le icone PNG dell'app installata a partire da public/icon.svg.
+// Genera le icone PNG dell'app installata e app/favicon.ico a partire da
+// public/icon.svg.
 //
 //   node scripts/generate-icons.mjs
 //
@@ -8,7 +9,9 @@
 //  - Android vuole icone 192/512 e una "maskable" a tutta pagina, con il
 //    disegno dentro la zona sicura (il cerchio centrale dell'80%), perché la
 //    ritaglia nella forma del launcher;
-//  - le scorciatoie (pressione lunga sull'icona) vogliono un'icona 96×96.
+//  - le scorciatoie (pressione lunga sull'icona) vogliono un'icona 96×96;
+//  - app/favicon.ico è quello che Next serve come /favicon.ico, e che alcuni
+//    browser preferiscono all'SVG (segnalibri, cronologia).
 //
 // Usa `sharp`, che arriva già con Next come dipendenza opzionale: niente
 // pacchetti in più nel progetto.
@@ -16,6 +19,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import sharp from 'sharp'
 
 const PUBLIC = new URL('../public/', import.meta.url)
+const APP = new URL('../app/', import.meta.url)
 const source = await readFile(new URL('icon.svg', PUBLIC), 'utf8')
 
 // L'SVG sorgente è un quadrato arrotondato (rx) con il disegno sopra. Per le
@@ -52,11 +56,41 @@ const outputs = [
   ['shortcut-lista.png', shortcut(SHOPPING_BASKET), 96],
 ]
 
-for (const [name, svg, size] of outputs) {
-  const png = await sharp(Buffer.from(svg), { density: 300 })
+function render(svg, size) {
+  return sharp(Buffer.from(svg), { density: 300 })
     .resize(size, size)
     .png({ compressionLevel: 9 })
     .toBuffer()
+}
+
+for (const [name, svg, size] of outputs) {
+  const png = await render(svg, size)
   await writeFile(new URL(name, PUBLIC), png)
   console.log(`${name} ${size}×${size} (${png.length} byte)`)
 }
+
+// favicon.ico: un contenitore ICO con dentro PNG a 16, 32 e 48 px (formato
+// che tutti i browser attuali leggono). Intestazione di 6 byte, una voce da
+// 16 byte per immagine, poi i PNG uno dopo l'altro.
+const sizes = [16, 32, 48]
+const images = await Promise.all(sizes.map((size) => render(source, size)))
+const header = Buffer.alloc(6 + 16 * images.length)
+header.writeUInt16LE(0, 0) // riservato
+header.writeUInt16LE(1, 2) // 1 = icona
+header.writeUInt16LE(images.length, 4)
+let offset = header.length
+images.forEach((png, i) => {
+  const entry = 6 + 16 * i
+  header.writeUInt8(sizes[i], entry) // larghezza
+  header.writeUInt8(sizes[i], entry + 1) // altezza
+  header.writeUInt8(0, entry + 2) // colori in palette: nessuna
+  header.writeUInt8(0, entry + 3) // riservato
+  header.writeUInt16LE(1, entry + 4) // piani
+  header.writeUInt16LE(32, entry + 6) // bit per pixel
+  header.writeUInt32LE(png.length, entry + 8)
+  header.writeUInt32LE(offset, entry + 12)
+  offset += png.length
+})
+const ico = Buffer.concat([header, ...images])
+await writeFile(new URL('favicon.ico', APP), ico)
+console.log(`favicon.ico ${sizes.join('/')} px (${ico.length} byte)`)

@@ -8,6 +8,7 @@ Aggiornamento del redesign approvato l’8 settembre 2026. Il modulo **Casa è d
 - Token condivisi in `app/globals.css`; valori della barra di sistema in `lib/theme.ts`. Tema automatico, chiaro o scuro con preferenza persistita.
 - **Manrope** per testi, controlli e dati densi. **Fraunces** per titoli e importi principali, con numeri tabulari dove serve confrontare cifre. Font WOFF2 locali in `app/fonts`, licenze OFL allegate; nessun download durante la build.
 - Card opache, bordi delicati, raggi 24 px; pulsanti e FAB arrotondati. Una tinta principale per le azioni e palette categorica condivisa in `CATEGORY_VISUAL`.
+- Icona dell'app nella stessa palette: casa crema (#f8f5ef) su gradiente di menta profondo (#145c4e → #2f8a70), moneta nell'accento. Sorgente unica `public/icon.svg`; PNG e favicon si generano da lì (vedi `06-configuration.md`).
 - Icone Lucide coerenti per le spese. Colore accompagnato da nome e icona; non è l’unico segnale per categoria, stato o direzione del saldo.
 
 ## Navigazione e densità
