@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowUpRight, Check, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Check, Lightbulb, Sparkles } from 'lucide-react'
 import { SpendingRing } from '@/components/SpendingRing'
 import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { Avatar } from '@/components/ui/Avatar'
@@ -49,6 +49,15 @@ export function BalanceCard({ rows, currentUserId, expenses, reveal = false }: P
           {net !== 0 && <Link href="/conguaglio" className="mt-3 flex min-h-12 items-center gap-1 text-sm font-semibold text-accent">Regola saldo <ArrowUpRight className="size-4 shrink-0" aria-hidden /></Link>}
         </div>
       </div>
+      {net !== 0 && (
+        // «Chi paga la prossima»: chi deve soldi può rientrare pagando le
+        // spese seguenti invece di fare un bonifico. Legge solo il segno di
+        // `net_position`, non ricalcola niente.
+        <p className="flex items-start gap-2 border-t border-border px-5 py-3 text-xs leading-relaxed text-muted">
+          <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+          <span>{net < 0 ? 'Se le prossime spese le paghi tu' : `Se le prossime spese le paga ${otherName}`}, il saldo si riequilibra senza bisogno di un bonifico.</span>
+        </p>
+      )}
       <details className="border-t border-border">
         <summary className="min-h-12 px-5 py-3 text-sm font-semibold">Categorie e dettagli del saldo</summary>
         <div className="space-y-4 px-5 pb-5 text-sm">

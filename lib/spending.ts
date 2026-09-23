@@ -53,3 +53,44 @@ export function ringSegments(categories: readonly CategoryTotal[], max = 6): Cat
     },
   ]
 }
+
+// ------------------------------------------------------------
+// Effetto di una spesa sul saldo di chi guarda
+// ------------------------------------------------------------
+// Le quote arrivano da `v_expense_shares`: qui si fa solo la differenza fra
+// quanto uno ha anticipato e la sua quota, in centesimi, come la vista del
+// saldo. Nessuna regola di divisione ricalcolata lato client.
+
+export interface ShareRow { expense_id: string | null; user_id: string | null; user_share: number | null }
+
+/** Le quote di `userId`, per id della spesa. */
+export function sharesOf(shares: readonly ShareRow[], userId: string): Map<string | null, number | null> {
+  return new Map(shares.filter((s) => s.user_id === userId).map((s) => [s.expense_id, s.user_share]))
+}
+
+/** Anticipato meno quota: positivo se la spesa è a favore di `userId`. */
+export function expenseContribution(expense: { amount: number; paid_by: string }, share: number, userId: string): number {
+  const anticipated = expense.paid_by === userId ? expense.amount : 0
+  return (Math.round(anticipated * 100) - Math.round(share * 100)) / 100
+}
+
+/**
+ * Effetto sul saldo di `userId` di ogni spesa aperta, per id. Le saldate non
+ * pesano più e restano fuori; resta fuori anche una spesa arrivata fra la
+ * lettura delle spese e quella delle quote: la sua riga mostra solo lo stato,
+ * fino al prossimo aggiornamento.
+ */
+export function contributionsById(
+  expenses: readonly { id: string; amount: number; paid_by: string; settlement_id: string | null }[],
+  shares: readonly ShareRow[],
+  userId: string,
+): Record<string, number> {
+  const mine = sharesOf(shares, userId)
+  const result: Record<string, number> = {}
+  for (const expense of expenses) {
+    if (expense.settlement_id !== null) continue
+    const share = mine.get(expense.id)
+    if (share != null) result[expense.id] = expenseContribution(expense, share, userId)
+  }
+  return result
+}

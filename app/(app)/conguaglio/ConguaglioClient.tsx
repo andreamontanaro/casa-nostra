@@ -10,10 +10,12 @@ import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Checkbox } from '@/components/ui/Checkbox'
+import { Input } from '@/components/ui/Input'
 import { Sheet } from '@/components/ui/Sheet'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { SpendingRing } from '@/components/SpendingRing'
 import { toast } from '@/lib/toast'
+import { SETTLEMENT_NOTES_MAX } from '@/lib/balance'
 import { formatDateShort, formatEur } from '@/lib/fmt'
 import { categoryTotals, selectionContribution } from '@/lib/spending'
 import type { OpenExpenseWithContribution } from '@/lib/queries'
@@ -30,6 +32,8 @@ interface Confirmation { fingerprint: string; amount: number }
 export function ConguaglioClient({ expenses, otherUserName, telegramEnabled, officialNet }: Props) {
   const [excluded, setExcluded] = useState<Set<string>>(new Set())
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  // Facoltativa: finisce nello storico accanto al conguaglio e nel gruppo Telegram.
+  const [notes, setNotes] = useState('')
   const [isPending, startTransition] = useTransition()
   const [isRequesting, startRequest] = useTransition()
   const selected = expenses.filter((e) => !excluded.has(e.id))
@@ -60,7 +64,7 @@ export function ConguaglioClient({ expenses, otherUserName, telegramEnabled, off
     if (!confirmation || stale || net === 0 || isPending) return
     startTransition(async () => {
       try {
-        const result = await registerSettlement(undefined, selected.map((e) => e.id))
+        const result = await registerSettlement(notes.trim() || undefined, selected.map((e) => e.id))
         if (result?.error) { toast.error(result.error); setConfirmation(null) }
       } catch (error) {
         if (isRedirectError(error)) throw error
@@ -126,6 +130,11 @@ export function ConguaglioClient({ expenses, otherUserName, telegramEnabled, off
           <AmountDisplay value={absAmount} size="display-sm" />
           <p className="flex items-center justify-center gap-3 font-semibold">{payer}<ArrowRight className="size-4" aria-hidden />{receiver}</p>
           <p className="text-sm text-muted">{allSelected ? 'Tutte le spese aperte' : `Le ${selected.length} spese selezionate`} verranno segnate come saldate.{!allSelected && ' Le altre restano nel saldo corrente.'}</p>
+          <div className="text-left">
+            <Input id="settlement-notes" label="Nota (facoltativa)" placeholder="Es. bonifico del 23 settembre" value={notes}
+              onChange={(e) => setNotes(e.target.value)} maxLength={SETTLEMENT_NOTES_MAX} disabled={isPending} autoComplete="off" enterKeyHint="done" />
+            <p className="mt-1.5 text-xs text-muted">Resta nello storico accanto al conguaglio.</p>
+          </div>
           {stale && <p role="alert" className="rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">Le spese sono cambiate. Torna al riepilogo prima di confermare.</p>}
         </div>
       </Sheet>

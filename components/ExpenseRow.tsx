@@ -12,9 +12,14 @@ interface ExpenseRowProps {
   expense: Expense
   returnHref?: string
   dateLabel?: string
+  /**
+   * Effetto della spesa sul saldo di chi guarda (anticipato meno quota, da
+   * `v_expense_shares`). Solo per le spese aperte: una saldata non pesa più.
+   */
+  contribution?: number
 }
 
-export function ExpenseRow({ expense, dateLabel, returnHref }: ExpenseRowProps) {
+export function ExpenseRow({ expense, dateLabel, returnHref, contribution }: ExpenseRowProps) {
   const isSettled = expense.settlement_id !== null
 
   return (
@@ -29,9 +34,35 @@ export function ExpenseRow({ expense, dateLabel, returnHref }: ExpenseRowProps) 
             {formatEur(expense.amount)}
           </span>
           {dateLabel && <span className="text-xs text-muted">{dateLabel}</span>}
-          <Badge variant={isSettled ? 'muted' : 'positive'}>{isSettled ? 'Saldata' : 'Aperta'}</Badge>
+          {isSettled ? (
+            <Badge variant="muted">Saldata</Badge>
+          ) : contribution != null ? (
+            <ContributionBadge value={contribution} />
+          ) : (
+            <Badge variant="positive">Aperta</Badge>
+          )}
         </div>
       }
     />
+  )
+}
+
+/**
+ * «+7,20 € per te» / «−4,80 € per te»: quanto la spesa sposta il saldo di chi
+ * guarda. Aperta è lo stato di quasi tutte le righe recenti, quindi al posto
+ * del badge di stato si mostra l'informazione che serve davvero. Il segno e
+ * le parole portano il significato; il colore lo accompagna soltanto.
+ */
+function ContributionBadge({ value }: { value: number }) {
+  const amount = formatEur(Math.abs(value))
+  const visible = value > 0 ? `+${amount} per te` : value < 0 ? `−${amount} per te` : 'In pari'
+  const spoken = value > 0
+    ? `Aperta, ${amount} a tuo favore`
+    : value < 0 ? `Aperta, ${amount} a tuo carico` : 'Aperta, nessun effetto sul saldo'
+  return (
+    <Badge variant={value > 0 ? 'positive' : 'default'} className="tabular-nums whitespace-nowrap">
+      <span aria-hidden>{visible}</span>
+      <span className="sr-only">{spoken}</span>
+    </Badge>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useOptimistic, useRef, useState, useTransition } from 'react'
+import { useEffect, useOptimistic, useRef, useState, useTransition } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Plus, ScanLine, ShoppingBasket } from 'lucide-react'
 import { ItemFormSheet } from '@/components/shopping/ItemFormSheet'
@@ -21,6 +21,7 @@ import {
 import { springSnappy } from '@/lib/motion'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
+import { SHARE_ERRORS, takeSharedReceipt, type ShareOutcome } from '@/lib/share-target'
 import {
   addQuickItemAction,
   clearBoughtAction,
@@ -61,6 +62,7 @@ export function ShoppingShell({
   // (nuovo articolo o articolo scelto) senza sincronizzarli con un effetto.
   const [formKey, setFormKey] = useState(0)
   const [receiptOpen, setReceiptOpen] = useState(false)
+  const [sharedReceipt, setSharedReceipt] = useState<File | null>(null)
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
   // Spunta ottimistica: la riga sparisce al tocco e, finché la Server Action
   // non torna con la lista aggiornata, resta nascosta qui. Se la spunta
@@ -73,6 +75,33 @@ export function ShoppingShell({
   const [categoryFilter, setCategoryFilter] = useState<string>('tutte')
   const [confirmClear, setConfirmClear] = useState(false)
   const [clearing, setClearing] = useState(false)
+
+  // Scontrino condiviso da un'altra app: il service worker l'ha parcheggiato
+  // e ha mandato qui con `?condiviso=…`. Si legge una volta sola (il ref
+  // resiste al doppio effetto dello Strict Mode, che altrimenti prenderebbe
+  // il file dalla cache e lo butterebbe) e si toglie il parametro dall'URL.
+  const shareHandled = useRef(false)
+  useEffect(() => {
+    if (shareHandled.current) return
+    shareHandled.current = true
+    const outcome = new URLSearchParams(window.location.search).get('condiviso') as ShareOutcome | null
+    if (!outcome) return
+    window.history.replaceState(null, '', '/lista')
+    if (outcome !== '1') {
+      toast.error(SHARE_ERRORS[outcome] ?? SHARE_ERRORS.errore)
+      return
+    }
+    takeSharedReceipt()
+      .then((file) => {
+        if (!file) {
+          toast.error('Non trovo il file condiviso. Prova a condividerlo di nuovo.')
+          return
+        }
+        setSharedReceipt(file)
+        setReceiptOpen(true)
+      })
+      .catch(() => toast.error(SHARE_ERRORS.errore))
+  }, [])
 
   const visibleItems = openItems.filter((i) => !checkedIds.has(i.id))
   const missingIds = new Set(missingSinceCheck.map((m) => m.id).filter(Boolean) as string[])
@@ -375,7 +404,14 @@ export function ShoppingShell({
         item={editing}
       />
 
-      <ReceiptCheckSheet open={receiptOpen} onOpenChange={setReceiptOpen} />
+      <ReceiptCheckSheet
+        open={receiptOpen}
+        onOpenChange={(open) => {
+          setReceiptOpen(open)
+          if (!open) setSharedReceipt(null)
+        }}
+        sharedFile={sharedReceipt}
+      />
 
       <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)}
         title="Eliminare questo articolo?" description={deleteTarget ? `“${deleteTarget.name}” verrà eliminato dalla lista.` : ''}

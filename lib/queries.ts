@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ATTACHMENTS_BUCKET } from '@/lib/attachments'
 import type { ServiceClient } from '@/lib/supabase/service'
 import type { Tables } from '@/types/database'
+import { expenseContribution, sharesOf } from '@/lib/spending'
 
 /**
  * Client Supabase da usare per la query. Di norma si omette e viene creato il
@@ -59,11 +60,15 @@ export async function getAllExpenses(db?: QueryClient) {
   return data
 }
 
+/**
+ * La spesa con quello che serve al dettaglio: chi l'ha pagata, chi l'ha
+ * inserita e, se è saldata, il conguaglio che l'ha chiusa.
+ */
 export async function getExpenseById(id: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('expenses')
-    .select('*, paid_by_profile:profiles!expenses_paid_by_fkey(display_name)')
+    .select('*, paid_by_profile:profiles!expenses_paid_by_fkey(display_name), created_by_profile:profiles!expenses_created_by_fkey(display_name), settlement:settlements!expenses_settlement_id_fkey(id, settled_at, amount, from_user:profiles!settlements_from_user_id_fkey(display_name), to_user:profiles!settlements_to_user_id_fkey(display_name))')
     .eq('id', id)
     .single()
 
@@ -146,20 +151,31 @@ export async function getOpenExpensesWithShares() {
   return { expenses: expensesRes.data ?? [], shares: sharesRes.data ?? [] }
 }
 
+type ExpenseShare = OpenExpensesWithShares['shares'][number]
+
+/** Quote delle sole spese aperte, per chi ha già le spese da un'altra lettura. */
+export async function getOpenShares(): Promise<ExpenseShare[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('v_expense_shares')
+    .select('expense_id, user_id, user_share')
+    .is('settlement_id', null)
+  if (error) throw error
+  return data ?? []
+}
+
 export type OpenExpenseWithContribution = ReturnType<typeof withContribution>[number]
 
 /** Contributo di ogni spesa aperta al saldo di `userId`, in centesimi esatti. */
 export function withContribution({ expenses, shares }: OpenExpensesWithShares, userId: string) {
-  const myShares = new Map(
-    shares.filter((s) => s.user_id === userId).map((s) => [s.expense_id, s.user_share]),
-  )
+  const mine = sharesOf(shares, userId)
   return expenses.map((expense) => {
-    const share = myShares.get(expense.id)
+    const share = mine.get(expense.id)
     if (share == null) throw new Error('Quota della spesa non disponibile. Aggiorna la pagina.')
-    const anticipated = expense.paid_by === userId ? expense.amount : 0
-    return { ...expense, my_contribution: (Math.round(anticipated * 100) - Math.round(share * 100)) / 100 }
+    return { ...expense, my_contribution: expenseContribution(expense, share, userId) }
   })
 }
+
+export type SettlementWithNames = Awaited<ReturnType<typeof getAllSettlements>>[number]
 
 export async function getAllSettlements() {
   const supabase = await createClient()

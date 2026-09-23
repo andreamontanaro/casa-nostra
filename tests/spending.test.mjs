@@ -54,3 +54,31 @@ test('la coda somma in centesimi, senza deriva sui decimali', () => {
   assert.equal(segments[5].total, .7)
   assert.equal(segments[5].count, 7)
 })
+
+const { contributionsById, expenseContribution } = await loadTs('../lib/spending.ts')
+
+test('l’effetto sul saldo è anticipato meno quota, per chi guarda', () => {
+  // 100 € 60/40 pagati da A (quota 60): +40 per A, −40 per B.
+  assert.equal(expenseContribution({ amount: 100, paid_by: 'A' }, 60, 'A'), 40)
+  assert.equal(expenseContribution({ amount: 100, paid_by: 'A' }, 40, 'B'), -40)
+  // I centesimi restano esatti anche con quote a tre decimali della vista.
+  assert.equal(expenseContribution({ amount: 10.1, paid_by: 'A' }, 6.06, 'A'), 4.04)
+})
+
+test('solo le spese aperte con una quota hanno un effetto sul saldo', () => {
+  const expenses = [
+    { id: 'aperta', amount: 800, paid_by: 'A', settlement_id: null },
+    { id: 'altrui', amount: 50, paid_by: 'B', settlement_id: null },
+    { id: 'saldata', amount: 30, paid_by: 'A', settlement_id: 'c1' },
+    { id: 'appena-arrivata', amount: 12, paid_by: 'A', settlement_id: null },
+  ]
+  const shares = [
+    { expense_id: 'aperta', user_id: 'A', user_share: 400 },
+    { expense_id: 'aperta', user_id: 'B', user_share: 400 },
+    { expense_id: 'altrui', user_id: 'A', user_share: 30 },
+    { expense_id: 'altrui', user_id: 'B', user_share: 20 },
+    { expense_id: 'saldata', user_id: 'A', user_share: 15 },
+  ]
+  assert.deepEqual(contributionsById(expenses, shares, 'A'), { aperta: 400, altrui: -30 })
+  assert.deepEqual(contributionsById(expenses, shares, 'B'), { aperta: -400, altrui: 30 })
+})
