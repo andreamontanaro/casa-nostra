@@ -25,6 +25,15 @@ interface EditExpenseFormProps {
   profiles: Profile[]
   currentUserId: string
   attachmentCount: number
+  /** Schermata da cui si è aperto il dettaglio: ci si torna dopo l'eliminazione. */
+  returnHref?: string
+  /** Salvataggio riuscito: chi apre la sheet la chiude. */
+  onSaved?: () => void
+}
+
+/** Importo nel formato con cui lo si scrive: `12,50`, non `12.5`. */
+function amountForInput(value: number) {
+  return value.toFixed(2).replace('.', ',')
 }
 
 export function EditExpenseForm({
@@ -32,10 +41,24 @@ export function EditExpenseForm({
   profiles,
   currentUserId,
   attachmentCount,
+  returnHref,
+  onSaved,
 }: EditExpenseFormProps) {
-  const boundUpdate = updateExpense.bind(null, expense.id)
   const [state, action, pending] = useActionState<ExpenseFormState, FormData>(
-    boundUpdate,
+    async (previous, formData) => {
+      let result: ExpenseFormState
+      try {
+        result = await updateExpense(expense.id, previous, formData)
+      } catch (e) {
+        if (isRedirectError(e)) throw e
+        return { error: 'Non riesco a salvare le modifiche. I campi sono conservati: riprova.' }
+      }
+      if (result.ok) {
+        toast.success('Modifiche salvate.')
+        onSaved?.()
+      }
+      return result
+    },
     {},
   )
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -44,10 +67,10 @@ export function EditExpenseForm({
   const [category, setCategory] = useState<Category>(expense.category)
   const [splitRule, setSplitRule] = useState<SplitRule>(expense.split_rule)
   const [paidBy, setPaidBy] = useState(expense.paid_by)
-  const [rawAmount, setRawAmount] = useState(String(expense.amount))
+  const [rawAmount, setRawAmount] = useState(amountForInput(expense.amount))
   const [description, setDescription] = useState(expense.description)
   const [customOtherShare, setCustomOtherShare] = useState(
-    expense.custom_other_share != null ? String(expense.custom_other_share) : '',
+    expense.custom_other_share != null ? amountForInput(expense.custom_other_share) : '',
   )
   const [expenseDate, setExpenseDate] = useState(expense.expense_date)
 
@@ -56,7 +79,7 @@ export function EditExpenseForm({
   async function handleDelete() {
     setDeleting(true)
     try {
-      await deleteExpense(expense.id)
+      await deleteExpense(expense.id, returnHref)
     } catch (e) {
       if (isRedirectError(e)) throw e
       toast.error("Errore durante l'eliminazione.")

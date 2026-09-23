@@ -19,6 +19,7 @@ export function LoginForm() {
         type="email"
         autoComplete="email"
         inputMode="email"
+        defaultValue={state.email}
         required
         disabled={pending}
       />

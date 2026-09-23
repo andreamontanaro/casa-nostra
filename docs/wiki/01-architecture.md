@@ -77,6 +77,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 
 ### Rotte di Servizio
 * `/api/assistant` → `app/api/assistant/route.ts`: Chat con l'assistente IA (richiede sessione).
+* `/api/sync` → `app/api/sync/route.ts`: Impronta dei dati condivisi per l'aggiornamento automatico delle pagine (richiede sessione, vedi `04-api-surface.md`).
 * `/api/telegram/webhook` → `app/api/telegram/webhook/route.ts`: Riceve gli update del bot Telegram; si autentica con il secret condiviso, non con la sessione.
 
 ### Rotte Pubbliche
@@ -117,6 +118,6 @@ Caricano i dati direttamente sul server ed effettuano il rendering iniziale in H
 
 ### Client Components (`'use client'`)
 Gestiscono l'interattività e lo stato lato browser. Esempi:
-* `ShoppingShell.tsx` → `app/(app)/lista/ShoppingShell.tsx`: Gestisce filtri per categoria, spunta ottimistica con "Annulla" nel toast e le due sheet (form articolo, controllo scontrino).
+* `ShoppingShell.tsx` → `app/(app)/lista/ShoppingShell.tsx`: Gestisce filtri per categoria, spunta ottimistica (`useOptimistic`) con "Annulla" nel toast, barra rapida che non blocca il campo e le due sheet (form articolo, controllo scontrino).
 * `HomeShell.tsx` → `components/HomeShell.tsx`: Gestisce lo stato della modale ("Sheet") per l'inserimento rapido di una spesa e aggiorna la lista soltanto dopo il salvataggio; bozze ed errori restano nel form.
 * `ExpenseForm.tsx` → `app/(app)/spese/nuova/ExpenseForm.tsx`: Gestisce la selezione dinamica dei chip e i messaggi di validazione istantanei.

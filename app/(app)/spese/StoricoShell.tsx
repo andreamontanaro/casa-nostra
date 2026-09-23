@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { SpeseFiltri } from './SpeseFiltri'
 import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
 import type { Tables } from '@/types/database'
+import type { ExpenseSuggestion } from '@/lib/queries'
 
 type Expense = Tables<'expenses'> & {
   paid_by_profile: { display_name: string } | null
@@ -14,7 +15,7 @@ interface StoricoShellProps {
   expenses: Expense[]
   profiles: Profile[]
   currentUserId: string
-  suggestions: string[]
+  suggestions: ExpenseSuggestion[]
 }
 
 export function StoricoShell({

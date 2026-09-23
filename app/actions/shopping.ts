@@ -33,13 +33,13 @@ async function currentUserId(): Promise<string | null> {
 
 export async function addItemAction(
   input: ShoppingItemInput,
-): Promise<{ error?: string; id?: string }> {
+): Promise<{ error?: string; duplicate?: boolean; id?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non autenticato.' }
 
   const result = await addShoppingItem(supabase, user.id, input)
-  if (!result.ok) return { error: result.error }
+  if (!result.ok) return { error: result.error, duplicate: 'duplicate' in result && result.duplicate }
 
   revalidateShopping()
 
@@ -74,7 +74,7 @@ export async function addItemAction(
  */
 export async function addQuickItemAction(
   text: string,
-): Promise<{ error?: string; id?: string; reading?: QuickItemReading }> {
+): Promise<{ error?: string; duplicate?: boolean; id?: string; reading?: QuickItemReading }> {
   const reading = await readQuickItemInput({
     text,
     apiKey: process.env.GEMINI_API_KEY,
@@ -87,7 +87,7 @@ export async function addQuickItemAction(
     category: reading.category,
     urgency: 'media',
   })
-  if (result.error) return { error: result.error }
+  if (result.error) return { error: result.error, duplicate: result.duplicate }
 
   return { id: result.id, reading }
 }

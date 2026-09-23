@@ -1,5 +1,6 @@
 'use client'
 
+import { useDeferredValue, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { ExpenseRow } from '@/components/ExpenseRow'
@@ -17,7 +18,12 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
   const params = useSearchParams()
   const status = ['aperte', 'saldate'].includes(params.get('stato') ?? '') ? params.get('stato')! : 'tutte'
   const category = Constants.public.Enums.expense_category.find((c) => c === params.get('cat')) ?? 'tutte'
-  const query = params.get('q') ?? ''
+  // La ricerca ha uno stato suo: l'URL si aggiorna con replaceState, che il
+  // router applica in una transizione, e un campo controllato da un valore
+  // che arriva in ritardo perde lettere e fa saltare il cursore a fine riga.
+  // L'URL resta la memoria dei filtri (ritorno dal dettaglio, link).
+  const [query, setQuery] = useState(() => params.get('q') ?? '')
+  const deferredQuery = useDeferredValue(query)
   const currentMonth = todayISO().slice(0, 7)
   const period = params.get('periodo')
   const legacyMonth = period === 'corrente' ? currentMonth : period === 'scorso'
@@ -26,25 +32,45 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
   const from = /^\d{4}-\d{2}-\d{2}$/.test(params.get('da') ?? '') ? params.get('da')! : ''
   const until = /^\d{4}-\d{2}-\d{2}$/.test(params.get('a') ?? '') ? params.get('a')! : ''
   const hasFilter = status !== 'tutte' || category !== 'tutte' || Boolean(month || query || from || until)
-  function update(key: string, value: string) {
+  function search(value: string) {
+    setQuery(value)
+    update('q', value, value)
+  }
+  function reset() {
+    setQuery('')
+    window.history.replaceState(null, '', '/spese')
+  }
+  function update(key: string, value: string, q = query) {
     const next = new URLSearchParams(params.toString())
+    if (q) next.set('q', q)
+    else next.delete('q')
     if (value && value !== 'tutte') next.set(key, value)
     else next.delete(key)
     if (key === 'mese') { next.delete('periodo'); next.delete('da'); next.delete('a') }
     const suffix = next.toString()
     window.history.replaceState(null, '', suffix ? '/spese?' + suffix : '/spese')
   }
+  const needle = deferredQuery.trim().toLocaleLowerCase('it')
   const filtered = expenses.filter((e) =>
     (status === 'tutte' || (status === 'aperte' ? e.settlement_id === null : e.settlement_id !== null))
     && (category === 'tutte' || e.category === category)
     && (!month || e.expense_date.startsWith(month))
     && (!from || e.expense_date >= from) && (!until || e.expense_date <= until)
-    && (!query.trim() || e.description.toLocaleLowerCase('it').includes(query.trim().toLocaleLowerCase('it'))),
+    && (!needle || e.description.toLocaleLowerCase('it').includes(needle)),
   )
   const groups = new Map<string, Expense[]>()
-  for (const expense of filtered) groups.set(expense.expense_date, [...(groups.get(expense.expense_date) ?? []), expense])
+  for (const expense of filtered) {
+    const day = groups.get(expense.expense_date)
+    if (day) day.push(expense)
+    else groups.set(expense.expense_date, [expense])
+  }
   const total = filtered.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100
-  const returnHref = '/spese' + (params.toString() ? '?' + params.toString() : '')
+  // Il ritorno dal dettaglio usa la ricerca del campo, non quella dell'URL,
+  // che può essere indietro di un tasto.
+  const returnParams = new URLSearchParams(params.toString())
+  if (query) returnParams.set('q', query)
+  else returnParams.delete('q')
+  const returnHref = '/spese' + (returnParams.toString() ? '?' + returnParams.toString() : '')
 
   return <div className="space-y-3 pb-24">
     <details className="group rounded-2xl border border-border bg-surface">
@@ -65,8 +91,8 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
         options={[{ value: 'tutte', label: 'Tutte' }, { value: 'aperte', label: 'Aperte' }, { value: 'saldate', label: 'Saldate' }]} />
       <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
         <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
-          <input type="search" aria-label="Cerca una spesa" placeholder="Cerca una spesa…" value={query} onChange={(e) => update('q', e.target.value)} className="h-12 w-full rounded-2xl bg-surface-raised pr-12 pl-10 text-base" />
-          {query && <button aria-label="Cancella ricerca" type="button" onClick={() => update('q', '')} className="absolute top-0.5 right-1 flex size-11 items-center justify-center rounded-full"><X className="size-4" aria-hidden /></button>}
+          <input type="search" aria-label="Cerca una spesa" placeholder="Cerca una spesa…" value={query} onChange={(e) => search(e.target.value)} className="h-12 w-full rounded-2xl bg-surface-raised pr-12 pl-10 text-base" />
+          {query && <button aria-label="Cancella ricerca" type="button" onClick={() => search('')} className="absolute top-0.5 right-1 flex size-11 items-center justify-center rounded-full"><X className="size-4" aria-hidden /></button>}
         </div>
         <select aria-label="Categoria" value={category} onChange={(e) => update('cat', e.target.value)} className="min-h-12 min-w-0 rounded-2xl border border-border bg-surface px-3 text-base">
           <option value="tutte">Tutte le categorie</option>{Constants.public.Enums.expense_category.map((cat) => <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>)}
@@ -76,7 +102,7 @@ export function SpeseFiltri({ expenses, onAddExpense }: Props) {
     </details>
     <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm" aria-live="polite">
       <p className="text-muted">{filtered.length} movimenti · <span className="font-semibold tabular-nums text-foreground">{formatEur(total)}</span> totali</p>
-      {hasFilter && <Button variant="ghost" size="sm" onClick={() => window.history.replaceState(null, '', '/spese')}>Azzera filtri</Button>}
+      {hasFilter && <Button variant="ghost" size="sm" onClick={reset}>Azzera filtri</Button>}
     </div>
     {filtered.length === 0 ? <Card className="px-5 py-10 text-center"><p className="font-display text-2xl font-semibold">{expenses.length ? 'Nessuna corrispondenza' : 'La prima spesa, insieme.'}</p><p className="mt-3 text-sm text-muted">{expenses.length ? 'Prova un altro periodo o una categoria diversa.' : 'Aggiungi una spesa per iniziare a tenere i conti.'}</p>
       {!expenses.length && onAddExpense && <Button className="mt-5" onClick={onAddExpense}>Aggiungi spesa</Button>}</Card>

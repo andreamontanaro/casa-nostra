@@ -15,6 +15,7 @@ import { DEFAULT_SPLIT, todayISO } from '@/lib/fmt'
 import { parseEuroInput } from '@/lib/expense-input'
 import type { Tables } from '@/types/database'
 import { Constants } from '@/types/database'
+import type { ExpenseSuggestion } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
 type Profile = Tables<'profiles'>
@@ -25,7 +26,7 @@ export interface ExpenseDraft {
   paidBy: string; customOtherShare: string; expenseDate: string
 }
 interface Props {
-  profiles: Profile[]; currentUserId: string; suggestions?: string[]
+  profiles: Profile[]; currentUserId: string; suggestions?: ExpenseSuggestion[]
   redirectTo?: string; onSuccess?: () => void; initialDraft?: Partial<ExpenseDraft>; sourceReceiptId?: string; onPendingChange?: (pending: boolean) => void
 }
 export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirectTo, onSuccess, initialDraft, sourceReceiptId, onPendingChange }: Props) {
@@ -47,11 +48,15 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
     setTouched(true); setDraft(next); saveDraft(currentUserId, next)
   }
   function categoryChange(category: Category) {
-    const next = { ...draft, category, splitRule: draft.splitRule === DEFAULT_SPLIT[draft.category] ? DEFAULT_SPLIT[category] : draft.splitRule }
-    if (category === 'affitto') {
-      if (!next.amount.trim()) next.amount = '530,00'
-      if (!next.description.trim()) next.description = 'Affitto ' + new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric', timeZone: 'Europe/Rome' })
-    }
+    const next = withCategory(draft, category)
+    setTouched(true); setDraft(next); saveDraft(currentUserId, next)
+  }
+  // Un suggerimento è "come l'ultima volta": descrizione, categoria e divisione
+  // insieme. Una divisione personalizzata non si ricopia (la quota cambia ogni
+  // volta): resta il default della categoria.
+  function pickSuggestion(suggestion: ExpenseSuggestion) {
+    const next = withCategory({ ...draft, description: suggestion.description }, suggestion.category)
+    if (suggestion.splitRule !== 'custom') next.splitRule = suggestion.splitRule
     setTouched(true); setDraft(next); saveDraft(currentUserId, next)
   }
   function restore(value: unknown) {
@@ -70,8 +75,9 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
     if (warningRef.current) toast.warning(warningRef.current, { duration: 8000 })
     else toast.success('Spesa salvata.')
     onSuccess?.()
+    // Niente router.refresh(): `createExpense` chiama già revalidatePath, e la
+    // risposta della Server Action porta con sé la pagina aggiornata.
     if (redirectTo) router.push(redirectTo)
-    router.refresh()
   }
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -118,7 +124,7 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
     <form onSubmit={submit} className={cn('flex flex-col px-4 pt-4', isSheet ? 'pb-0' : 'pb-6')}>
       {!touched && <ExpenseDraftNotice userId={currentUserId} onRestore={restore} />}
       <ExpenseFormFields profiles={profiles} currentUserId={currentUserId} disabled={pending || Boolean(savedId)}
-        fieldErrors={state.fieldErrors} suggestions={suggestions} amountFocusOnOpen={isSheet}
+        fieldErrors={state.fieldErrors} suggestions={suggestions} onSuggestionPick={pickSuggestion} amountFocusOnOpen={isSheet}
         amount={draft.amount} onAmountChange={(v) => change('amount', v)}
         description={draft.description} onDescriptionChange={(v) => change('description', v)}
         category={draft.category} onCategoryChange={categoryChange}
@@ -141,4 +147,18 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
       </div>
     </form>
   )
+}
+
+/**
+ * Cambio di categoria: la divisione segue il default della nuova categoria
+ * solo se era ancora quello della precedente (una scelta a mano resta), e
+ * l'affitto propone importo e descrizione del mese se mancano.
+ */
+function withCategory(draft: ExpenseDraft, category: Category): ExpenseDraft {
+  const next = { ...draft, category, splitRule: draft.splitRule === DEFAULT_SPLIT[draft.category] ? DEFAULT_SPLIT[category] : draft.splitRule }
+  if (category === 'affitto') {
+    if (!next.amount.trim()) next.amount = '530,00'
+    if (!next.description.trim()) next.description = 'Affitto ' + new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric', timeZone: 'Europe/Rome' })
+  }
+  return next
 }

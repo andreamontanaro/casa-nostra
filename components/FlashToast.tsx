@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { toast } from '@/lib/toast'
 
 const MESSAGES: Record<string, { type: 'success' | 'error' | 'info'; text: string }> = {
@@ -15,8 +15,13 @@ const MESSAGES: Record<string, { type: 'success' | 'error' | 'info'; text: strin
   'telegram-unlinked': { type: 'success', text: 'Account Telegram scollegato.' },
 }
 
+/**
+ * Mostra il toast di esito passato con `?ok=` dopo un redirect e poi toglie il
+ * parametro dall'indirizzo. Con `history.replaceState`, che il router di Next
+ * recepisce senza tornare al server: un `router.replace` rifaceva il render
+ * dell'intera pagina, con tutte le sue query, solo per cambiare l'URL.
+ */
 export function FlashToast() {
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const ok = searchParams.get('ok')
@@ -29,8 +34,8 @@ export function FlashToast() {
     const params = new URLSearchParams(searchParams.toString())
     params.delete('ok')
     const qs = params.toString()
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-  }, [ok, pathname, router, searchParams])
+    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
+  }, [ok, pathname, searchParams])
 
   return null
 }

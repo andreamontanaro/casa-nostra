@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { IntentLink } from './IntentLink'
 
 interface ListRowProps {
   leading?: React.ReactNode
@@ -43,9 +43,9 @@ export function ListRow({
 
   if (href) {
     return (
-      <Link href={href} className={cn(base, interactive, className)}>
+      <IntentLink href={href} className={cn(base, interactive, className)}>
         {content}
-      </Link>
+      </IntentLink>
     )
   }
   if (onClick) {

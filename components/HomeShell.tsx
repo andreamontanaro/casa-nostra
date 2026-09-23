@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { OpenExpenseWithContribution } from '@/lib/queries'
+import type { ExpenseSuggestion, OpenExpenseWithContribution } from '@/lib/queries'
 import { AnimatePresence, motion } from 'motion/react'
 import { BalanceCard } from '@/components/BalanceCard'
 import { ExpenseRow } from '@/components/ExpenseRow'
@@ -25,7 +25,7 @@ interface HomeShellProps {
   balanceRows: BalanceRow[]
   recentExpenses: Expense[]
   profiles: Profile[]
-  suggestions: string[]
+  suggestions: ExpenseSuggestion[]
 }
 
 export function HomeShell({
@@ -84,6 +84,7 @@ export function HomeShell({
                     <ExpenseRow
                       expense={expense}
                       dateLabel={formatDateShort(expense.expense_date)}
+                      returnHref="/"
                     />
 
                   </motion.div>

@@ -34,12 +34,15 @@ Il conguaglio completo usa il saldo della vista. La selezione parziale è un’a
 - Categorie in griglia con etichette intere, divisione modificabile e anteprima nominativa delle quote. I default di dominio già presenti restano invariati.
 - Bozza recuperabile esplicitamente da sessionStorage per utente. Dopo un errore i campi restano nel form.
 - Salvataggio senza riga fittizia nella lista. Gli allegati vengono caricati sull’id restituito; i tentativi successivi caricano soltanto i file mancanti. La sheet di inserimento resta aperta durante il salvataggio e si sblocca dopo l’esito.
-- Storico: mese libero, stato, categoria e ricerca nell’URL; intervalli `da/a` dai grafici. Dettaglio in consultazione e modifica esplicita in sheet; ritorno allo storico conserva i filtri.
+- Storico: mese libero, stato, categoria e ricerca nell’URL; intervalli `da/a` dai grafici. Il campo di ricerca ha uno stato locale (l'URL si aggiorna in una transizione e un campo controllato da lì perdeva lettere) e il filtro usa `useDeferredValue`.
+- Dettaglio in consultazione e modifica esplicita in sheet. Il ritorno porta dove si era partiti: la home (`ritorno=/`) o lo storico con i suoi filtri. Salvare una modifica chiude la sheet e resta sul dettaglio aggiornato; eliminare torna alla schermata di partenza.
+- I suggerimenti di descrizione sono "come l'ultima volta": compilano anche categoria e divisione (una divisione personalizzata non si ricopia).
+- Le righe delle spese precaricano il dettaglio solo all'intenzione (puntatore, dito o fuoco: `IntentLink`), non appena entrano nello schermo.
 - Spese saldate in consultazione. Eliminazioni con conferma.
 
 ## Lista e scontrini
 
-Aggiunta rapida del solo nome (categoria Cibo, urgenza normale); quantità e altri dettagli nel form. Spunta con possibilità di annullare, eliminazione con conferma, comprati in sezione espandibile. Le righe mancanti dall’ultimo controllo hanno un richiamo neutro.
+Barra rapida: una riga sola, da cui Gemini ricava nome, quantità e categoria (ripiego su Cibo). Il campo si svuota al tocco e **non si disabilita mai** durante l'attesa: un campo disabilitato perde il fuoco e sul telefono la tastiera si chiudeva a ogni prodotto. Più aggiunte possono essere in volo insieme; in caso di errore il testo torna nel campo se è ancora vuoto (non per un doppione). La spunta è ottimistica con `useOptimistic`: la riga sparisce al tocco e ricompare da sola se il server rifiuta. Spunta con possibilità di annullare, eliminazione con conferma, comprati in sezione espandibile. Le righe mancanti dall’ultimo controllo hanno un richiamo neutro.
 
 Controllo scontrino con fotocamera e selezione file separati, stati di caricamento e lettura. “Crea spesa da questo scontrino” apre un modulo precompilato; solo “Salva spesa” registra il movimento e tenta di allegare l’immagine. Un importo/data già presente viene segnalato con un link: è una verifica preventiva, non una garanzia transazionale contro richieste simultanee. WEBP resta accettato dal controllo ma non dal bucket degli allegati; l’eventuale allegato mancante viene segnalato.
 
@@ -74,7 +77,10 @@ Ogni schermata privata ha il suo `loading.tsx`: `/`, `/spese`, `/spese/[id]`, `/
 - Controlli tattili almeno 44 px, generalmente 48 px; focus visibile, nomi accessibili e collegamento tra errori e campi.
 - Sheet con header/footer fissi, safe area e compensazione della tastiera. Password visibile su richiesta.
 - `MotionConfig reducedMotion="user"` e regole CSS per movimento ridotto.
-- `SharedDataRefresh`: aggiornamento ogni 30 secondi quando la pagina è visibile e online, e al ritorno nella finestra/connessione. Sospeso durante la modifica di campi e con dialog aperti. Non introduce una sottoscrizione Realtime o una scrittura in background.
+- `SharedDataRefresh`: ogni 30 secondi quando la pagina è visibile e online, e al ritorno nella finestra/connessione, chiede a `/api/sync` l'impronta dei dati; ricarica la pagina (`router.refresh()`) solo se è cambiata o non è leggibile. Sospeso durante la modifica di campi e con dialog aperti. Non introduce una sottoscrizione Realtime o una scrittura in background.
+- Dopo una Server Action che chiama `revalidatePath` non serve `router.refresh()`: la risposta porta già la pagina aggiornata. Gli esiti passati con `?ok=` (`FlashToast`) si tolgono dall'URL con `history.replaceState`, senza un secondo render.
+- `PageTransition` anima solo l'entrata della pagina nuova, senza uscita né `mode="wait"`, e mai al primo caricamento. `PullToRefresh` ignora i gesti con una sheet aperta e gira finché il refresh non è davvero finito (`useTransition`).
+- Importi: `formatEur` forza il separatore delle migliaia (`useGrouping: 'always'`). Node 22 e i browser hanno dati CLDR diversi per l'italiano (`1234,50 €` contro `1.234,50 €`) e il testo diverso rompeva l'idratazione di storico e statistiche. I formatter `Intl` sono creati una volta sola in `lib/fmt.ts`.
 - Feedback offline e messaggi di errore descrivono l’azione disponibile senza esporre configurazioni interne.
 
 ## Verifica

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { ExpenseFormState } from '@/app/actions/expenses'
+import type { ExpenseSuggestion } from '@/lib/queries'
 import { AmountInput } from '@/components/ui/AmountInput'
 import { Input } from '@/components/ui/Input'
 import { Chip } from '@/components/ui/Chip'
@@ -36,8 +37,10 @@ export interface ExpenseFormFieldsProps {
   currentUserId: string
   disabled?: boolean
   fieldErrors?: ExpenseFormState['fieldErrors']
-  // Suggerimenti descrizione (solo in creazione).
-  suggestions?: string[]
+  // Suggerimenti descrizione (solo in creazione). Senza `onSuggestionPick` un
+  // tap compila solo la descrizione.
+  suggestions?: ExpenseSuggestion[]
+  onSuggestionPick?: (suggestion: ExpenseSuggestion) => void
   descriptionRef?: React.Ref<HTMLInputElement>
   // Importo da mettere a fuoco all'apertura della sheet (il fuoco lo dà la
   // Sheet a fine animazione, vedi components/ui/Sheet.tsx).
@@ -67,6 +70,7 @@ export function ExpenseFormFields({
   disabled = false,
   fieldErrors,
   suggestions = [],
+  onSuggestionPick,
   descriptionRef,
   amountFocusOnOpen = false,
   attachmentsSlot,
@@ -127,13 +131,13 @@ export function ExpenseFormFields({
             <div className="flex gap-2 px-4">
               {suggestions.map((s) => (
                 <Chip
-                  key={s}
+                  key={s.description}
                   variant="suggestion"
                   disabled={disabled}
-                  onClick={() => onDescriptionChange(s)}
+                  onClick={() => (onSuggestionPick ? onSuggestionPick(s) : onDescriptionChange(s.description))}
                   className="text-xs"
                 >
-                  {s}
+                  {s.description}
                 </Chip>
               ))}
             </div>

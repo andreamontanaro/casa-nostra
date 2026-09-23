@@ -1,21 +1,22 @@
 import {
   getOpenBalance,
   getCurrentUser,
-  getOpenExpensesWithContribution,
+  getOpenExpensesWithShares,
   getProfiles,
+  withContribution,
 } from '@/lib/queries'
 import { isTelegramConfigured } from '@/lib/telegram/config'
 import { ConguaglioClient } from './ConguaglioClient'
 
 export default async function ConguaglioPage() {
-  const user = await getCurrentUser()
-  if (!user) return null
-
-  const [profiles, expenses, balances] = await Promise.all([
+  const [user, profiles, open, balances] = await Promise.all([
+    getCurrentUser(),
     getProfiles(),
-    getOpenExpensesWithContribution(user.id),
+    getOpenExpensesWithShares(),
     getOpenBalance(),
   ])
+  if (!user) return null
+  const expenses = withContribution(open, user.id)
 
   const other = profiles.find((p) => p.id !== user.id)
   const otherUserName = other?.display_name ?? 'Altro'

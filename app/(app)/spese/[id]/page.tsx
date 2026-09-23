@@ -32,7 +32,8 @@ interface Props {
 export default async function SpesaDetailPage({ params, searchParams }: Props) {
   const { id } = await params
   const { ritorno } = await searchParams
-  const returnHref = ritorno === '/spese' || ritorno?.startsWith('/spese?') ? ritorno : '/spese'
+  // Si torna da dove si è arrivati: la home o lo storico con i suoi filtri.
+  const returnHref = ritorno === '/' || ritorno === '/spese' || ritorno?.startsWith('/spese?') ? ritorno : '/spese'
 
   const [expense, profiles, user, attachments, shares] = await Promise.all([
     getExpenseById(id).catch(() => null),
@@ -53,7 +54,7 @@ export default async function SpesaDetailPage({ params, searchParams }: Props) {
         <Link
           href={returnHref}
           className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised"
-          aria-label="Torna allo storico"
+          aria-label={returnHref === '/' ? 'Torna alla home' : 'Torna allo storico'}
         >
           <ArrowLeft className="size-5" />
         </Link>
@@ -137,6 +138,7 @@ export default async function SpesaDetailPage({ params, searchParams }: Props) {
         profiles={profiles}
         currentUserId={user.id}
         attachmentCount={attachments.length}
+        returnHref={returnHref}
       />
     </div>
   )

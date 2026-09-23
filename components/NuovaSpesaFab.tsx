@@ -8,13 +8,14 @@ import { Sheet } from '@/components/ui/Sheet'
 import { ExpenseForm } from '@/app/(app)/spese/nuova/ExpenseForm'
 import { cn } from '@/lib/utils'
 import type { Tables } from '@/types/database'
+import type { ExpenseSuggestion } from '@/lib/queries'
 
 type Profile = Tables<'profiles'>
 
 interface NuovaSpesaFabProps {
   profiles: Profile[]
   currentUserId: string
-  suggestions?: string[]
+  suggestions?: ExpenseSuggestion[]
   // Apertura controllata dal parent (per CTA esterne, es. empty state). Se
   // omessa, il componente gestisce lo stato internamente tramite il FAB.
   open?: boolean

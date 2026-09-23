@@ -127,6 +127,14 @@ Le tre operazioni di scrittura sulla lista, quando vanno a buon fine, invocano `
 
 ---
 
+## Endpoint `/api/sync`
+
+`GET /api/sync` → `app/api/sync/route.ts` restituisce `{ version }`, l'impronta di `getDataVersion()` (`null` se una query fallisce). Protetto come ogni rotta privata: `proxy.ts` rimanda alla vetrina chi non ha sessione e le query passano dalla RLS. Risposta `no-store`.
+
+Lo usa `SharedDataRefresh` per decidere se ricaricare la pagina: cinque query da una riga ciascuna al posto del render completo della pagina. È un Route Handler e non una Server Action di proposito: le Server Action dello stesso client vengono eseguite in fila, e un controllo periodico farebbe aspettare il salvataggio di una spesa.
+
+---
+
 ## Endpoint `/api/telegram/webhook`
 
 Riceve gli aggiornamenti del bot Telegram: notifiche in uscita a parte, è il punto d'ingresso dell'assistente nel gruppo dei due conviventi.

@@ -3,33 +3,43 @@ import { RING_OTHER } from '@/lib/spending'
 
 export { RING_OTHER }
 
+// Formatter creati una volta sola: costruire un Intl.* costa molto più che
+// usarlo, e lo storico ne chiedeva diversi per riga a ogni render (anche a
+// ogni tasto premuto nella ricerca).
+// `useGrouping: 'always'`: le versioni recenti dei dati CLDR (Node 22) non
+// separano le migliaia sotto i 10.000 — «1234,50 €» — mentre i browser sì —
+// «1.234,50 €». Server e client scrivevano due testi diversi e l'idratazione
+// falliva su ogni importo da mille euro in su (storico, statistiche).
+const EUR = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' })
+const DATE_LONG = new Intl.DateTimeFormat('it-IT', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'Europe/Rome',
+})
+const DATE_SHORT = new Intl.DateTimeFormat('it-IT', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'Europe/Rome',
+})
+// La localizzazione svedese scrive le date come YYYY-MM-DD.
+const ROME_DATE_KEY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Rome' })
+
 export function formatEur(amount: number) {
-  return new Intl.NumberFormat('it-IT', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(amount)
+  return EUR.format(amount)
 }
 
 export function formatDate(dateStr: string) {
-  return new Intl.DateTimeFormat('it-IT', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'Europe/Rome',
-  }).format(new Date(dateStr))
+  return DATE_LONG.format(new Date(dateStr))
 }
 
 export function formatDateShort(dateStr: string) {
-  return new Intl.DateTimeFormat('it-IT', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'Europe/Rome',
-  }).format(new Date(dateStr))
+  return DATE_SHORT.format(new Date(dateStr))
 }
 
 /** Chiave YYYY-MM-DD nel fuso orario della casa. */
 export function romeDateKey(iso: string): string {
-  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' })
+  return ROME_DATE_KEY.format(new Date(iso))
 }
 
 export function todayISO() {

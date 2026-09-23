@@ -124,25 +124,37 @@ export async function getProfiles(db?: QueryClient) {
   return data
 }
 
-export type OpenExpenseWithContribution = Awaited<
-  ReturnType<typeof getOpenExpensesWithContribution>
->[number]
+/** Spese aperte con le quote di entrambi, come le calcola `v_expense_shares`. */
+export type OpenExpensesWithShares = Awaited<ReturnType<typeof getOpenExpensesWithShares>>
 
-export async function getOpenExpensesWithContribution(userId: string) {
+/**
+ * Non dipende dall'utente, così può partire insieme a `getCurrentUser()`
+ * invece di aspettarlo: le quote si filtrano poi con `withContribution`.
+ */
+export async function getOpenExpensesWithShares() {
   const supabase = await createClient()
   const [expensesRes, sharesRes] = await Promise.all([
     supabase.from('expenses')
       .select('*, paid_by_profile:profiles!expenses_paid_by_fkey(display_name)')
       .is('settlement_id', null)
       .order('expense_date', { ascending: false }).order('created_at', { ascending: false }),
-    supabase.from('v_expense_shares').select('expense_id, user_share')
-      .eq('user_id', userId).is('settlement_id', null),
+    supabase.from('v_expense_shares').select('expense_id, user_id, user_share')
+      .is('settlement_id', null),
   ])
   if (expensesRes.error) throw expensesRes.error
   if (sharesRes.error) throw sharesRes.error
-  const shares = new Map((sharesRes.data ?? []).map((s) => [s.expense_id, s.user_share]))
-  return (expensesRes.data ?? []).map((expense) => {
-    const share = shares.get(expense.id)
+  return { expenses: expensesRes.data ?? [], shares: sharesRes.data ?? [] }
+}
+
+export type OpenExpenseWithContribution = ReturnType<typeof withContribution>[number]
+
+/** Contributo di ogni spesa aperta al saldo di `userId`, in centesimi esatti. */
+export function withContribution({ expenses, shares }: OpenExpensesWithShares, userId: string) {
+  const myShares = new Map(
+    shares.filter((s) => s.user_id === userId).map((s) => [s.expense_id, s.user_share]),
+  )
+  return expenses.map((expense) => {
+    const share = myShares.get(expense.id)
     if (share == null) throw new Error('Quota della spesa non disponibile. Aggiorna la pagina.')
     const anticipated = expense.paid_by === userId ? expense.amount : 0
     return { ...expense, my_contribution: (Math.round(anticipated * 100) - Math.round(share * 100)) / 100 }
@@ -162,28 +174,73 @@ export async function getAllSettlements() {
   return data
 }
 
-export async function getFrequentDescriptions(limit = 5): Promise<string[]> {
+export type ExpenseSuggestion = {
+  description: string
+  category: Tables<'expenses'>['category']
+  splitRule: Tables<'expenses'>['split_rule']
+}
+
+/**
+ * Le descrizioni più usate, ognuna con categoria e divisione del suo ultimo
+ * utilizzo: un tap sul suggerimento compila tutti e tre i campi.
+ */
+export async function getFrequentDescriptions(limit = 5): Promise<ExpenseSuggestion[]> {
   const supabase = await createClient()
   // Tira ~200 descrizioni recenti e raggruppa lato client: stabile, niente RPC nuova.
   const { data, error } = await supabase
     .from('expenses')
-    .select('description')
+    .select('description, category, split_rule')
     .order('created_at', { ascending: false })
     .limit(200)
 
   if (error) return []
 
-  const counts = new Map<string, number>()
+  const byDescription = new Map<string, ExpenseSuggestion & { count: number }>()
   for (const row of data ?? []) {
-    const d = (row.description ?? '').trim()
-    if (!d) continue
-    counts.set(d, (counts.get(d) ?? 0) + 1)
+    const description = (row.description ?? '').trim()
+    if (!description) continue
+    const seen = byDescription.get(description)
+    // Le righe arrivano dalla più recente: la prima vista decide categoria e divisione.
+    if (seen) seen.count += 1
+    else byDescription.set(description, { description, category: row.category, splitRule: row.split_rule, count: 1 })
   }
 
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
+  return [...byDescription.values()]
+    .sort((a, b) => b.count - a.count)
     .slice(0, limit)
-    .map(([d]) => d)
+    .map(({ description, category, splitRule }) => ({ description, category, splitRule }))
+}
+
+/**
+ * Impronta dei dati condivisi: numero di righe e ultima modifica delle tabelle
+ * che le schermate mostrano. Cambia quando uno dei due (o l'assistente, o il
+ * bot Telegram) aggiunge, modifica o elimina qualcosa — un conguaglio tocca
+ * `updated_at` delle spese che chiude. Serve a `SharedDataRefresh` per
+ * ricaricare la pagina solo quando c'è davvero qualcosa di nuovo, invece di
+ * riscaricarla intera ogni trenta secondi.
+ */
+export async function getDataVersion(): Promise<string | null> {
+  const supabase = await createClient()
+  const [expenses, attachments, items, checks, profiles] = await Promise.all([
+    supabase.from('expenses').select('updated_at', { count: 'exact' })
+      .order('updated_at', { ascending: false }).limit(1),
+    supabase.from('expense_attachments').select('created_at', { count: 'exact' })
+      .order('created_at', { ascending: false }).limit(1),
+    supabase.from('shopping_items').select('updated_at', { count: 'exact' })
+      .order('updated_at', { ascending: false }).limit(1),
+    supabase.from('shopping_receipt_checks').select('checked_at', { count: 'exact' })
+      .order('checked_at', { ascending: false }).limit(1),
+    supabase.from('profiles').select('updated_at')
+      .order('updated_at', { ascending: false }).limit(1),
+  ])
+  if (expenses.error || attachments.error || items.error || checks.error || profiles.error) return null
+  return [
+    `${expenses.count}@${expenses.data[0]?.updated_at ?? ''}`,
+    `${attachments.count}@${attachments.data[0]?.created_at ?? ''}`,
+    `${items.count}@${items.data[0]?.updated_at ?? ''}`,
+    `${checks.count}@${checks.data[0]?.checked_at ?? ''}`,
+    profiles.data[0]?.updated_at ?? '',
+  ].join('|')
 }
 
 // ------------------------------------------------------------

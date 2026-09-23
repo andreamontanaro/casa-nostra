@@ -212,10 +212,22 @@ export async function updateExpense(
     expenseDate,
   })
 
-  redirect('/spese?ok=expense-updated')
+  // Si resta sul dettaglio: revalidatePath qui sopra porta già la pagina
+  // aggiornata nella risposta, e il form chiude la sheet con il suo toast.
+  return { ok: true }
 }
 
-export async function deleteExpense(id: string) {
+/**
+ * Dove tornare dopo l'eliminazione: la schermata da cui si era aperto il
+ * dettaglio (home o storico con i suoi filtri). Solo percorsi interni noti,
+ * per non diventare un open redirect.
+ */
+function deleteRedirect(returnTo: string | undefined) {
+  const target = returnTo === '/' || returnTo === '/spese' || returnTo?.startsWith('/spese?') ? returnTo : '/spese'
+  return `${target}${target.includes('?') ? '&' : '?'}ok=expense-deleted`
+}
+
+export async function deleteExpense(id: string, returnTo?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -257,7 +269,7 @@ export async function deleteExpense(id: string) {
     })
   }
 
-  redirect('/spese?ok=expense-deleted')
+  redirect(deleteRedirect(returnTo))
 }
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>

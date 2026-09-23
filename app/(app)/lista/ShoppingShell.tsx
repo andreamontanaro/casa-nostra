@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useOptimistic, useRef, useState, useTransition } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Plus, ScanLine, ShoppingBasket } from 'lucide-react'
 import { ItemFormSheet } from '@/components/shopping/ItemFormSheet'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { Dialog } from '@/components/ui/Dialog'
+import { Spinner } from '@/components/ui/Spinner'
 import {
   SHOPPING_CATEGORY_ICON,
   SHOPPING_CATEGORY_LABELS,
@@ -50,7 +51,9 @@ export function ShoppingShell({
   missingSinceCheck,
 }: ShoppingShellProps) {
   const [quickName, setQuickName] = useState('')
-  const [quickPending, setQuickPending] = useState(false)
+  // Aggiunte rapide in volo: il campo resta libero per scrivere la prossima.
+  const [quickPending, setQuickPending] = useState(0)
+  const quickInput = useRef<HTMLInputElement>(null)
   const [deleteTarget, setDeleteTarget] = useState<ShoppingItem | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ShoppingItem | null>(null)
@@ -59,20 +62,19 @@ export function ShoppingShell({
   const [formKey, setFormKey] = useState(0)
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
-  const [hiddenBaseKey, setHiddenBaseKey] = useState('')
+  // Spunta ottimistica: la riga sparisce al tocco e, finché la Server Action
+  // non torna con la lista aggiornata, resta nascosta qui. Se la spunta
+  // fallisce, alla fine della transizione la riga ricompare da sola.
+  const [, startToggle] = useTransition()
+  const [checkedIds, markChecked] = useOptimistic<ReadonlySet<string>, string>(
+    new Set<string>(),
+    (current, id) => new Set(current).add(id),
+  )
   const [categoryFilter, setCategoryFilter] = useState<string>('tutte')
   const [confirmClear, setConfirmClear] = useState(false)
   const [clearing, setClearing] = useState(false)
 
-  // Gli id nascosti in ottimistica valgono solo finché i dati del server sono
-  // quelli su cui la scelta è stata fatta: appena la rotta si rivalida, la
-  // verità torna a essere la lista che arriva dal server (stesso meccanismo
-  // di altre liste interattive).
-  const itemsKey = openItems.map((i) => i.id).join('|')
-  const visibleHidden = hiddenBaseKey === itemsKey ? hiddenIds : new Set<string>()
-
-  const visibleItems = openItems.filter((i) => !visibleHidden.has(i.id))
+  const visibleItems = openItems.filter((i) => !checkedIds.has(i.id))
   const missingIds = new Set(missingSinceCheck.map((m) => m.id).filter(Boolean) as string[])
 
   const presentCategories = SHOPPING_CATEGORY_ORDER.filter((c) =>
@@ -96,35 +98,23 @@ export function ShoppingShell({
     })
   }
 
-  async function handleToggle(item: ShoppingItem) {
-    markPending(item.id, true)
-    const result = await markBoughtAction(item.id).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
-    markPending(item.id, false)
-
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
-
-    setHiddenBaseKey(itemsKey)
-    setHiddenIds((prev) => new Set(prev).add(item.id))
-
-    toast.success(`"${item.name}" comprato.`, {
-      action: {
-        label: 'Annulla',
-        onClick: async () => {
-          const undo = await restoreItemAction(item.id).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
-          if (undo.error) {
-            toast.error(undo.error)
-            return
-          }
-          setHiddenIds((prev) => {
-            const next = new Set(prev)
-            next.delete(item.id)
-            return next
-          })
+  function handleToggle(item: ShoppingItem) {
+    startToggle(async () => {
+      markChecked(item.id)
+      const result = await markBoughtAction(item.id).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(`"${item.name}" comprato.`, {
+        action: {
+          label: 'Annulla',
+          onClick: async () => {
+            const undo = await restoreItemAction(item.id).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.' }))
+            if (undo.error) toast.error(undo.error)
+          },
         },
-      },
+      })
     })
   }
 
@@ -163,13 +153,19 @@ export function ShoppingShell({
   async function quickAdd(event: React.FormEvent) {
     event.preventDefault()
     const text = quickName.trim()
-    if (!text || quickPending) return
-    setQuickPending(true)
+    if (!text) return
+    // Il campo si svuota subito e non si disabilita mai: disabilitarlo toglie
+    // il fuoco, e sul telefono la tastiera si chiudeva a ogni prodotto.
+    setQuickName('')
+    quickInput.current?.focus()
+    setQuickPending((n) => n + 1)
     try {
-      const result = await addQuickItemAction(text).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.', reading: undefined }))
-      if (result.error) toast.error(result.error)
-      else {
-        setQuickName('')
+      const result = await addQuickItemAction(text).catch(() => ({ error: 'Connessione interrotta. Riprova tra un momento.', duplicate: false, reading: undefined }))
+      if (result.error) {
+        toast.error(result.error)
+        // Il testo torna nel campo, se nel frattempo non se ne è scritto un altro.
+        if (!result.duplicate) setQuickName((current) => current || text)
+      } else {
         const reading = result.reading
         toast.success(
           reading
@@ -177,8 +173,7 @@ export function ShoppingShell({
             : 'Aggiunto alla lista.',
         )
       }
-    } catch { toast.error('Non riesco ad aggiungere il prodotto. Il nome è conservato.') }
-    finally { setQuickPending(false) }
+    } finally { setQuickPending((n) => n - 1) }
   }
 
   function openNew() {
@@ -204,10 +199,12 @@ export function ShoppingShell({
         </span>
       </header>
 
-      <form onSubmit={quickAdd} className="flex items-center gap-2 rounded-3xl border border-border bg-surface p-2">
-        <input aria-label="Prodotto da aggiungere" placeholder="Cosa serve? Es. x2 mele" value={quickName} onChange={(e) => setQuickName(e.target.value)} disabled={quickPending}
-          className="min-h-12 min-w-0 flex-1 rounded-2xl bg-transparent px-3 text-base" enterKeyHint="done" />
-        <Button type="submit" aria-label="Aggiungi prodotto" disabled={!quickName.trim()} loading={quickPending} className="shrink-0 px-4"><Plus className="size-5" aria-hidden /></Button>
+      <form onSubmit={quickAdd} aria-busy={quickPending > 0 || undefined} className="flex items-center gap-2 rounded-3xl border border-border bg-surface p-2">
+        <input ref={quickInput} aria-label="Prodotto da aggiungere" placeholder="Cosa serve? Es. x2 mele" value={quickName} onChange={(e) => setQuickName(e.target.value)}
+          className="min-h-12 min-w-0 flex-1 rounded-2xl bg-transparent px-3 text-base" enterKeyHint="send" />
+        <Button type="submit" aria-label="Aggiungi prodotto" disabled={!quickName.trim()} className="shrink-0 px-4">
+          {quickPending > 0 ? <Spinner size="sm" /> : <Plus className="size-5" aria-hidden />}
+        </Button>
       </form>
 
       {missingSinceCheck.length > 0 && lastCheck && (

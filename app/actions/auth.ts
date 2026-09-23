@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 
 export type LoginState = {
   error?: string
+  /** Rimandata al form: dopo un errore React 19 lo svuota, e l'email va ridigitata. */
+  email?: string
 }
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -12,14 +14,14 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const password = formData.get('password') as string
 
   if (!email || !password) {
-    return { error: 'Inserisci email e password.' }
+    return { error: 'Inserisci email e password.', email }
   }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    return { error: 'Credenziali non valide. Riprova.' }
+    return { error: 'Credenziali non valide. Riprova.', email }
   }
 
   redirect('/')
