@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { SETTLEMENT_NOTES_MAX } from '@/lib/balance'
 import { isTelegramConfigured } from '@/lib/telegram/config'
 import { notifyTelegram, settlementRegisteredMessage } from '@/lib/telegram/notify'
 
@@ -10,10 +11,15 @@ export async function registerSettlement(
   notes?: string,
   expenseIds?: string[],
 ) {
+  const cleanNotes = notes?.trim() || undefined
+  if (cleanNotes && cleanNotes.length > SETTLEMENT_NOTES_MAX) {
+    return { error: `La nota può avere al massimo ${SETTLEMENT_NOTES_MAX} caratteri.` }
+  }
+
   const supabase = await createClient()
 
   const { data: settlementId, error } = await supabase.rpc('register_settlement', {
-    p_notes: notes,
+    p_notes: cleanNotes,
     p_expense_ids: expenseIds,
   })
 
@@ -71,6 +77,7 @@ async function notifySettlement(
         fromName: settlement.from_user?.display_name ?? '?',
         toName: settlement.to_user?.display_name ?? '?',
         expenseCount: countRes.count ?? 0,
+        notes: settlement.notes,
         balance: balanceRes.data ?? [],
       }),
     )

@@ -7,7 +7,7 @@ const TITLE_WIDTHS = ['w-2/3', 'w-1/2', 'w-3/4', 'w-5/12', 'w-7/12']
 /**
  * Segnaposto di `ExpenseRow`. Ricalca la geometria della riga vera — icona
  * categoria da 40px, descrizione e sottotitolo, colonna a destra con importo,
- * data e stato — così la card non cambia altezza quando arrivano le spese.
+ * data e stato o effetto sul saldo — così la card non cambia altezza quando arrivano le spese.
  */
 export function ExpenseRowSkeleton({ index = 0 }: { index?: number }) {
   return (
@@ -19,7 +19,8 @@ export function ExpenseRowSkeleton({ index = 0 }: { index?: number }) {
         <div className="flex shrink-0 flex-col items-end gap-1">
           <Skeleton className="h-4 w-16 rounded-md" />
           <Skeleton className="h-3 w-10 rounded-md" />
-          <Skeleton className="h-4 w-14 rounded-full" />
+          {/* Stato o effetto sul saldo («+7,20 € per te»). */}
+          <Skeleton className="h-4 w-24 rounded-full" />
         </div>
       }
     />

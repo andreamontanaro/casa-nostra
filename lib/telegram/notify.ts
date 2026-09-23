@@ -101,6 +101,7 @@ export interface SettlementNotification {
   fromName: string
   toName: string
   expenseCount: number
+  notes?: string | null
   balance: BalanceRow[]
 }
 
@@ -111,6 +112,7 @@ export function settlementRegisteredMessage(data: SettlementNotification): strin
     '',
     `<b>${formatEur(data.amount)}</b> — ${escapeHtml(data.fromName)} → ${escapeHtml(data.toName)}`,
     `<i>${data.expenseCount} ${data.expenseCount === 1 ? 'spesa chiusa' : 'spese chiuse'}</i>`,
+    ...(data.notes ? [`📝 ${escapeHtml(data.notes)}`] : []),
     '',
     balanceLine(data.balance),
   ]

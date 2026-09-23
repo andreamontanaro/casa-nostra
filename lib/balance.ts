@@ -20,6 +20,9 @@ export interface BalanceSummary {
   text: string
 }
 
+/** Lunghezza massima della nota di un conguaglio: una riga, non un diario. */
+export const SETTLEMENT_NOTES_MAX = 200
+
 // Sotto il mezzo centesimo i conti si considerano in pari: la vista arrotonda a
 // due decimali, ma la soglia protegge da residui di arrotondamento.
 const EPSILON = 0.005

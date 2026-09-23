@@ -58,6 +58,7 @@ La struttura del progetto segue la convenzione standard di Next.js:
   * `api/` → `app/api/`: Endpoint API serverless (l'assistente IA e il webhook del bot Telegram).
   * `landing/` → `app/landing/`: Landing page pubblica per utenti non autenticati.
   * `login/` → `app/login/`: Pagina di login.
+  * `condividi/` → `app/condividi/route.ts`: Arrivo di riserva della condivisione di uno scontrino verso l'app installata (vedi "Rotte di Servizio").
 * `components/` → `components/`: Componenti React riutilizzabili.
   * `ui/` → `components/ui/`: Elementi UI di base (Card, Button, Dialog, ecc.).
 * `lib/` → `lib/`: Utility di formattazione, funzioni di calcolo e client Supabase.
@@ -67,6 +68,8 @@ La struttura del progetto segue la convenzione standard di Next.js:
   * `shopping/` → `lib/shopping/`: Logica di dominio della lista della spesa (aggiunta, spunta, controllo scontrino con Gemini) e costanti del bucket degli scontrini. È condivisa da Server Action, assistente e webhook Telegram: accetta sempre un client Supabase esplicito.
   * `telegram/` → `lib/telegram/`: Configurazione, client dell'API Bot, formattazione dei messaggi, memoria conversazionale e testi delle notifiche.
 * `types/` → `types/`: Tipi TypeScript generati dal DB e costanti dell'applicazione.
+* `public/` → `public/`: Manifest dell'app installata (`manifest.webmanifest`), icone SVG e PNG, e `sw.js`, il service worker che riceve gli scontrini condivisi da altre app (vedi `06-configuration.md`).
+* `scripts/` → `scripts/`: Script da riga di comando: configurazione del bot Telegram e generazione delle icone PNG (`generate-icons.mjs`).
 * `docs/` → `docs/`: Documentazione di progetto (schema SQL, log delle modifiche, requisiti).
 
 ---
@@ -79,6 +82,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/api/assistant` → `app/api/assistant/route.ts`: Chat con l'assistente IA (richiede sessione).
 * `/api/sync` → `app/api/sync/route.ts`: Impronta dei dati condivisi per l'aggiornamento automatico delle pagine (richiede sessione, vedi `04-api-surface.md`).
 * `/api/telegram/webhook` → `app/api/telegram/webhook/route.ts`: Riceve gli update del bot Telegram; si autentica con il secret condiviso, non con la sessione.
+* `/condividi` → `app/condividi/route.ts`: `action` del `share_target` del manifest. Di norma il POST con la foto non arriva mai qui: lo intercetta il service worker `public/sw.js` (scope `/condividi`), che parcheggia il file nella Cache Storage e manda a `/lista?condiviso=1`. La Route Handler risponde solo quando il worker non è ancora attivo, rimandando alla lista con un messaggio (`?condiviso=non-pronto`).
 
 ### Rotte Pubbliche
 * `/landing` → `app/landing/page.tsx`: Vetrina del servizio ed esposizione delle feature.
@@ -86,8 +90,8 @@ L'applicazione definisce rotte pubbliche e rotte private.
 
 ### Rotte Private
 * `/` → `app/(app)/page.tsx`: Dashboard principale con saldo, ultime 5 spese e le faccende più urgenti (`HomeChoreCard`).
-* `/spese` → `app/(app)/spese/page.tsx`: Storico completo delle spese con filtri avanzati.
-* `/spese/[id]` → `app/(app)/spese/[id]/page.tsx`: Dettaglio e modifica/eliminazione di una singola spesa.
+* `/spese` → `app/(app)/spese/page.tsx`: Storico completo delle spese con filtri avanzati. I conguagli compaiono fra le spese, al loro posto nel tempo; `?conguaglio=<id>` mostra solo le spese chiuse da un conguaglio.
+* `/spese/[id]` → `app/(app)/spese/[id]/page.tsx`: Dettaglio e modifica/eliminazione di una singola spesa, con chi l'ha inserita, quando è stata modificata e, se saldata, il conguaglio che l'ha chiusa.
 * `/lista` → `app/(app)/lista/page.tsx`: Lista della spesa — cosa manca in casa, raggruppato per tipo di prodotto, con controllo dello scontrino → `app/(app)/lista/ShoppingShell.tsx`.
 * `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio. Raggiungibile dal menu dell'header e dalla CTA "Conguaglia" in home, non dalla bottom nav (è l'azione più rara: vedi `08-patterns.md`).
 * `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu dell'header (non dalla bottom nav: vedi `08-patterns.md`).
@@ -105,6 +109,8 @@ La funzione `proxy(request)` intercetta tutte le richieste HTTP corrispondenti a
 2. **Controllo Autenticazione & Redirect**:
    * Se l'utente **non è autenticato** e richiede una risorsa privata (qualsiasi rotta tranne `/landing` e `/login`), viene reindirizzato a `/landing` → `proxy.ts#L33`.
    * Se l'utente **è autenticato** e tenta di accedere a `/landing` o `/login`, viene reindirizzato alla home `/` → `proxy.ts#L40`.
+
+Il matcher esclude i file statici che il browser chiede anche senza sessione: asset di Next, immagini, `manifest.webmanifest` e `sw.js` (lo script del service worker; un redirect lo renderebbe non registrabile).
 
 ---
 

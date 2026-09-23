@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, ChevronRight } from 'lucide-react'
 import {
   getExpenseShares,
   getExpenseById,
@@ -15,7 +15,7 @@ import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { ListRow } from '@/components/ui/ListRow'
-import { formatDate, formatEur, CATEGORY_LABELS, SPLIT_LABELS } from '@/lib/fmt'
+import { formatDate, formatDateTime, formatEur, CATEGORY_LABELS, SPLIT_LABELS } from '@/lib/fmt'
 
 function splitLabel(expense: { split_rule: string; custom_other_share: number | null }) {
   if (expense.split_rule === 'custom' && expense.custom_other_share != null) {
@@ -47,6 +47,13 @@ export default async function SpesaDetailPage({ params, searchParams }: Props) {
 
   const paidByProfile = profiles.find((p) => p.id === expense.paid_by)
   const isSettled = expense.settlement_id !== null
+  const { settlement } = expense
+  // `updated_at` si muove anche quando un conguaglio chiude la spesa: la RPC
+  // gira in una transazione sola, quindi in quel caso coincide al microsecondo
+  // con `settled_at` e non è una modifica di nessuno.
+  const updatedAt = Date.parse(expense.updated_at)
+  const edited = updatedAt !== Date.parse(expense.created_at)
+    && (!settlement || updatedAt !== Date.parse(settlement.settled_at))
 
   return (
     <div className="flex flex-col pb-4">
@@ -132,6 +139,26 @@ export default async function SpesaDetailPage({ params, searchParams }: Props) {
       <section className="px-4 pb-4"><h2 className="mb-3 font-semibold">Come la dividete</h2><Card className="grid grid-cols-2 gap-4 p-5">
         {shares.map((share) => <div key={share.user_id}><p className="text-sm text-muted">{profiles.find((p) => p.id === share.user_id)?.display_name ?? '—'}</p><p className="mt-1 text-xl font-semibold tabular-nums">{formatEur(share.user_share ?? 0)}</p></div>)}
       </Card></section>
+
+      {settlement && (
+        <section className="px-4 pb-4">
+          <h2 className="mb-3 font-semibold">Conguaglio</h2>
+          <Card className="overflow-hidden p-0">
+            <ListRow
+              href={`/spese?conguaglio=${settlement.id}`}
+              leading={<span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-muted text-accent-soft"><ArrowLeftRight className="size-5" aria-hidden /></span>}
+              title={`Saldata il ${formatDate(settlement.settled_at)}`}
+              subtitle={`${settlement.from_user?.display_name ?? '—'} ha versato ${formatEur(settlement.amount)} a ${settlement.to_user?.display_name ?? '—'} · vedi le spese chiuse`}
+              trailing={<ChevronRight className="size-5 text-muted" aria-hidden />}
+            />
+          </Card>
+        </section>
+      )}
+
+      <p className="px-5 pb-1 text-xs leading-relaxed text-muted">
+        Aggiunta{expense.created_by_profile ? ` da ${expense.created_by_profile.display_name}` : ''} il {formatDateTime(expense.created_at)}
+        {edited && <> · modificata il {formatDateTime(expense.updated_at)}</>}
+      </p>
 
       <EditExpenseSheet
         expense={expense}

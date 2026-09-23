@@ -22,6 +22,11 @@ const DATE_SHORT = new Intl.DateTimeFormat('it-IT', {
   month: 'short',
   timeZone: 'Europe/Rome',
 })
+const TIME = new Intl.DateTimeFormat('it-IT', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Rome',
+})
 // La localizzazione svedese scrive le date come YYYY-MM-DD.
 const ROME_DATE_KEY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Rome' })
 
@@ -31,6 +36,12 @@ export function formatEur(amount: number) {
 
 export function formatDate(dateStr: string) {
   return DATE_LONG.format(new Date(dateStr))
+}
+
+/** «20 settembre 2026 alle 14:32», nel fuso orario della casa. */
+export function formatDateTime(iso: string) {
+  const date = new Date(iso)
+  return `${DATE_LONG.format(date)} alle ${TIME.format(date)}`
 }
 
 export function formatDateShort(dateStr: string) {

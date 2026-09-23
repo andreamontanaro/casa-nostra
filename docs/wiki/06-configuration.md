@@ -65,6 +65,14 @@ Limiti del controllo scontrino → `lib/shopping/receipts.ts`:
 * `ACCEPTED_RECEIPT_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']`: WEBP in più rispetto agli allegati, perché è quello che producono alcune fotocamere Android.
 * **Pathing**: `YYYY/MM/{uuid}.ext` — raggruppare per mese tiene navigabile il bucket dal pannello Supabase senza interrogare il database.
 
+### App installata (PWA)
+Il manifest è un file statico → `public/manifest.webmanifest`:
+* **Colori**: `background_color` e `theme_color` sono il crema del tema chiaro (`#f8f5ef`, come `THEME_COLOR_LIGHT` in `lib/theme.ts`). La barra di sistema del tema scuro la gestisce il `themeColor` del viewport in `app/layout.tsx`.
+* **Icone**: SVG più PNG 192/512, una PNG `maskable` a tutta pagina con il disegno nella zona sicura, e `apple-touch-icon.png` (180 px, senza trasparenza: iOS non usa un apple-touch-icon SVG e riempie di nero gli angoli trasparenti). Le PNG e `app/favicon.ico` (PNG a 16, 32 e 48 px in un contenitore ICO) si rigenerano da `public/icon.svg` con `node scripts/generate-icons.mjs` (usa `sharp`, già presente come dipendenza di Next): l'SVG è l'unica sorgente, le altre icone non vanno ritoccate a mano.
+* **Scorciatoie** (`shortcuts`, pressione lunga sull'icona su Android): "Nuova spesa" (`/spese/nuova`) e "Lista della spesa" (`/lista`), con icone 96×96.
+* **Condivisione** (`share_target`, Android): l'app compare fra le destinazioni di "Condividi" per foto e PDF (`image/jpeg`, `image/png`, `image/webp`, `application/pdf`, gli stessi del controllo scontrino). Il POST va a `/condividi`, dove lo intercetta `public/sw.js`.
+* **Service worker** → `public/sw.js`, registrato da `components/ShareTargetWorker.tsx` con **scope `/condividi`**: non controlla nessuna pagina dell'app, quindi non fa cache, non offre l'offline e non rallenta le altre navigazioni. `next.config.ts` lo serve con `Content-Type` JavaScript e `Cache-Control: no-cache`; `proxy.ts` lo esclude dal matcher. I nomi della cache (`casa-nostra-condivisi`) e della chiave del file sono duplicati in `lib/share-target.ts` e vanno tenuti uguali.
+
 ### Assistente IA Chat (`/api/assistant`)
 Parametri di esecuzione dell'assistente, condivisi tra la chat nell'app e il bot Telegram → `lib/assistant/run.ts`, `app/api/assistant/route.ts`:
 * `MAX_TURNS = 5` → `lib/assistant/run.ts`: Numero massimo di turni interni di chiamata a funzione che l'assistente IA può risolvere in una singola richiesta HTTP prima di forzare l'uscita (previene loop infiniti di tool-calling).

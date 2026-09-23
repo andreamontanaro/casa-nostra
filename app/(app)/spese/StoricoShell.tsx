@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { SpeseFiltri } from './SpeseFiltri'
 import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
 import type { Tables } from '@/types/database'
-import type { ExpenseSuggestion } from '@/lib/queries'
+import type { ExpenseSuggestion, SettlementWithNames } from '@/lib/queries'
 
 type Expense = Tables<'expenses'> & {
   paid_by_profile: { display_name: string } | null
@@ -13,6 +13,9 @@ type Profile = Tables<'profiles'>
 
 interface StoricoShellProps {
   expenses: Expense[]
+  settlements: SettlementWithNames[]
+  /** Effetto sul saldo di chi guarda, per id delle spese aperte. */
+  contributions: Record<string, number>
   profiles: Profile[]
   currentUserId: string
   suggestions: ExpenseSuggestion[]
@@ -20,6 +23,8 @@ interface StoricoShellProps {
 
 export function StoricoShell({
   expenses,
+  settlements,
+  contributions,
   profiles,
   currentUserId,
   suggestions,
@@ -29,7 +34,7 @@ export function StoricoShell({
 
   return (
     <>
-      <SpeseFiltri expenses={expenses} onAddExpense={() => setSheetOpen(true)} />
+      <SpeseFiltri expenses={expenses} settlements={settlements} contributions={contributions} onAddExpense={() => setSheetOpen(true)} />
       <NuovaSpesaFab
         profiles={profiles}
         currentUserId={currentUserId}

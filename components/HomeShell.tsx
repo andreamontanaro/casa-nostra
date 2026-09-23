@@ -38,6 +38,9 @@ export function HomeShell({
 }: HomeShellProps) {
   const [formOpen, setFormOpen] = useState(false)
   const combined = recentExpenses.slice(0, 5)
+  // Le ultime spese sono quasi sempre aperte: il loro effetto sul saldo è
+  // già stato calcolato per l'anello, basta ritrovarlo per id.
+  const contributions = new Map(openExpenses.map((e) => [e.id, e.my_contribution]))
   return (
     <div className="px-4 pt-4 pb-24 lg:pb-6">
       <header className="mb-4 px-1 reveal-up">
@@ -85,6 +88,7 @@ export function HomeShell({
                       expense={expense}
                       dateLabel={formatDateShort(expense.expense_date)}
                       returnHref="/"
+                      contribution={contributions.get(expense.id)}
                     />
 
                   </motion.div>

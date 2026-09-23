@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { FlashToast } from '@/components/FlashToast'
 import { PageTransition } from '@/components/PageTransition'
 import { PullToRefresh } from '@/components/PullToRefresh'
+import { ShareTargetWorker } from '@/components/ShareTargetWorker'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       <BottomNav />
       <AssistantChat />
+      <ShareTargetWorker />
       <Suspense fallback={null}>
         <FlashToast />
       </Suspense>

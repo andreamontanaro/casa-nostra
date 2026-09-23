@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Camera, Check, FileUp, ShoppingBasket } from 'lucide-react'
@@ -25,6 +25,11 @@ type CheckResult = Awaited<ReturnType<typeof checkReceiptAction>>
 interface ReceiptCheckSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /**
+   * Scontrino arrivato da una condivisione (un'altra app → l'app installata):
+   * si controlla appena la sheet è aperta, senza passare dai pulsanti.
+   */
+  sharedFile?: File | null
 }
 
 /**
@@ -34,7 +39,7 @@ interface ReceiptCheckSheetProps {
  * quasi sempre (stesso motivo per cui gli allegati delle spese si caricano
  * lato client).
  */
-export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps) {
+export function ReceiptCheckSheet({ open, onOpenChange, sharedFile }: ReceiptCheckSheetProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const cameraRef = useRef<HTMLInputElement | null>(null)
@@ -51,11 +56,13 @@ export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps
     onOpenChange(next)
   }
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = '' // permette di riprovare con lo stesso file
-    if (!file) return
+    if (file) void checkFile(file)
+  }
 
+  async function checkFile(file: File) {
     const invalid = validateReceiptFile(file)
     if (invalid) {
       toast.error(invalid)
@@ -97,6 +104,18 @@ export function ReceiptCheckSheet({ open, onOpenChange }: ReceiptCheckSheetProps
     } catch { toast.error('Il controllo non è stato completato. Verifica la connessione e riprova.') }
     finally { setPhase('idle') }
   }
+
+  // Ogni file condiviso si controlla una volta sola, anche se la sheet si
+  // riapre o l'effetto riparte.
+  const checkedShare = useRef<File | null>(null)
+  const checkShared = useEffectEvent((file: File) => {
+    if (checkedShare.current === file) return
+    checkedShare.current = file
+    void checkFile(file)
+  })
+  useEffect(() => {
+    if (open && sharedFile) checkShared(sharedFile)
+  }, [open, sharedFile])
 
   return (
     <Sheet

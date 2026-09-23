@@ -33,7 +33,9 @@ export const metadata: Metadata = {
   manifest: '/manifest.webmanifest',
   icons: {
     icon: '/icon.svg',
-    apple: '/icon.svg',
+    // iOS non usa un apple-touch-icon SVG: serve un PNG pieno, senza
+    // trasparenza (generato da scripts/generate-icons.mjs).
+    apple: { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
   },
 }
 

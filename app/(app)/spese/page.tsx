@@ -1,17 +1,22 @@
 import {
   getAllExpenses,
+  getAllSettlements,
   getCurrentUser,
+  getOpenShares,
   getProfiles,
   getFrequentDescriptions,
 } from '@/lib/queries'
+import { contributionsById } from '@/lib/spending'
 import { StoricoShell } from './StoricoShell'
 
 export default async function SpesePage() {
-  const [expenses, user, profiles, suggestions] = await Promise.all([
+  const [expenses, user, profiles, suggestions, openShares, settlements] = await Promise.all([
     getAllExpenses(),
     getCurrentUser(),
     getProfiles(),
     getFrequentDescriptions(5),
+    getOpenShares(),
+    getAllSettlements(),
   ])
 
   if (!user) return null
@@ -22,6 +27,8 @@ export default async function SpesePage() {
 
       <StoricoShell
         expenses={expenses}
+        settlements={settlements}
+        contributions={contributionsById(expenses, openShares, user.id)}
         profiles={profiles}
         currentUserId={user.id}
         suggestions={suggestions}

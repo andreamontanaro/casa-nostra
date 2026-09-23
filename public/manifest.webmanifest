@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Casa Nostra",
   "short_name": "Casa Nostra",
   "description": "Gestione spese condivise tra conviventi",
@@ -6,15 +7,42 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f6f7f9",
-  "theme_color": "#0ea5a4",
+  "background_color": "#f8f5ef",
+  "theme_color": "#f8f5ef",
   "lang": "it",
   "icons": [
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "/icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
-      "purpose": "any maskable"
+      "name": "Nuova spesa",
+      "short_name": "Nuova spesa",
+      "description": "Registra una spesa condivisa",
+      "url": "/spese/nuova",
+      "icons": [{ "src": "/shortcut-nuova-spesa.png", "type": "image/png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Lista della spesa",
+      "short_name": "Lista",
+      "description": "Cosa manca in casa e controllo scontrino",
+      "url": "/lista",
+      "icons": [{ "src": "/shortcut-lista.png", "type": "image/png", "sizes": "96x96" }]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/condividi",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "scontrino",
+          "accept": ["image/jpeg", "image/png", "image/webp", "application/pdf", ".jpg", ".jpeg", ".png", ".webp", ".pdf"]
+        }
+      ]
+    }
+  }
 }
