@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { NAV_PRIMARY, NAV_SECONDARY, activeNavHref } from '@/lib/nav'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { AccentPicker } from '@/components/AccentPicker'
 import { cn } from '@/lib/utils'
 
 export function DesktopNav() {
@@ -21,7 +22,7 @@ export function DesktopNav() {
           </Link>
         ))}
       </nav>
-      <div className="mt-auto"><ThemeToggle /></div>
+      <div className="mt-auto flex flex-col gap-2"><ThemeToggle /><AccentPicker /></div>
     </aside>
   )
 }

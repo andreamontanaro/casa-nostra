@@ -65,7 +65,21 @@ export default function ImpostazioniLoading() {
       </Section>
 
       <Section title="w-20">
-        <SkeletonSegmented segments={3} activeIndex={2} segmentClassName="min-h-12" />
+        <div className="flex flex-col gap-2">
+          <SkeletonSegmented segments={3} activeIndex={2} segmentClassName="min-h-12" />
+          {/* Selettore dell'accento: stessa pista, cinque campioni tondi, la
+              menta (il default) selezionata. */}
+          <div className="grid grid-cols-5 gap-1 rounded-2xl bg-surface-raised p-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className={`flex min-h-12 items-center justify-center rounded-xl ${i === 0 ? 'bg-surface shadow-soft' : ''}`}
+              >
+                <Skeleton className="size-7 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
       </Section>
 
       <Section title="w-20">

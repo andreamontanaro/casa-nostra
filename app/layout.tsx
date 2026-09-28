@@ -4,7 +4,7 @@ import NextTopLoader from 'nextjs-toploader'
 import { Toaster } from '@/lib/toast'
 import { MotionProvider } from '@/components/MotionProvider'
 import { KeyboardInsets } from '@/components/KeyboardInsets'
-import { THEME_COLOR_DARK, THEME_COLOR_LIGHT } from '@/lib/theme'
+import { ACCENTS, ACCENT_STORAGE_KEY, DEFAULT_ACCENT, THEME_COLOR_DARK, THEME_COLOR_LIGHT } from '@/lib/theme'
 import './globals.css'
 
 // Font locali: nessuna richiesta esterna durante build o navigazione.
@@ -53,11 +53,18 @@ export const viewport: Viewport = {
   ],
 }
 
-const themeInitScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`
+// Tema e accento scelti si applicano prima del primo paint, niente lampo di
+// menta chiara. Gli accenti validi vengono da `lib/theme.ts`: un valore
+// sconosciuto in localStorage (accento rimosso) ricade sulla menta.
+const ALT_ACCENTS = JSON.stringify(ACCENTS.map((a) => a.id).filter((id) => id !== DEFAULT_ACCENT))
+const themeInitScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){d.setAttribute('data-theme',t);}var a=localStorage.getItem('${ACCENT_STORAGE_KEY}');if(${ALT_ACCENTS}.indexOf(a)>=0){d.setAttribute('data-accent',a);}}catch(e){}})();`
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="it" className={`h-full ${manrope.variable} ${fraunces.variable}`}>
+    // `suppressHydrationWarning`: data-theme e data-accent li scrive lo script
+    // qui sotto prima dell'idratazione, quindi non sono nell'HTML del server.
+    // Vale solo per gli attributi di <html>, non per i figli.
+    <html lang="it" className={`h-full ${manrope.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

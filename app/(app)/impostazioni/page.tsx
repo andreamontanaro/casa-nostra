@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { AccentPicker } from '@/components/AccentPicker'
 import { isTelegramConfigured } from '@/lib/telegram/config'
 import { ProfileForm } from './ProfileForm'
 import { PasswordForm } from './PasswordForm'
@@ -42,7 +43,10 @@ export default async function ImpostazioniPage() {
       </Section>
 
       <Section title="Aspetto">
-        <ThemeToggle />
+        <div className="flex flex-col gap-2">
+          <ThemeToggle />
+          <AccentPicker />
+        </div>
       </Section>
 
       <Section title="Sessione">

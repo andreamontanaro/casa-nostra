@@ -74,7 +74,7 @@ Alcune linee guida concrete:
 
 **Safe area.** iOS ha notch e home indicator, Android ha la gesture bar. Usa `env(safe-area-inset-*)` per la bottom navigation, il FAB e l'header. In Tailwind: classi come `pb-[env(safe-area-inset-bottom)]`.
 
-**Colori.** Un solo accent (un verde o un blu-teal funzionano bene per un'app di "casa e soldi") e per il resto neutri. Supporto dark mode via `dark:` di Tailwind basato su `prefers-color-scheme`: il documento lo richiede esplicitamente.
+**Colori.** Un solo accent (un verde o un blu-teal funzionano bene per un'app di "casa e soldi") e per il resto neutri. Dal 28 settembre 2026 l'utente può scegliere l'accento tra cinque (menta di base, più Oceano, Lavanda, Lampone, Ambra): ne resta attivo sempre uno solo, e cambia solo la famiglia `--accent*`. Un accento nuovo va aggiunto in `lib/theme.ts` e in `app/globals.css` insieme — lo verifica `tests/theme.test.mjs`. Supporto dark mode via `dark:` di Tailwind basato su `prefers-color-scheme`: il documento lo richiede esplicitamente.
 
 **Componenti.** Ti consiglio di valutare [shadcn/ui](https://ui.shadcn.com) — componenti copia-incolla basati su Radix e Tailwind, accessibili e stilabili. Si sposano bene con il look neutro descritto sopra. Non è un obbligo: Tailwind puro va benissimo. Questa è una raccomandazione mia.
 

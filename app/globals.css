@@ -92,6 +92,79 @@
 
 }
 
+/* ─── Accenti alternativi ───────────────────────────────────────
+   Scelti dall'utente (`AccentPicker`, elenco in `lib/theme.ts`) e applicati
+   con `data-accent` su <html>; senza attributo resta la menta di :root.
+   Cambiano solo la famiglia primary — primario, testo sul primario,
+   contenitore, testo sul contenitore — e il bagliore del FAB: superfici
+   crema, testi, bordi e `--positive` (il verde del "a tuo favore", che è un
+   significato e non un tema) restano quelli di sempre.
+
+   Ogni blocco ridefinisce sia i valori chiari sia le sorgenti --dk-*, così i
+   due blocchi dark sotto continuano a funzionare senza sapere nulla degli
+   accenti. `:where()` tiene la specificità a quella di :root: il blocco vince
+   su :root perché viene dopo, e perde sempre contro le riassegnazioni dark,
+   più specifiche, che quindi possono stare in qualunque punto.
+
+   Contrasti (WCAG): primario su crema ≥ 5,4:1, testo sul primario ≥ 5,8:1,
+   testo sul contenitore ≥ 8:1; in dark primario sul fondo ≥ 9,5:1. */
+
+:root:where([data-accent="oceano"]) {
+  --accent: #25618f;
+  --accent-foreground: #fffdf8;
+  --accent-muted: #dbe8f3;
+  --accent-soft: #173f60;
+  --shadow-fab: 0 4px 12px rgb(37 97 143 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+
+  --dk-accent: #9fc7ec;
+  --dk-accent-foreground: #11304b;
+  --dk-accent-muted: #263f58;
+  --dk-accent-soft: #d3e6f8;
+  --dk-shadow-fab: 0 4px 12px rgb(159 199 236 / 0.25), 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+:root:where([data-accent="lavanda"]) {
+  --accent: #68509a;
+  --accent-foreground: #fffdf8;
+  --accent-muted: #e9e2f4;
+  --accent-soft: #44306d;
+  --shadow-fab: 0 4px 12px rgb(104 80 154 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+
+  --dk-accent: #c9b6ef;
+  --dk-accent-foreground: #2f2152;
+  --dk-accent-muted: #3d3558;
+  --dk-accent-soft: #e7defa;
+  --dk-shadow-fab: 0 4px 12px rgb(201 182 239 / 0.25), 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+:root:where([data-accent="lampone"]) {
+  --accent: #a3345d;
+  --accent-foreground: #fffdf8;
+  --accent-muted: #f7dfe6;
+  --accent-soft: #6e1c3b;
+  --shadow-fab: 0 4px 12px rgb(163 52 93 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+
+  --dk-accent: #f3aec5;
+  --dk-accent-foreground: #4e1229;
+  --dk-accent-muted: #553045;
+  --dk-accent-soft: #fcd9e5;
+  --dk-shadow-fab: 0 4px 12px rgb(243 174 197 / 0.25), 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+:root:where([data-accent="ambra"]) {
+  --accent: #8a5a00;
+  --accent-foreground: #fffdf8;
+  --accent-muted: #f5e6c8;
+  --accent-soft: #5a3a00;
+  --shadow-fab: 0 4px 12px rgb(138 90 0 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+
+  --dk-accent: #eec36a;
+  --dk-accent-foreground: #3d2900;
+  --dk-accent-muted: #4a3c1e;
+  --dk-accent-soft: #fae3b0;
+  --dk-shadow-fab: 0 4px 12px rgb(238 195 106 / 0.25), 0 1px 2px rgb(0 0 0 / 0.4);
+}
+
 /* Riassegnazioni dark: media query (sistema dark, nessun override esplicito)
    e override utente data-theme="dark". Entrambi puntano ai --dk-* di :root. */
 @media (prefers-color-scheme: dark) {
@@ -269,6 +342,22 @@ body {
   backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   border-color: var(--glass-border);
+}
+
+/* Campioni del selettore d'accento: ogni bottone porta i due colori del suo
+   accento (--swatch e --swatch-dk) e qui si sceglie quello del tema attivo,
+   con la stessa doppia regola dei token — così il campione è giusto dal primo
+   fotogramma, anche col tema forzato, senza aspettare l'idratazione. */
+.accent-swatch {
+  background: var(--swatch);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .accent-swatch {
+    background: var(--swatch-dk);
+  }
+}
+:root[data-theme="dark"] .accent-swatch {
+  background: var(--swatch-dk);
 }
 
 /* Scrollbar nascosta (chip filtri) */

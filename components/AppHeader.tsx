@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Menu, ChevronRight, House, Sparkles } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { AccentPicker } from '@/components/AccentPicker'
 import {
   NAV_PRIMARY,
   NAV_SECONDARY,
@@ -88,6 +89,7 @@ export function AppHeader() {
           <div className="flex flex-col gap-2 px-1 pb-1">
             <span className="text-label font-medium text-muted">Tema</span>
             <ThemeToggle />
+            <AccentPicker />
           </div>
         </nav>
       </Sheet>
