@@ -4,7 +4,8 @@ import {
   getChoreBalance,
   getChoreEntriesSince,
   getCurrentUser,
-  getFrequentChoreNames,
+  getCustomChorePresets,
+  getRecentChoreNames,
 } from '@/lib/queries'
 import { FaccendeShell } from './FaccendeShell'
 
@@ -13,11 +14,12 @@ const HISTORY_DAYS = 7
 
 export default async function FaccendePage() {
   const today = todayISO()
-  const [user, balances, entries, suggestions] = await Promise.all([
+  const [user, balances, entries, suggestions, customPresets] = await Promise.all([
     getCurrentUser(),
     getChoreBalance(),
     getChoreEntriesSince(shiftDay(today, -HISTORY_DAYS)),
-    getFrequentChoreNames(),
+    getRecentChoreNames(),
+    getCustomChorePresets(),
   ])
 
   return (
@@ -27,6 +29,7 @@ export default async function FaccendePage() {
       balances={balances}
       entries={entries}
       suggestions={suggestions}
+      customPresets={customPresets}
     />
   )
 }

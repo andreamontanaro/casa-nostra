@@ -1049,6 +1049,78 @@ CREATE POLICY "chore_entries_delete_own"
 REVOKE ALL ON FUNCTION public.chore_entries_check_bottle() FROM public, anon;
 
 
+-- ------------------------------------------------------------
+-- Azioni create da voi (docs/migrations/2026-09-30_faccende_azioni.sql)
+-- ------------------------------------------------------------
+-- Accanto alle azioni predefinite nel codice (lib/chores/presets.ts).
+-- Solo una scorciatoia per il nome: eliminarle non tocca chore_entries.
+
+CREATE TABLE public.chore_presets (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 40),
+  -- Gli ambiti di lib/chores/presets.ts (CHORE_PRESET_GROUPS): la
+  -- corrispondenza la controlla tests/chores.test.mjs.
+  group_id    text NOT NULL CHECK (group_id IN (
+                'cucina', 'pulizie', 'bagno', 'bucato', 'rifiuti', 'spesa', 'manutenzione'
+              )),
+  created_by  uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.chore_presets IS
+  'Azioni delle faccende aggiunte dai due utenti, accanto a quelle predefinite nel codice. Solo una scorciatoia per il nome: eliminarle non tocca chore_entries.';
+
+-- "Pulisco la cappa" e " pulisco la cappa" sono la stessa azione.
+CREATE UNIQUE INDEX chore_presets_unique_name
+  ON public.chore_presets (lower(trim(name)));
+
+-- Come la lista della spesa: le azioni sono di casa, entrambi le
+-- aggiungono e le tolgono.
+ALTER TABLE public.chore_presets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "chore_presets_select_authorized"
+  ON public.chore_presets FOR SELECT
+  TO authenticated
+  USING (public.is_authorized_user());
+
+CREATE POLICY "chore_presets_insert_authorized"
+  ON public.chore_presets FOR INSERT
+  TO authenticated
+  WITH CHECK (public.is_authorized_user() AND created_by = auth.uid());
+
+CREATE POLICY "chore_presets_delete_authorized"
+  ON public.chore_presets FOR DELETE
+  TO authenticated
+  USING (public.is_authorized_user());
+
+
+-- ------------------------------------------------------------
+-- Nomi tolti dai "Recenti" (docs/migrations/2026-09-30_faccende_recenti.sql)
+-- ------------------------------------------------------------
+-- Nasconde un nome dai suggerimenti finche' non viene segnato di
+-- nuovo. Non tocca chore_entries: bottiglie e arretrato restano.
+
+CREATE TABLE public.chore_recent_dismissals (
+  -- lower(trim(name)) della faccenda: "Lavo i piatti" e "lavo i piatti"
+  -- sono lo stesso recente.
+  name_key      text PRIMARY KEY CHECK (length(name_key) BETWEEN 1 AND 40),
+  dismissed_by  uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  dismissed_at  timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.chore_recent_dismissals IS
+  'Nomi tolti dalla scheda "Recenti" delle faccende. Un nome resta nascosto finche'' non viene segnata una faccenda con quel nome dopo dismissed_at. Non tocca chore_entries.';
+
+-- Di casa, come le azioni: entrambi tolgono e rimettono.
+ALTER TABLE public.chore_recent_dismissals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "chore_recent_dismissals_all_authorized"
+  ON public.chore_recent_dismissals FOR ALL
+  TO authenticated
+  USING (public.is_authorized_user())
+  WITH CHECK (public.is_authorized_user() AND dismissed_by = auth.uid());
+
+
 -- ============================================================
 -- FINE SCHEMA
 -- ============================================================

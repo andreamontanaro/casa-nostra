@@ -38,6 +38,9 @@ Gusci sottili sopra `lib/chores/service.ts` → `app/actions/chores.ts`, stessa 
 * `addChoreAction({ name, doneBy, doneOn? })`: Riempie una tacca, anche per l'altro (`created_by` resta chi segna) e anche con la data di ieri. **Nessuna conferma**: non muove soldi, si annulla dal toast. La bottiglia piena e la data futura le rifiuta il trigger sul database (`chore_bottle_full`, `chore_future_date`); il servizio le traduce in frasi, senza rifare il controllo.
 * `deleteChoreAction(id)`: Elimina una faccenda, dopo il `Dialog` di conferma. La RLS lascia cancellare solo le proprie: una riga dell'altro non dà errore ma non sparisce, quindi il servizio conta le righe eliminate e lo dice.
 
+* `addChorePresetAction({ name, groupId })` / `deleteChorePresetAction(id)`: Crea o toglie un'azione vostra. La creazione parte anche insieme a `addChoreAction` quando nel pannello si spunta «Salva tra le vostre azioni»: se l'azione non si salva (doppione) lo dice il toast, ma la tacca resta.
+* `dismissRecentChoreAction(name)` / `restoreRecentChoreAction(name)`: Toglie un nome dai "Recenti" o lo rimette (il bottone "Annulla" del toast). Senza conferma, perché non cancella niente: le faccende già segnate restano.
+
 **Nessuna notifica Telegram**, per scelta esplicita: le faccende servono a tenere traccia, non a mettere pressione.
 
 ### Telegram (`telegram.ts`)

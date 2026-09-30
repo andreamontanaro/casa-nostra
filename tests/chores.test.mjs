@@ -87,3 +87,50 @@ test('shiftDay attraversa mesi e cambi d’ora', () => {
   assert.equal(shiftDay('2026-10-25', 1), '2026-10-26')
   assert.equal(shiftDay('2026-09-30', -7), '2026-09-23')
 })
+
+const { CHORE_PRESET_GROUPS, searchChoreNames, normalize } = await loadTs('../lib/chores/presets.ts')
+
+test('gli ambiti del codice sono quelli ammessi dal vincolo su chore_presets', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const sql = await readFile(new URL('../docs/migrations/2026-09-30_faccende_azioni.sql', import.meta.url), 'utf8')
+  const allowed = [...sql.match(/group_id IN \(([^)]*)\)/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1])
+  assert.deepEqual(allowed, CHORE_PRESET_GROUPS.map((g) => g.id))
+})
+
+test('la ricerca ignora accenti, maiuscole e ordine delle parole', () => {
+  const names = ['Lavo i piatti', 'Decalcifico la macchina del caffè', 'Passo l’aspirapolvere']
+  assert.deepEqual(searchChoreNames('PIATTI', names), ['Lavo i piatti'])
+  assert.deepEqual(searchChoreNames('caffe macchina', names), ['Decalcifico la macchina del caffè'])
+  assert.deepEqual(searchChoreNames('aspirapolvere', names), ['Passo l’aspirapolvere'])
+  assert.deepEqual(searchChoreNames('   ', names), [])
+})
+
+test('la ricerca tiene l’ordine ricevuto e toglie i doppioni', () => {
+  const results = searchChoreNames('bagno', ['lavo il bagno', 'Lavo il bagno', 'Pulisco il bagno di sotto'])
+  assert.deepEqual(results, ['lavo il bagno', 'Pulisco il bagno di sotto'])
+  assert.equal(normalize('  Più ’ Già '), 'piu   gia')
+})
+
+const { recentChoreNames } = await loadTs('../lib/chores/presets.ts')
+
+test('i recenti vanno dal più recente, senza doppioni di maiuscole', () => {
+  const entries = [
+    { name: 'Cucino', created_at: '2026-09-30T08:00:00Z' },
+    { name: 'lavo i piatti', created_at: '2026-09-29T20:00:00Z' },
+    { name: 'Lavo i piatti', created_at: '2026-09-30T21:00:00Z' },
+  ]
+  assert.deepEqual(recentChoreNames(entries, []), ['Lavo i piatti', 'Cucino'])
+})
+
+test('un nome tolto dai recenti torna solo se viene rifatto dopo', () => {
+  const entries = [
+    { name: 'Cucino', created_at: '2026-09-30T08:00:00Z' },
+    { name: 'Stiro', created_at: '2026-09-29T10:00:00Z' },
+  ]
+  const dismissals = [
+    { name_key: 'cucino', dismissed_at: '2026-09-30T09:00:00Z' },
+    { name_key: 'stiro', dismissed_at: '2026-09-28T09:00:00Z' },
+  ]
+  // Cucino tolto dopo l'ultimo uso: fuori. Stiro rifatto dopo essere stato tolto: dentro.
+  assert.deepEqual(recentChoreNames(entries, dismissals), ['Stiro'])
+})

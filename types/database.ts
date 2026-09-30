@@ -56,6 +56,64 @@ export type Database = {
           },
         ]
       }
+      chore_recent_dismissals: {
+        Row: {
+          dismissed_at: string
+          dismissed_by: string
+          name_key: string
+        }
+        Insert: {
+          dismissed_at?: string
+          dismissed_by: string
+          name_key: string
+        }
+        Update: {
+          dismissed_at?: string
+          dismissed_by?: string
+          name_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chore_recent_dismissals_dismissed_by_fkey"
+            columns: ["dismissed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chore_presets: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          group_id: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chore_presets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_attachments: {
         Row: {
           created_at: string

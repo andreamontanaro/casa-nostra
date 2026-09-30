@@ -136,3 +136,17 @@ Una riga = una tacca nella bottiglia di chi ha fatto la faccenda → sezione 14 
 * **Bottiglia piena = limite vero**: il trigger `trg_chore_entries_check_bottle` rifiuta la tacca oltre la capienza (5, più `chore_bonus()` per chi lavora da casa nei giorni feriali) con l'errore `chore_bottle_full`, e una data futura con `chore_future_date`. Un lock consultivo per persona e giorno serializza due inserimenti contemporanei.
 * **RLS**: entrambi leggono tutto e possono inserire per chiunque (ma `created_by = auth.uid()`); si elimina solo una riga propria (`done_by` o `created_by` uguale a `auth.uid()`). Niente `UPDATE`: per correggere si elimina e si rifà.
 * **Un debito c'è, ed è voluto** (al contrario del vecchio modulo): chi resta indietro se lo porta ai giorni successivi, senza limite. Il calcolo è la vista `v_chore_balance` → [05. Accesso ai Dati](05-data-access.md). Nessun legame con i soldi e nessuna notifica.
+
+### 9. Azione delle faccende (`chore_presets`)
+Un'azione da toccare nel pannello "Ho fatto una faccenda" → `docs/migrations/2026-09-30_faccende_azioni.sql`, sezione 14 dello schema. **Non esistono azioni predefinite**: il codice definisce solo i sette ambiti (`CHORE_PRESET_GROUPS` in `lib/chores/presets.ts`), e le azioni le creano i due utenti man mano.
+* **Proprietà**: `id`, `name` (1–40 caratteri, come `chore_entries.name`), `group_id` (uno degli ambiti di `CHORE_PRESET_GROUPS`: `cucina`, `pulizie`, `bagno`, `bucato`, `rifiuti`, `spesa`, `manutenzione`, con un `CHECK`), `created_by`, `created_at`.
+* **Solo una scorciatoia**: toccarla segna una faccenda con quel nome; `chore_entries` non ha un riferimento all'azione, quindi eliminarla non tocca le faccende già segnate.
+* **Niente doppioni**: indice unico su `lower(trim(name))` (errore `23505`), tradotto dal servizio in «c'è già tra le azioni».
+* **RLS di casa**, come la lista: entrambi le vedono, le aggiungono e le eliminano.
+
+### 10. Nome tolto dai recenti (`chore_recent_dismissals`)
+Un nome nascosto dalla scheda "Recenti" del pannello → `docs/migrations/2026-09-30_faccende_recenti.sql`, sezione 14 dello schema.
+* **Proprietà**: `name_key` (PK, `recentKey(name)`: il nome senza spazi in più e in minuscolo), `dismissed_by`, `dismissed_at`.
+* **Nasconde, non cancella**: le faccende con quel nome restano in `chore_entries`, e con loro bottiglie e arretrato. Il nome torna tra i recenti appena viene segnata una faccenda con quel nome **dopo** `dismissed_at` (`recentChoreNames` in `lib/chores/presets.ts`). Togliere di nuovo lo stesso nome aggiorna solo l'ora (upsert).
+* **RLS di casa**: entrambi tolgono e rimettono.
+

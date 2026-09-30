@@ -7,7 +7,14 @@ import { ChoreBottle } from '@/components/chores/ChoreBottle'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
-import { addChoreAction, deleteChoreAction } from '@/app/actions/chores'
+import {
+  addChoreAction,
+  addChorePresetAction,
+  deleteChoreAction,
+  deleteChorePresetAction,
+  dismissRecentChoreAction,
+  restoreRecentChoreAction,
+} from '@/app/actions/chores'
 import {
   bottleNotches,
   parityMessage,
@@ -15,6 +22,7 @@ import {
   type ChoreBalance,
   type NotchEntry,
 } from '@/lib/chores/bottle'
+import { CHORE_PRESET_GROUPS, type CustomChorePreset } from '@/lib/chores/presets'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import type { ChoreEntry } from '@/lib/queries'
@@ -34,6 +42,7 @@ interface FaccendeShellProps {
   balances: ChoreBalance[]
   entries: ChoreEntry[]
   suggestions: string[]
+  customPresets: CustomChorePreset[]
 }
 
 /**
@@ -44,7 +53,14 @@ interface FaccendeShellProps {
  * Segnare una faccenda non chiede conferma (si annulla dal toast), come
  * aggiungere alla lista della spesa; eliminarla sì.
  */
-export function FaccendeShell({ viewerId, today, balances, entries, suggestions }: FaccendeShellProps) {
+export function FaccendeShell({
+  viewerId,
+  today,
+  balances,
+  entries,
+  suggestions,
+  customPresets,
+}: FaccendeShellProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetKey, setSheetKey] = useState(0)
   const [sheetDoneBy, setSheetDoneBy] = useState(viewerId)
@@ -87,15 +103,25 @@ export function FaccendeShell({ viewerId, today, balances, entries, suggestions 
         created_by: viewerId,
         created_at: new Date().toISOString(),
       })
-      const result = await addChoreAction({ name: values.name, doneBy: values.doneBy, doneOn })
-        .catch(() => ({ error: OFFLINE, id: undefined }))
+      const [result, preset] = await Promise.all([
+        addChoreAction({ name: values.name, doneBy: values.doneBy, doneOn })
+          .catch(() => ({ error: OFFLINE, id: undefined })),
+        values.saveToGroup
+          ? addChorePresetAction({ name: values.name, groupId: values.saveToGroup })
+            .catch(() => ({ error: OFFLINE, id: undefined }))
+          : null,
+      ])
+      // L'azione nuova è un di più: se non si salva lo si dice, ma la tacca resta.
+      if (preset?.error) toast.error(preset.error)
       if (result.error || !result.id) {
         toast.error(result.error ?? OFFLINE)
         return
       }
       const id = result.id
       const whose = values.doneBy === viewerId ? '' : ` per ${nameOf(values.doneBy)}`
-      toast.success(`"${values.name}" segnata${whose}${values.day === 'ieri' ? ', ieri' : ''}.`, {
+      const savedTo = preset && !preset.error ? CHORE_PRESET_GROUPS.find((g) => g.id === values.saveToGroup) : null
+      const extra = savedTo ? ` e aggiunta a ${savedTo.icon} ${savedTo.label}` : ''
+      toast.success(`"${values.name}" segnata${whose}${values.day === 'ieri' ? ', ieri' : ''}${extra}.`, {
         action: {
           label: 'Annulla',
           onClick: async () => {
@@ -104,6 +130,40 @@ export function FaccendeShell({ viewerId, today, balances, entries, suggestions 
           },
         },
       })
+    })
+  }
+
+  async function handleCreatePreset(name: string, groupId: string): Promise<boolean> {
+    const result = await addChorePresetAction({ name, groupId }).catch(() => ({ error: OFFLINE }))
+    if (result.error) {
+      toast.error(result.error)
+      return false
+    }
+    const group = CHORE_PRESET_GROUPS.find((g) => g.id === groupId)
+    toast.success(`"${name.trim()}" aggiunta a ${group?.icon ?? ''} ${group?.label ?? ''}.`)
+    return true
+  }
+
+  async function handleDeletePreset(preset: CustomChorePreset) {
+    const result = await deleteChorePresetAction(preset.id).catch(() => ({ error: OFFLINE }))
+    if (result.error) toast.error(result.error)
+    else toast.success(`"${preset.name}" tolta dalle azioni.`)
+  }
+
+  async function handleDismissRecent(name: string) {
+    const result = await dismissRecentChoreAction(name).catch(() => ({ error: OFFLINE }))
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(`"${name}" tolta dai recenti.`, {
+      action: {
+        label: 'Annulla',
+        onClick: async () => {
+          const undo = await restoreRecentChoreAction(name).catch(() => ({ error: OFFLINE }))
+          if (undo.error) toast.error(undo.error)
+        },
+      },
     })
   }
 
@@ -214,8 +274,12 @@ export function FaccendeShell({ viewerId, today, balances, entries, suggestions 
           fullToday: todayEntries.filter((e) => e.done_by === p.userId).length >= p.todayCapacity,
         }))}
         initialDoneBy={sheetDoneBy}
-        suggestions={suggestions}
+        recent={suggestions}
+        custom={customPresets}
         onSubmit={handleAdd}
+        onCreatePreset={handleCreatePreset}
+        onDeletePreset={handleDeletePreset}
+        onDismissRecent={handleDismissRecent}
       />
 
       <Dialog

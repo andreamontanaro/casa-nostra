@@ -1,5 +1,6 @@
 import type { QueryClient } from '@/lib/queries'
 import { CHORE_NAME_MAX } from './bottle'
+import { CHORE_PRESET_GROUPS, recentKey } from './presets'
 
 /**
  * Logica delle faccende, con un client Supabase esplicito come
@@ -10,6 +11,13 @@ import { CHORE_NAME_MAX } from './bottle'
  * rifiuta il trigger di `chore_entries`, chi può cancellare lo decide la RLS.
  * Qui si traducono i rifiuti in frasi, non si rifanno i controlli.
  */
+
+const UNIQUE_VIOLATION = '23505'
+const TOO_LONG = `Il nome deve stare nella tacca: al massimo ${CHORE_NAME_MAX} caratteri.`
+
+function cleanName(value: unknown): string {
+  return String(value ?? '').trim().replace(/\s+/g, ' ')
+}
 
 export interface ChoreEntryInput {
   name: string
@@ -27,11 +35,9 @@ export async function addChoreEntry(
   userId: string,
   input: ChoreEntryInput,
 ): Promise<AddChoreResult> {
-  const name = String(input.name ?? '').trim().replace(/\s+/g, ' ')
+  const name = cleanName(input.name)
   if (!name) return { ok: false, error: 'Scrivi che faccenda hai fatto.' }
-  if (name.length > CHORE_NAME_MAX) {
-    return { ok: false, error: `Il nome deve stare nella tacca: al massimo ${CHORE_NAME_MAX} caratteri.` }
-  }
+  if (name.length > CHORE_NAME_MAX) return { ok: false, error: TOO_LONG }
 
   const { data, error } = await db
     .from('chore_entries')
@@ -71,5 +77,83 @@ export async function deleteChoreEntry(
   if (!data?.length) {
     return { ok: false, error: 'Puoi eliminare solo le faccende che hai fatto o segnato tu.' }
   }
+  return { ok: true }
+}
+
+// ------------------------------------------------------------
+// Azioni create da voi
+// ------------------------------------------------------------
+
+export type AddPresetResult =
+  | { ok: true; id: string; name: string }
+  | { ok: false; error: string; duplicate?: boolean }
+
+/** Aggiunge un'azione a un ambito. Il doppione lo blocca l'indice unico sul database. */
+export async function addChorePreset(
+  db: QueryClient,
+  userId: string,
+  input: { name: string; groupId: string },
+): Promise<AddPresetResult> {
+  const name = cleanName(input.name)
+  if (!name) return { ok: false, error: 'Scrivi il nome dell’azione.' }
+  if (name.length > CHORE_NAME_MAX) return { ok: false, error: TOO_LONG }
+  if (!CHORE_PRESET_GROUPS.some((g) => g.id === input.groupId)) {
+    return { ok: false, error: 'Scegli un ambito.' }
+  }
+
+  const { data, error } = await db
+    .from('chore_presets')
+    .insert({ name, group_id: input.groupId, created_by: userId })
+    .select('id, name')
+    .single()
+
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) {
+      return { ok: false, error: `"${name}" c’è già tra le azioni.`, duplicate: true }
+    }
+    return { ok: false, error: 'Errore durante il salvataggio. Riprova.' }
+  }
+  return { ok: true, id: data.id, name: data.name }
+}
+
+/** Toglie un'azione creata da voi. Le faccende già segnate con quel nome restano. */
+export async function deleteChorePreset(
+  db: QueryClient,
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await db.from('chore_presets').delete().eq('id', id)
+  if (error) return { ok: false, error: 'Errore durante l\'eliminazione. Riprova.' }
+  return { ok: true }
+}
+
+// ------------------------------------------------------------
+// Recenti
+// ------------------------------------------------------------
+
+/**
+ * Toglie un nome dai "Recenti". Non cancella nessuna faccenda: lo nasconde
+ * finché non viene segnato di nuovo. Toglierlo due volte aggiorna solo l'ora.
+ */
+export async function dismissRecentChore(
+  db: QueryClient,
+  userId: string,
+  name: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const key = recentKey(name)
+  if (!key || key.length > CHORE_NAME_MAX) return { ok: false, error: 'Nome non valido.' }
+  const { error } = await db
+    .from('chore_recent_dismissals')
+    .upsert({ name_key: key, dismissed_by: userId, dismissed_at: new Date().toISOString() })
+  if (error) return { ok: false, error: 'Non riesco a toglierla dai recenti. Riprova.' }
+  return { ok: true }
+}
+
+/** Rimette un nome tra i recenti (il bottone "Annulla" del toast). */
+export async function restoreRecentChore(
+  db: QueryClient,
+  name: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await db.from('chore_recent_dismissals').delete().eq('name_key', recentKey(name))
+  if (error) return { ok: false, error: 'Non riesco a rimetterla tra i recenti. Riprova.' }
   return { ok: true }
 }

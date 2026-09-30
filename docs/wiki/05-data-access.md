@@ -51,7 +51,8 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 ### Modulo Faccende Domestiche (`queries.ts`)
 * `getChoreBalance(db?)` → `lib/queries.ts`: Le due righe di `v_chore_balance`, con i `null` della vista risolti in un `ChoreBalance` (`lib/chores/bottle.ts`). È tutto quello che serve al messaggio sotto le bottiglie: l'app non somma faccende a mano.
 * `getChoreEntriesSince(day, db?)` → `lib/queries.ts`: Le faccende da un giorno in poi, dal giorno più recente e, dentro lo stesso giorno, nell'ordine in cui sono state segnate — che è l'ordine in cui riempiono le tacche. La pagina chiede gli ultimi 7 giorni.
-* `getFrequentChoreNames(limit)` → `lib/queries.ts`: I nomi più usati tra le ultime 200 faccende, per i suggerimenti del pannello "Ho fatto una faccenda". Stesso approccio di `getFrequentDescriptions`.
+* `getRecentChoreNames(limit)` → `lib/queries.ts`: I nomi delle ultime faccende segnate (tra le ultime 200), dal più recente, meno quelli tolti a mano (`chore_recent_dismissals`), per la scheda "🕘 Recenti" del pannello "Ho fatto una faccenda". Il calcolo è la funzione pura `recentChoreNames` (`lib/chores/presets.ts`), verificata in `tests/chores.test.mjs`.
+* `getCustomChorePresets()` → `lib/queries.ts`: Le azioni (`chore_presets`), che il pannello mostra nel loro ambito. Sono le sole: non ce ne sono di predefinite.
 
 ---
 

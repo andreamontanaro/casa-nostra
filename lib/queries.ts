@@ -4,6 +4,7 @@ import type { ServiceClient } from '@/lib/supabase/service'
 import type { Tables } from '@/types/database'
 import { expenseContribution, sharesOf } from '@/lib/spending'
 import type { ChoreBalance } from '@/lib/chores/bottle'
+import { recentChoreNames, type CustomChorePreset } from '@/lib/chores/presets'
 
 /**
  * Client Supabase da usare per la query. Di norma si omette e viene creato il
@@ -408,28 +409,29 @@ export async function getChoreEntriesSince(sinceDay: string, db?: QueryClient): 
   return data ?? []
 }
 
-/** I nomi di faccenda più usati, per i suggerimenti: niente catalogo, conta la storia. */
-export async function getFrequentChoreNames(limit = 8): Promise<string[]> {
+/**
+ * I nomi delle ultime faccende segnate, per la scheda "Recenti", meno quelli
+ * tolti a mano (`chore_recent_dismissals`). Il calcolo è `recentChoreNames`.
+ */
+export async function getRecentChoreNames(limit = 8): Promise<string[]> {
+  const supabase = await createClient()
+  const [entries, dismissals] = await Promise.all([
+    supabase.from('chore_entries').select('name, created_at')
+      .order('created_at', { ascending: false }).limit(200),
+    supabase.from('chore_recent_dismissals').select('name_key, dismissed_at'),
+  ])
+  if (entries.error || dismissals.error) return []
+  return recentChoreNames(entries.data ?? [], dismissals.data ?? [], limit)
+}
+
+/** Le azioni create da voi, nell'ordine in cui sono state aggiunte. */
+export async function getCustomChorePresets(): Promise<CustomChorePreset[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
-    .from('chore_entries')
-    .select('name')
-    .order('created_at', { ascending: false })
-    .limit(200)
+    .from('chore_presets')
+    .select('id, name, group_id')
+    .order('created_at', { ascending: true })
 
   if (error) return []
-
-  // "Lavo i piatti" e "lavo i piatti" sono la stessa voce: vince la grafia più recente.
-  const byKey = new Map<string, { name: string; count: number }>()
-  for (const row of data ?? []) {
-    const key = row.name.trim().toLowerCase()
-    const seen = byKey.get(key)
-    if (seen) seen.count += 1
-    else byKey.set(key, { name: row.name.trim(), count: 1 })
-  }
-
-  return [...byKey.values()]
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit)
-    .map((s) => s.name)
+  return (data ?? []).map((row) => ({ id: row.id, name: row.name, groupId: row.group_id }))
 }
