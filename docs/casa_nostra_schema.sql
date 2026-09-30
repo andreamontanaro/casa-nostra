@@ -47,6 +47,7 @@ CREATE TABLE public.profiles (
   display_name     text NOT NULL CHECK (length(trim(display_name)) > 0),
   higher_income    boolean NOT NULL DEFAULT false,
   telegram_user_id bigint UNIQUE,
+  works_from_home  boolean NOT NULL DEFAULT false,
   created_at       timestamptz NOT NULL DEFAULT now(),
   updated_at       timestamptz NOT NULL DEFAULT now()
 );
@@ -64,6 +65,14 @@ COMMENT ON COLUMN public.profiles.telegram_user_id IS
 CREATE UNIQUE INDEX profiles_only_one_higher_income
   ON public.profiles ((true))
   WHERE higher_income = true;
+
+COMMENT ON COLUMN public.profiles.works_from_home IS
+  'True per il partner che lavora da casa: dal lunedi'' al venerdi'' ha una tacca in piu'' nella bottiglia delle faccende, e la sua prima faccenda del giorno e'' un bonus che non entra nel confronto (sezione 14). Al massimo uno dei due profili puo'' avere true.';
+
+-- Vincolo: al massimo un profilo con works_from_home = true
+CREATE UNIQUE INDEX profiles_only_one_works_from_home
+  ON public.profiles ((true))
+  WHERE works_from_home = true;
 
 
 -- ============================================================
@@ -471,315 +480,14 @@ CREATE POLICY "telegram_messages_select_authorized"
 
 
 -- ============================================================
--- 11. MODULO "GESTIONE CASA" (fase 1)
+-- 11-12. MODULO "GESTIONE CASA" (rimosso)
 -- ------------------------------------------------------------
--- Gamification delle faccende domestiche: catalogo interamente
--- modificabile, registro dei completamenti, viste di stato e di
--- aggregazione settimanale. Applicata come migrazione separata,
--- docs/migrations/2026-09-03_gestione_casa.sql; progettazione
--- completa in docs/design-modulo-gestione-casa.md.
---
--- Deliberatamente NON modellato come il modulo spese: niente saldo,
--- niente conguaglio. Le faccende non generano un debito fra i due.
--- La fase 1 registra gli XP ma non li mostra in interfaccia.
+-- Faccende con XP, obiettivo settimanale, striscia e kudos. Tabelle,
+-- viste e funzioni sono state eliminate con
+-- docs/migrations/2026-09-08_remove_gestione_casa.sql; le migrazioni
+-- originali (2026-09-03_gestione_casa*.sql) restano come storia.
+-- Le faccende sono tornate con un modello diverso: sezione 14.
 -- ============================================================
-
-CREATE TYPE chore_area AS ENUM (
-  'cucina', 'bagno', 'pulizie', 'spazzatura', 'bucato', 'spesa', 'manutenzione', 'altro'
-);
-
-CREATE TABLE public.chore_templates (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name         text NOT NULL CHECK (length(trim(name)) > 0),
-  area         chore_area NOT NULL,
-  effort_xp    int NOT NULL CHECK (effort_xp BETWEEN 1 AND 100),
-  cadence_days int CHECK (cadence_days > 0),
-  active       boolean NOT NULL DEFAULT true,
-  sort_order   int NOT NULL DEFAULT 0,
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  updated_at   timestamptz NOT NULL DEFAULT now()
-);
-
-COMMENT ON TABLE public.chore_templates IS
-  'Catalogo delle faccende ricorrenti. Interamente modificabile dai due utenti: il seed iniziale non e'' cablato nel codice.';
-COMMENT ON COLUMN public.chore_templates.cadence_days IS
-  'Ogni quanti giorni la casa si aspetta la faccenda. NULL = "gesto": registrabile ma mai atteso, non compare in "Da fare" e non ha stato di ritardo.';
-COMMENT ON COLUMN public.chore_templates.active IS
-  'Eliminazione logica. Una voce disattivata sparisce dalle liste e dai conti futuri ma lo storico resta intatto.';
-COMMENT ON COLUMN public.chore_templates.effort_xp IS
-  'Valore in XP, tarato sui minuti di lavoro. Ritoccarlo non riscrive lo storico: chore_logs.xp e'' uno snapshot.';
-
-CREATE INDEX idx_chore_templates_active
-  ON public.chore_templates (active, area, sort_order);
-
-CREATE TABLE public.chore_logs (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  template_id  uuid REFERENCES public.chore_templates(id) ON DELETE SET NULL,
-  title        text NOT NULL CHECK (length(trim(title)) > 0),
-  area         chore_area NOT NULL,
-  xp           int NOT NULL CHECK (xp >= 0),
-  done_by      uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
-  done_at      timestamptz NOT NULL DEFAULT now(),
-  note         text,
-  created_by   uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  updated_at   timestamptz NOT NULL DEFAULT now()
-);
-
-COMMENT ON TABLE public.chore_logs IS
-  'Registro delle faccende completate. title/area/xp sono snapshot del catalogo al momento della registrazione, cosi'' ritarare il catalogo non riscrive la storia.';
-COMMENT ON COLUMN public.chore_logs.template_id IS
-  'NULL per una faccenda fuori catalogo (una-tantum) o per una voce di catalogo cancellata fisicamente.';
-COMMENT ON COLUMN public.chore_logs.done_by IS
-  'Chi ha fatto la faccenda. Puo'' differire da created_by: registrare per conto dell''altro e'' permesso.';
-COMMENT ON COLUMN public.chore_logs.done_at IS
-  'Quando e'' stata fatta. Retrodatabile: "l''ho fatto ieri e mi sono dimenticato di segnarlo".';
-
-CREATE INDEX idx_chore_logs_done_at   ON public.chore_logs (done_at DESC);
-CREATE INDEX idx_chore_logs_template  ON public.chore_logs (template_id, done_at DESC);
-CREATE INDEX idx_chore_logs_done_by   ON public.chore_logs (done_by, done_at DESC);
-
-CREATE TRIGGER trg_chore_templates_updated_at
-  BEFORE UPDATE ON public.chore_templates
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
-CREATE TRIGGER trg_chore_logs_updated_at
-  BEFORE UPDATE ON public.chore_logs
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
--- Stato di ogni faccenda attiva: ultimo completamento e scadenza derivata.
--- Le ricorrenze NON sono materializzate: nessun job, nessuna riga fantasma.
--- Il fuso e' fissato a Europe/Rome: "oggi" e "questa settimana" sono quelli
--- dei due conviventi. Per lo stesso motivo il riferimento e'
--- (now() AT TIME ZONE 'Europe/Rome')::date e non current_date, che segue il
--- fuso della sessione (UTC su Supabase) e a mezzanotte darebbe uno scarto.
-CREATE VIEW public.v_chore_status
-WITH (security_invoker = on) AS
-SELECT
-  t.id,
-  t.name,
-  t.area,
-  t.effort_xp,
-  t.cadence_days,
-  t.sort_order,
-  l.done_at      AS last_done_at,
-  l.done_by      AS last_done_by,
-  p.display_name AS last_done_by_name,
-  CASE
-    WHEN l.done_at IS NULL THEN NULL
-    ELSE ((now() AT TIME ZONE 'Europe/Rome')::date - (l.done_at AT TIME ZONE 'Europe/Rome')::date)
-  END::int AS days_since,
-  CASE
-    WHEN t.cadence_days IS NULL THEN NULL
-    WHEN l.done_at IS NULL THEN 0
-    ELSE t.cadence_days - ((now() AT TIME ZONE 'Europe/Rome')::date - (l.done_at AT TIME ZONE 'Europe/Rome')::date)
-  END::int AS due_in_days
-FROM public.chore_templates t
-LEFT JOIN LATERAL (
-  SELECT cl.done_at, cl.done_by
-  FROM public.chore_logs cl
-  WHERE cl.template_id = t.id
-  ORDER BY cl.done_at DESC
-  LIMIT 1
-) l ON true
-LEFT JOIN public.profiles p ON p.id = l.done_by
-WHERE t.active;
-
-COMMENT ON VIEW public.v_chore_status IS
-  'Stato corrente di ogni faccenda attiva. due_in_days negativo = in attesa da piu'' giorni della cadenza; 0 alla scadenza o se mai registrata; NULL per i gesti (cadenza libera).';
-
--- Aggregato settimanale per utente. In fase 1 alimenta solo l'analisi dei
--- dati (gli XP sono registrati ma non mostrati); dalla fase 2 obiettivo ed
--- equilibrio.
-CREATE VIEW public.v_chore_week
-WITH (security_invoker = on) AS
-SELECT
-  date_trunc('week', (l.done_at AT TIME ZONE 'Europe/Rome'))::date AS week_start,
-  l.done_by      AS user_id,
-  p.display_name,
-  count(*)::int  AS chore_count,
-  sum(l.xp)::int AS xp
-FROM public.chore_logs l
-JOIN public.profiles p ON p.id = l.done_by
-GROUP BY 1, 2, 3;
-
-COMMENT ON VIEW public.v_chore_week IS
-  'XP e numero di faccende per utente e per settimana ISO (fuso Europe/Rome).';
-
-ALTER TABLE public.chore_templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.chore_logs      ENABLE ROW LEVEL SECURITY;
-
--- Catalogo: entrambi gli utenti autorizzati possono gestirlo per intero.
-CREATE POLICY "chore_templates_all_authorized"
-  ON public.chore_templates FOR ALL
-  TO authenticated
-  USING (public.is_authorized_user())
-  WITH CHECK (public.is_authorized_user());
-
--- Registro: entrambi leggono tutto.
-CREATE POLICY "chore_logs_select_authorized"
-  ON public.chore_logs FOR SELECT
-  TO authenticated
-  USING (public.is_authorized_user());
-
--- Chiunque dei due puo' registrare, anche per conto dell'altro.
-CREATE POLICY "chore_logs_insert_authorized"
-  ON public.chore_logs FOR INSERT
-  TO authenticated
-  WITH CHECK (public.is_authorized_user() AND created_by = auth.uid());
-
--- Ma si corregge o si cancella solo cio' che si e' fatto o che si e' scritto:
--- una riga di chore_logs dice "questa cosa l'ho fatta io", e poter cancellare
--- con un tap il contributo registrato dall'altro non deve essere possibile.
--- E' l'unico punto in cui questo modulo e' piu' restrittivo del modulo spese.
-CREATE POLICY "chore_logs_update_own"
-  ON public.chore_logs FOR UPDATE
-  TO authenticated
-  USING (public.is_authorized_user() AND (done_by = auth.uid() OR created_by = auth.uid()))
-  WITH CHECK (public.is_authorized_user() AND (done_by = auth.uid() OR created_by = auth.uid()));
-
-CREATE POLICY "chore_logs_delete_own"
-  ON public.chore_logs FOR DELETE
-  TO authenticated
-  USING (public.is_authorized_user() AND (done_by = auth.uid() OR created_by = auth.uid()));
-
--- Catalogo iniziale: tarato sulla casa reale (niente lavastoviglie, stiro,
--- piante, balcone, giardino o animali; lavatrice settimanale; lenzuola ogni
--- due settimane). E' solo il contenuto di partenza della tabella: tutto e'
--- modificabile dall'app (docs/design-modulo-gestione-casa.md § 5).
-INSERT INTO public.chore_templates (name, area, effort_xp, cadence_days, sort_order) VALUES
-  ('Cucinare la cena',                     'cucina',     20, 1,    10),
-  ('Lavare i piatti a mano',               'cucina',     20, 1,    20),
-  ('Sparecchiare e riordinare la cucina',  'cucina',      8, 1,    30),
-  ('Pulire il piano cottura',              'cucina',     10, 3,    40),
-  ('Pulire il frigo / buttare l''avanzato', 'cucina',    10, 14,   50),
-  ('Preparare il pranzo all''altro',        'cucina',     8, NULL, 60),
-  ('Fare la spesa',                        'spesa',      30, 7,    70),
-  ('Giro di riordino (mini task)',         'pulizie',     5, 1,    80),
-  ('Riordinare il soggiorno',              'pulizie',    10, 3,    90),
-  ('Aspirare / spazzare',                  'pulizie',    20, 4,   100),
-  ('Lavare i pavimenti',                   'pulizie',    25, 7,   110),
-  ('Spolverare',                           'pulizie',    15, 14,  120),
-  ('Pulire il bagno a fondo',              'bagno',      25, 7,   130),
-  ('Lavandino e specchio',                 'bagno',       8, 3,   140),
-  ('Fare la lavatrice',                    'bucato',     10, 7,   150),
-  ('Stendere il bucato',                   'bucato',     15, 7,   160),
-  ('Ritirare e piegare',                   'bucato',     20, 7,   170),
-  ('Cambiare le lenzuola',                 'bucato',     15, 14,  180),
-  ('Cambiare gli asciugamani',             'bucato',      5, 7,   190),
-  ('Portare fuori la spazzatura',          'spazzatura',  5, 2,   200),
-  ('Vetro / plastica / carta',             'spazzatura',  8, 7,   210),
-  ('Rifare il letto',                      'altro',       3, 1,   220);
-
-
--- ============================================================
--- 12. MODULO "GESTIONE CASA" (fase 2 — obiettivo, striscia, kudos)
--- ------------------------------------------------------------
--- Il gioco sopra le liste della fase 1: obiettivo settimanale di
--- casa, striscia, barra di equilibrio, kudos. Applicata come due
--- migrazioni separate,
--- docs/migrations/2026-09-03_gestione_casa_fase2.sql (kudos +
--- current_chore_week_start) e
--- docs/migrations/2026-09-03_gestione_casa_fase2b.sql
--- (v_chore_week_area, per la rifinitura UI); progettazione in
--- docs/design-modulo-gestione-casa.md.
--- ============================================================
-
--- ------------------------------------------------------------
--- Kudos: una reazione per (log, chi la lascia). Accredita XP alla
--- casa, non a chi la riceve né a chi la dà — vedi lib/chores/config.ts.
--- ------------------------------------------------------------
-CREATE TABLE public.chore_kudos (
-  log_id       uuid NOT NULL REFERENCES public.chore_logs(id) ON DELETE CASCADE,
-  from_user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  emoji        text NOT NULL DEFAULT '❤️',
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (log_id, from_user_id)
-);
-
-COMMENT ON TABLE public.chore_kudos IS
-  'Reazione di un utente su una faccenda completata dall''altro. Al massimo una per utente per log (PK composita): cambiare emoji aggiorna la riga, non la duplica. Accredita XP all''obiettivo settimanale della casa, non a chi la riceve né a chi la dà.';
-
-CREATE INDEX idx_chore_kudos_log ON public.chore_kudos (log_id);
-
-ALTER TABLE public.chore_kudos ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "chore_kudos_select_authorized"
-  ON public.chore_kudos FOR SELECT
-  TO authenticated
-  USING (public.is_authorized_user());
-
--- Non si può dare un kudos alla propria faccenda: la sottoquery su
--- chore_logs.done_by è il vincolo, non un controllo lato client.
-CREATE POLICY "chore_kudos_insert_other"
-  ON public.chore_kudos FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    public.is_authorized_user()
-    AND from_user_id = auth.uid()
-    AND (SELECT done_by FROM public.chore_logs WHERE id = log_id) <> auth.uid()
-  );
-
-CREATE POLICY "chore_kudos_update_own"
-  ON public.chore_kudos FOR UPDATE
-  TO authenticated
-  USING (public.is_authorized_user() AND from_user_id = auth.uid())
-  WITH CHECK (
-    public.is_authorized_user()
-    AND from_user_id = auth.uid()
-    AND (SELECT done_by FROM public.chore_logs WHERE id = log_id) <> auth.uid()
-  );
-
-CREATE POLICY "chore_kudos_delete_own"
-  ON public.chore_kudos FOR DELETE
-  TO authenticated
-  USING (public.is_authorized_user() AND from_user_id = auth.uid());
-
--- Kudos per settimana (fuso Europe/Rome), per il conteggio degli XP di
--- casa nell'obiettivo settimanale.
-CREATE VIEW public.v_chore_kudos_week
-WITH (security_invoker = on) AS
-SELECT
-  date_trunc('week', (created_at AT TIME ZONE 'Europe/Rome'))::date AS week_start,
-  count(*)::int AS kudos_count
-FROM public.chore_kudos
-GROUP BY 1;
-
-COMMENT ON VIEW public.v_chore_kudos_week IS
-  'Numero di kudos per settimana ISO (fuso Europe/Rome). Ogni kudos vale KUDOS_XP (lib/chores/config.ts) sul totale settimanale di casa, ma non è attribuito a nessuno dei due utenti.';
-
--- Faccende per area e per settimana, a livello di CASA (non per utente):
--- alimenta i chip di riepilogo nella card "La nostra settimana". Niente
--- colonna utente di proposito — non deve poter diventare un confronto fra
--- i due, nemmeno per errore riusando "solo" i dati che già ci sono.
-CREATE VIEW public.v_chore_week_area
-WITH (security_invoker = on) AS
-SELECT
-  date_trunc('week', (done_at AT TIME ZONE 'Europe/Rome'))::date AS week_start,
-  area,
-  count(*)::int AS chore_count,
-  sum(xp)::int  AS xp
-FROM public.chore_logs
-GROUP BY 1, 2;
-
-COMMENT ON VIEW public.v_chore_week_area IS
-  'Faccende per area e per settimana ISO (fuso Europe/Rome), a livello di casa: nessuna suddivisione per utente, di proposito.';
-
--- Inizio della settimana corrente, stesso fuso e stessa semantica delle
--- viste sopra. Evita di reimplementare date_trunc('week', ...) lato client
--- con tutte le insidie dei fusi orari. search_path fissato esplicitamente
--- (pg_catalog basta: la funzione non tocca nessuna tabella).
-CREATE OR REPLACE FUNCTION public.current_chore_week_start()
-RETURNS date
-LANGUAGE sql
-STABLE
-SET search_path = pg_catalog
-AS $$
-  SELECT date_trunc('week', (now() AT TIME ZONE 'Europe/Rome'))::date;
-$$;
-
-REVOKE ALL ON FUNCTION public.current_chore_week_start() FROM public;
-GRANT EXECUTE ON FUNCTION public.current_chore_week_start() TO authenticated;
 
 
 -- ============================================================
@@ -1111,6 +819,234 @@ COMMENT ON FUNCTION public.register_receipt_check IS
 -- funzione nuova in public (default privileges), con un grant esplicito.
 REVOKE ALL ON FUNCTION public.register_receipt_check FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.register_receipt_check TO authenticated, service_role;
+
+
+-- ============================================================
+-- 14. MODULO "FACCENDE DOMESTICHE"
+-- ------------------------------------------------------------
+-- Due bottiglie, una per persona: ogni faccenda riempie una tacca e
+-- tutte valgono uguale. Chi lavora da casa (profiles.works_from_home)
+-- ha una tacca bonus dal lunedi' al venerdi'. Chi resta indietro si
+-- porta il debito ai giorni successivi, senza limite; le bottiglie si
+-- svuotano ogni mezzanotte. Nessun legame con i soldi, nessuna
+-- notifica. Applicata come migrazione separata,
+-- docs/migrations/2026-09-30_faccende.sql.
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- Regole del giorno
+-- ------------------------------------------------------------
+-- Il giorno e' quello della casa (Europe/Rome), non quello UTC del
+-- server: una faccenda segnata alle 00:30 appartiene al giorno nuovo.
+
+CREATE FUNCTION public.chore_today()
+RETURNS date
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog
+AS $$
+  SELECT (now() AT TIME ZONE 'Europe/Rome')::date;
+$$;
+
+COMMENT ON FUNCTION public.chore_today IS
+  'Il giorno corrente nel fuso della casa. Le bottiglie si svuotano quando cambia.';
+
+-- 1 se in quel giorno la persona ha la tacca bonus, 0 altrimenti.
+-- Il bonus vale solo nei giorni feriali: nel weekend si e' a casa
+-- entrambi, e le bottiglie sono uguali.
+CREATE FUNCTION public.chore_bonus(p_works_from_home boolean, p_day date)
+RETURNS int
+LANGUAGE sql
+IMMUTABLE
+SET search_path = pg_catalog
+AS $$
+  SELECT CASE WHEN p_works_from_home AND extract(isodow FROM p_day) <= 5 THEN 1 ELSE 0 END;
+$$;
+
+COMMENT ON FUNCTION public.chore_bonus IS
+  'Tacche bonus di una persona in un giorno: 1 dal lunedi'' al venerdi'' per chi lavora da casa, altrimenti 0. La capienza della bottiglia e'' 5 + questo valore.';
+
+
+-- ------------------------------------------------------------
+-- Faccende fatte
+-- ------------------------------------------------------------
+-- Una riga = una tacca. Il nome e' testo libero e corto, perche'
+-- viene scritto dentro la tacca. Niente catalogo: i suggerimenti
+-- nell'app sono le faccende gia' segnate.
+
+CREATE TABLE public.chore_entries (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 40),
+  done_by     uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  done_on     date NOT NULL DEFAULT public.chore_today(),
+  created_by  uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.chore_entries IS
+  'Faccende domestiche fatte: una riga per tacca. done_by e'' chi l''ha fatta, created_by chi l''ha segnata (si puo'' segnare per l''altro).';
+COMMENT ON COLUMN public.chore_entries.done_on IS
+  'Il giorno (fuso Europe/Rome) in cui la faccenda e'' stata fatta. Si puo'' retrodatare, non si puo'' mettere nel futuro.';
+
+CREATE INDEX idx_chore_entries_day
+  ON public.chore_entries (done_on DESC, done_by);
+
+
+-- La bottiglia piena e' un limite vero, non solo un bottone
+-- disattivato: 5 tacche, 6 per chi lavora da casa nei giorni feriali.
+-- Il lock consultivo serializza due inserimenti contemporanei sulla
+-- stessa bottiglia, altrimenti entrambi vedrebbero l'ultima tacca
+-- libera.
+CREATE FUNCTION public.chore_entries_check_bottle()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  v_capacity int;
+  v_used     int;
+BEGIN
+  IF NEW.done_on > public.chore_today() THEN
+    RAISE EXCEPTION 'chore_future_date' USING ERRCODE = 'P0001';
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtext('chore:' || NEW.done_by::text || ':' || NEW.done_on::text));
+
+  SELECT 5 + public.chore_bonus(p.works_from_home, NEW.done_on)
+    INTO v_capacity
+    FROM public.profiles p
+   WHERE p.id = NEW.done_by;
+
+  SELECT count(*)::int
+    INTO v_used
+    FROM public.chore_entries e
+   WHERE e.done_by = NEW.done_by
+     AND e.done_on = NEW.done_on
+     AND e.id <> NEW.id;
+
+  IF v_used >= v_capacity THEN
+    RAISE EXCEPTION 'chore_bottle_full' USING ERRCODE = 'P0001';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_chore_entries_check_bottle
+  BEFORE INSERT OR UPDATE OF done_by, done_on ON public.chore_entries
+  FOR EACH ROW EXECUTE FUNCTION public.chore_entries_check_bottle();
+
+
+-- ------------------------------------------------------------
+-- v_chore_balance: la parita' delle faccende
+-- ------------------------------------------------------------
+-- Il "livello" di una persona in un giorno e' quante faccende ha
+-- fatto meno la tacca bonus, mai sotto zero: con 0 o 1 faccenda chi
+-- lavora da casa e' comunque al livello 0. Le due bottiglie sono pari
+-- quando i livelli coincidono.
+--
+-- net_position e' la somma, su tutti i giorni, di (mio livello -
+-- livello dell'altro). > 0 => sono avanti; < 0 => sono indietro di
+-- quel numero di livelli. Come per v_user_open_balance, le due righe
+-- hanno valori opposti e l'app non ricalcola niente.
+--
+-- tasks_to_parity sono le faccende che servono davvero per tornare
+-- pari: i livelli mancanti, piu' uno se oggi la tacca bonus e' ancora
+-- vuota (la prima faccenda del giorno non alza il livello).
+
+CREATE VIEW public.v_chore_balance
+WITH (security_invoker = on) AS
+WITH days AS (
+  SELECT DISTINCT done_on AS day FROM public.chore_entries
+  UNION
+  SELECT public.chore_today()
+),
+counts AS (
+  SELECT done_by, done_on, count(*)::int AS n
+  FROM public.chore_entries
+  GROUP BY done_by, done_on
+),
+levels AS (
+  SELECT
+    p.id AS user_id,
+    p.display_name,
+    p.works_from_home,
+    d.day,
+    COALESCE(c.n, 0) AS n,
+    public.chore_bonus(p.works_from_home, d.day) AS bonus,
+    greatest(COALESCE(c.n, 0) - public.chore_bonus(p.works_from_home, d.day), 0) AS level
+  FROM public.profiles p
+  CROSS JOIN days d
+  LEFT JOIN counts c ON c.done_by = p.id AND c.done_on = d.day
+),
+diffs AS (
+  SELECT
+    l.*,
+    -- mio livello - livello dell'altro, con due sole righe per giorno
+    2 * l.level - sum(l.level) OVER (PARTITION BY l.day) AS diff
+  FROM levels l
+),
+agg AS (
+  SELECT
+    user_id,
+    display_name,
+    works_from_home,
+    COALESCE(sum(n)     FILTER (WHERE day = public.chore_today()), 0)::int AS today_count,
+    COALESCE(max(bonus) FILTER (WHERE day = public.chore_today()), 0)::int AS today_bonus,
+    COALESCE(sum(diff)  FILTER (WHERE day = public.chore_today()), 0)::int AS net_today,
+    COALESCE(sum(diff)  FILTER (WHERE day < public.chore_today()), 0)::int AS net_before_today,
+    COALESCE(sum(diff), 0)::int AS net_position
+  FROM diffs
+  GROUP BY user_id, display_name, works_from_home
+)
+SELECT
+  user_id,
+  display_name,
+  works_from_home,
+  today_count,
+  today_bonus,
+  5 + today_bonus AS today_capacity,
+  net_today,
+  net_before_today,
+  net_position,
+  CASE
+    WHEN net_position < 0
+      THEN -net_position + CASE WHEN today_bonus = 1 AND today_count = 0 THEN 1 ELSE 0 END
+    ELSE 0
+  END AS tasks_to_parity
+FROM agg;
+
+COMMENT ON VIEW public.v_chore_balance IS
+  'Parita'' delle faccende per persona. net_position > 0 => avanti, < 0 => indietro di quei livelli (arretrato compreso). tasks_to_parity = faccende da fare per tornare pari, contando la tacca bonus ancora vuota.';
+
+
+-- ------------------------------------------------------------
+-- RLS
+-- ------------------------------------------------------------
+-- Entrambi vedono tutto e possono segnare una faccenda anche per
+-- l'altro. Si cancella solo cio' che si e' fatto o si e' segnato:
+-- una riga dice "questa cosa l'ho fatta io", e l'altro non deve
+-- poterla togliere. Niente UPDATE: per correggere si elimina e si
+-- rifa', che e' anche l'unico gesto previsto dall'app.
+
+ALTER TABLE public.chore_entries ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "chore_entries_select_authorized"
+  ON public.chore_entries FOR SELECT
+  TO authenticated
+  USING (public.is_authorized_user());
+
+CREATE POLICY "chore_entries_insert_authorized"
+  ON public.chore_entries FOR INSERT
+  TO authenticated
+  WITH CHECK (public.is_authorized_user() AND created_by = auth.uid());
+
+CREATE POLICY "chore_entries_delete_own"
+  ON public.chore_entries FOR DELETE
+  TO authenticated
+  USING (public.is_authorized_user() AND (done_by = auth.uid() OR created_by = auth.uid()));
+
+REVOKE ALL ON FUNCTION public.chore_entries_check_bottle() FROM public, anon;
 
 
 -- ============================================================

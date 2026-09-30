@@ -17,6 +17,8 @@ Un'integrazione **Telegram** opzionale porta l'app nel gruppo dei due conviventi
 
 Il modulo **Lista della spesa** (`/lista`) tiene traccia di cosa manca in casa: articoli categorizzati per tipo di prodotto (cibo, cura della casa, igiene, …), con quantità in testo libero e urgenza. Il **controllo scontrino** confronta la foto di uno scontrino con la lista, spunta in automatico quello che è stato comprato ed evidenzia cosa manca ancora dall'ultimo scontrino inviato. Si usa dall'app, dall'assistente IA o mandando la foto nel gruppo Telegram.
 
+Il modulo **Faccende domestiche** (`/faccende`) tiene traccia di chi fa cosa in casa con due bottiglie, una per persona: ogni faccenda riempie una tacca e tutte valgono uguale. Chi lavora da casa ha una tacca bonus nei giorni feriali; chi resta indietro si porta il debito ai giorni successivi, calcolato dalla vista `v_chore_balance`. Nessuna notifica e nessun legame con i soldi.
+
 ---
 
 ## Indice della Wiki

@@ -5,6 +5,7 @@ import {
   List,
   Settings,
   ShoppingBasket,
+  SprayCan,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -30,6 +31,12 @@ export const NAV_PRIMARY: NavItem[] = [
     label: 'Lista della spesa',
     description: 'Cosa manca in casa e controllo scontrino',
     icon: ShoppingBasket,
+  },
+  {
+    href: '/faccende',
+    label: 'Faccende domestiche',
+    description: 'Le due bottiglie: chi ha fatto cosa oggi',
+    icon: SprayCan,
   },
   {
     href: '/conguaglio',

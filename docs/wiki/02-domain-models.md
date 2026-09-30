@@ -28,9 +28,6 @@ Tipo di prodotto della lista della spesa → sezione 13 dello schema: `cibo`, `b
 ### `shopping_urgency`
 Quanto serve in fretta un articolo → sezione 13 dello schema: `bassa`, `media`, `alta`. **L'ordine di dichiarazione conta**: è l'ordinamento della lista (`ORDER BY urgency DESC` mette gli urgenti in cima), non serve una colonna di priorità numerica.
 
-### `chore_area`
-Area di casa a cui appartiene una faccenda (modulo "Gestione casa") → sezione 11 dello schema: `cucina`, `bagno`, `pulizie`, `spazzatura`, `bucato`, `spesa`, `manutenzione`, `altro`. Raggruppa le voci in UI e alimenta i titoli per varietà (fase 3, non ancora implementata).
-
 ---
 
 ## Schema delle Entità
@@ -43,6 +40,7 @@ Rappresenta uno dei due conviventi. Estende la tabella nativa `auth.users` di Su
   * `display_name` (`text`): Nome visualizzato dell'utente (non vuoto).
   * `higher_income` (`boolean`): Identifica il partner con reddito superiore.
   * `telegram_user_id` (`bigint`, UNIQUE, nullable): Id dell'account Telegram collegato al profilo. È ciò che permette al bot di riconoscere chi scrive nel gruppo; `NULL` significa account non collegato → sezione 10 dello schema.
+  * `works_from_home` (`boolean`, default `false`): Il partner che lavora da casa. Dal lunedì al venerdì la sua bottiglia delle faccende ha una tacca in più, e la sua prima faccenda del giorno è un bonus che non entra nel confronto → sezione 14 dello schema. Al massimo un profilo può averlo `true` (`profiles_only_one_works_from_home`, stesso indice parziale di `higher_income`).
 * **Invariante**: Al massimo **un solo utente** può avere `higher_income = true` → `docs/casa_nostra_schema.sql#L50-L53`.
 
 ### 2. Spesa (`expenses`)
@@ -125,34 +123,16 @@ Uno scontrino letto e confrontato con la lista → sezione 13 dello schema.
   * `checked_by` (`uuid`), `checked_at` (`timestamptz`).
 * **Sopravvive agli articoli che spunta**: gli articoli si possono eliminare, il controllo no — è il riferimento temporale di "dall'ultimo scontrino". Per lo stesso motivo il file sta in un bucket suo e non in `expense-attachments`: cancellare una spesa non deve portarsi via la prova di un controllo (quando lo scontrino arriva da una spesa, se ne salva una copia).
 
-### 8. Catalogo Faccende (`chore_templates`)
-Voci del modulo "Gestione casa" (faccende domestiche ricorrenti) → sezione 11 dello schema. Interamente modificabile dai due utenti: il seed iniziale (21 voci, `docs/design-modulo-gestione-casa.md § 5`) è solo il contenuto di partenza della tabella, non una costante di codice.
+### 8. Faccenda fatta (`chore_entries`)
+Una riga = una tacca nella bottiglia di chi ha fatto la faccenda → sezione 14 dello schema, `docs/migrations/2026-09-30_faccende.sql`. Sostituisce il vecchio modulo "Gestione casa" (catalogo, XP, kudos), eliminato con `2026-09-08_remove_gestione_casa.sql`.
 * **Proprietà**:
   * `id` (`uuid`, PK).
-  * `name` (`text`): Nome della faccenda (non vuoto).
-  * `area` (`chore_area`).
-  * `effort_xp` (`int`, 1–100): Valore in XP, tarato sui minuti di lavoro.
-  * `cadence_days` (`int`, Nullable): Ogni quanti giorni la casa se l'aspetta. `NULL` = **gesto**: registrabile ma mai atteso, non compare nella lista "Da fare" e non ha uno stato di ritardo (es. "Preparare il pranzo all'altro", che altrimenti diventerebbe un rimprovero automatizzato).
-  * `active` (`boolean`, default `true`): Eliminazione logica. Una voce disattivata sparisce da liste e conti futuri, lo storico resta intatto.
-  * `sort_order` (`int`).
-* **Cancellazione**: fisica solo se la voce non ha mai avuto log (rimedia a un errore di battitura); altrimenti si disattiva, mai si elimina.
-
-### 9. Registro Faccende (`chore_logs`)
-Un completamento registrato → sezione 11 dello schema.
-* **Proprietà**:
-  * `id` (`uuid`, PK).
-  * `template_id` (`uuid`, Nullable, `ON DELETE SET NULL`): `NULL` per una faccenda fuori catalogo (una-tantum) o se la voce di catalogo è stata cancellata fisicamente.
-  * `title`, `area`, `xp`: **snapshot** del catalogo al momento della registrazione — ritarare `chore_templates` non riscrive lo storico (stessa logica di `custom_other_share` sulle spese).
-  * `done_by` (`uuid`): chi ha fatto la faccenda.
-  * `done_at` (`timestamptz`, default now): retrodatabile.
-  * `created_by` (`uuid`): chi ha registrato la riga. Può differire da `done_by`: registrare per conto dell'altro è permesso.
-  * `note` (`text`, Nullable).
-* **Nessun saldo, nessun conguaglio.** A differenza delle spese, il modulo non modella un debito: non esiste una vista di saldo delle faccende né una RPC di pareggio. È una scelta di design, non un'omissione — vedi `docs/design-modulo-gestione-casa.md § 3` (principio "nessun debito di faccende").
-* **RLS più restrittiva del modulo spese**: si corregge o cancella solo una riga propria (`done_by` o `created_by` uguale a `auth.uid()`). Le spese permettono a entrambi di modificare qualsiasi riga; qui no, perché una riga di `chore_logs` dice "questa cosa l'ho fatta io" e poter cancellare il contributo dell'altro con un tap non deve essere possibile.
-* **Eliminazione permanente, non solo "annulla"**: dal feed "Fatto di recente" di `/casa` ogni riga propria è cancellabile in ogni momento (icona cestino + `Dialog` di conferma, stesso pattern usato per l'eliminazione di una spesa), non solo nei secondi subito dopo la registrazione tramite il toast "Annulla". Stessa Server Action (`undoChoreLog`) per entrambi i percorsi.
-
-### 10. Kudos (`chore_kudos`, fase 2)
-Reazione di un utente su una faccenda completata dall'altro → sezione 11 dello schema (migrazione fase 2).
-* **Proprietà**: `log_id` + `from_user_id` (PK composita — al massimo un kudos per utente per log: cambiare emoji aggiorna la riga, non la duplica), `emoji` (default `❤️`), `created_at`.
-* **Divieto di auto-kudos imposto da RLS**, non da un controllo client: la `WITH CHECK` della policy di insert/update confronta `from_user_id` con `done_by` del log referenziato via sottoquery.
-* **Gli XP dei kudos non sono attribuiti a nessuno dei due utenti.** Contano nel totale settimanale che alimenta l'obiettivo di casa (`KUDOS_XP` in `lib/chores/config.ts`, sommato via `v_chore_kudos_week`), ma **non** entrano nella barra di equilibrio, che si basa solo su `chore_logs.xp` per utente (`v_chore_week`). È la stessa distinzione concettuale del design: il kudos premia l'attenzione reciproca, non è un modo indiretto di accumulare punti personali.
+  * `name` (`text`, 1–40 caratteri): testo libero e corto, perché sta scritto dentro la tacca. Non esiste un catalogo: i suggerimenti dell'app sono i nomi già usati.
+  * `done_by` (`uuid`): chi l'ha fatta.
+  * `done_on` (`date`, default `chore_today()`): il giorno nel fuso `Europe/Rome`. Retrodatabile, mai nel futuro.
+  * `created_by` (`uuid`): chi l'ha segnata. Può differire da `done_by`: si può segnare per l'altro.
+  * `created_at` (`timestamptz`): ordina le tacche dentro lo stesso giorno.
+* **Tutte le faccende valgono uguale**: non c'è peso, area o durata. Conta solo quante.
+* **Bottiglia piena = limite vero**: il trigger `trg_chore_entries_check_bottle` rifiuta la tacca oltre la capienza (5, più `chore_bonus()` per chi lavora da casa nei giorni feriali) con l'errore `chore_bottle_full`, e una data futura con `chore_future_date`. Un lock consultivo per persona e giorno serializza due inserimenti contemporanei.
+* **RLS**: entrambi leggono tutto e possono inserire per chiunque (ma `created_by = auth.uid()`); si elimina solo una riga propria (`done_by` o `created_by` uguale a `auth.uid()`). Niente `UPDATE`: per correggere si elimina e si rifà.
+* **Un debito c'è, ed è voluto** (al contrario del vecchio modulo): chi resta indietro se lo porta ai giorni successivi, senza limite. Il calcolo è la vista `v_chore_balance` → [05. Accesso ai Dati](05-data-access.md). Nessun legame con i soldi e nessuna notifica.

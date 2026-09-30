@@ -1,6 +1,6 @@
 # Pattern di design e UI/UX
 
-Aggiornamento del redesign approvato l’8 settembre 2026. Il modulo **Casa è deprecato**: non appartiene alla navigazione o alle schermate attive. I documenti storici sulle faccende restano un archivio.
+Aggiornamento del redesign approvato l’8 settembre 2026. Il vecchio modulo **Casa** (XP, kudos, obiettivo condiviso) è stato rimosso e non torna; dal 30 settembre 2026 le faccende sono il modulo `/faccende`, con un modello diverso (sezione "Faccende" qui sotto).
 
 ## Identità visiva
 
@@ -14,11 +14,11 @@ Aggiornamento del redesign approvato l’8 settembre 2026. Il modulo **Casa è d
 
 ## Navigazione e densità
 
-- Barra inferiore mobile: **Home, Storico, Lista**. Menu completo: anche Statistiche e Regola il saldo, più Impostazioni.
+- Barra inferiore mobile: **Home, Storico, Lista**. Menu completo: anche Faccende domestiche, Statistiche e Regola il saldo, più Impostazioni.
 - Desktop: navigazione laterale, area centrale più ampia e layout a colonne dove aiuta a leggere.
 - Assistente nell’header; una sola FAB per aggiungere spese in home. Su richiesta sono state rimosse la CTA superiore “Aggiungi spesa” e la scorciatoia dalla home alla lista.
 - Priorità ai movimenti: storico con pannello “Filtri e ricerca” inizialmente chiuso e totale compatto. Home con anello compatto e pannello “Categorie e dettagli del saldo” chiuso.
-- Nessun richiamo al modulo Casa. Voci e corrispondenza della rotta attiva in `lib/nav.ts`.
+- Nessun richiamo al vecchio modulo Casa. Voci e corrispondenza della rotta attiva in `lib/nav.ts`.
 
 ## Home e conguaglio
 
@@ -55,6 +55,14 @@ Controllo scontrino con fotocamera e selezione file separati, stati di caricamen
 **Condivisione verso l'app** (Android, app installata): dalla galleria o dalla fotocamera si condivide la foto (o il PDF) dello scontrino con Casa Nostra. Il service worker la parcheggia nella Cache Storage e manda a `/lista?condiviso=1`; la lista la riprende una volta sola (`takeSharedReceipt` in `lib/share-target.ts`, con un ref che regge il doppio effetto dello Strict Mode), toglie il parametro dall'URL e apre il controllo scontrino, che parte da solo con quel file: da lì "Crea spesa da questo scontrino" come sempre. Gli esiti storti (`vuoto`, `errore`, `non-pronto`) diventano un toast. iOS non supporta la destinazione di condivisione per le web app.
 
 Il comportamento Telegram rimane quello documentato in `telegram-setup.md`: uno scontrino inviato al bot può creare la spesa con esito esplicito. I servizi di dominio restano condivisi.
+
+## Faccende
+
+Disegnate su uno schizzo di Fede. Due bottiglie affiancate a tutta larghezza, **allineate in alto**, con tacche della stessa altezza (`h-14`). Dal lunedì al venerdì la bottiglia di chi lavora da casa ha una tacca in più, che sta **sotto il fondo** dell'altra: è la tacca bonus, con l'icona casa e un fondo più chiaro. Così due bottiglie pari hanno il liquido alla stessa altezza, e la differenza si vede senza leggere niente. Nel weekend le bottiglie sono uguali.
+
+Ogni tacca piena ha il nome della faccenda scritto dentro, troncato se è lungo; un tocco apre il dettaglio (chi, quando, chi l'ha segnata) e, se è propria, l'eliminazione con conferma. La prima tacca vuota ha un "+" e apre il pannello già impostato su quella persona. Il corpo della bottiglia è HTML (deve contenere testo); tappo, collo e spalla sono un SVG con `vector-effect: non-scaling-stroke`, largo quanto il corpo meno il bordo, così il tratto combacia a qualunque larghezza (`components/chores/ChoreBottle.tsx`).
+
+Sotto le bottiglie un messaggio solo, dal punto di vista di chi guarda: "😊 Siete pari", "Ti manca 1 faccenda per la parità" oppure "Ad Andrea manca…", con righe piccole per l'arretrato, la tacca bonus ancora vuota e i giorni in cui non c'è posto per recuperare tutto. Niente rosso, niente punteggi, niente "sei avanti". "Ho fatto una faccenda" apre un pannello con il nome, i suggerimenti presi dalle faccende già segnate, chi (io / l'altro) e quando (oggi / ieri). La tacca si riempie subito con `useOptimistic` e il toast offre "Annulla". Sotto, i giorni scorsi (7) per persona.
 
 ## Assistente
 

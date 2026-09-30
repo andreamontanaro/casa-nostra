@@ -50,11 +50,7 @@ Quando l'utente richiede di "guardare" un allegato, l'assistente utilizza il too
 3. Converte il file scaricato in una stringa Base64.
 4. Passa a Gemini un oggetto `Part` contenente i dati del file allineando il tipo MIME (`image/jpeg`, `image/png`, `application/pdf`) all'interno dell'array `inlineData` del payload di chat → `lib/assistant/run.ts`.
 
-### 3bis. Uso non conversazionale: stima strutturata (`estimateChoreXp`)
-
-Non ogni chiamata a Gemini passa da `runAssistant`. `estimateChoreXp` → `app/actions/chores.ts` stima area e XP di una faccenda "fuori catalogo" a partire dal solo testo libero: una singola chiamata `ai.models.generateContent` (non streaming, senza tool, senza cronologia), con `config.responseMimeType: 'application/json'` e `responseSchema` (via `Type` dell'SDK) per forzare l'output a `{ area, xp }` invece di prosa da fare il parsing. Il prompt include il catalogo attivo (`chore_templates` con `active = true`) come riferimento di taratura ("XP ≈ minuti di lavoro", stessa regola di `docs/design-modulo-gestione-casa.md` § "Catalogo iniziale"), così la stima resta coerente con i valori già scelti invece che su una scala arbitraria. La risposta è sempre e solo un suggerimento pre-compilato nel form (`components/chores/RegisterChoreSheet.tsx`), mai scritta sul database direttamente: l'utente la vede e può correggerla prima di salvare.
-
-### 3ter. Uso non conversazionale: lettura della barra rapida (`readQuickItemInput`)
+### 3bis. Uso non conversazionale: lettura della barra rapida (`readQuickItemInput`)
 
 La barra rapida della lista della spesa ha un campo solo, e ci si scrive una riga di fretta: «scottex», «x2 mele», «2 kg di patate». I tre campi che il form chiederebbe uno per uno — nome, quantità, tipo di prodotto — li ricava il modello → `lib/shopping/service.ts`. Stessa forma della stima strutturata: una chiamata `ai.models.generateContent` senza tool e senza cronologia, con `responseMimeType: 'application/json'` e un `responseSchema` in cui `category` è vincolata con `enum` all'enum `shopping_category` del database, così il modello non può inventarsi una categoria che non esiste. Il prompt porta le stesse definizioni delle categorie che l'assistente ha nel tool `add_shopping_items`: "scottex" dev'essere cura della casa sia che lo si scriva nella barra sia che lo si dica in chat. La quantità resta testo libero come nel form («2», «2 kg», «6 bottiglie») e non viene mai inventata: se non è scritta, l'articolo non ne ha.
 

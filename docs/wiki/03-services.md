@@ -33,6 +33,13 @@ Le Server Action della lista sono gusci sottili sopra `lib/shopping/service.ts` 
 
 **Notifiche Telegram della lista, volutamente parsimoniose.** Nel gruppo finiscono solo l'esito di un controllo scontrino e l'aggiunta di un articolo **urgente**. Notificare ogni "carta forno" trasformerebbe la chat in un rumore di fondo che si impara a ignorare — e con esso le notifiche delle spese, che invece contano.
 
+### Faccende Domestiche (`chores.ts`)
+Gusci sottili sopra `lib/chores/service.ts` → `app/actions/chores.ts`, stessa forma della lista della spesa.
+* `addChoreAction({ name, doneBy, doneOn? })`: Riempie una tacca, anche per l'altro (`created_by` resta chi segna) e anche con la data di ieri. **Nessuna conferma**: non muove soldi, si annulla dal toast. La bottiglia piena e la data futura le rifiuta il trigger sul database (`chore_bottle_full`, `chore_future_date`); il servizio le traduce in frasi, senza rifare il controllo.
+* `deleteChoreAction(id)`: Elimina una faccenda, dopo il `Dialog` di conferma. La RLS lascia cancellare solo le proprie: una riga dell'altro non dà errore ma non sparisce, quindi il servizio conta le righe eliminate e lo dice.
+
+**Nessuna notifica Telegram**, per scelta esplicita: le faccende servono a tenere traccia, non a mettere pressione.
+
 ### Telegram (`telegram.ts`)
 Azioni di supporto all'integrazione con il gruppo Telegram → `app/actions/telegram.ts`:
 * `linkTelegramAccount(_prev, formData)`: Collega (o scollega, con campo vuoto) l'id Telegram al profilo di chi è loggato. Valida che sia un intero positivo e traduce la violazione di unicità in un messaggio comprensibile ("già collegato all'altro profilo"). La policy `profiles_update_own` garantisce che ciascuno possa modificare solo la propria riga.

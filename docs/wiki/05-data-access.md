@@ -39,7 +39,7 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 * `getAllSettlements()` → `lib/queries.ts`: tutti i conguagli con i nomi dei due, dal più recente. Li usano le statistiche e lo storico, che li mette fra le spese (`SettlementWithNames`).
 * `getExpenseIdsWithAttachments()` → `lib/queries.ts`: Restituisce l'insieme degli id di spesa che hanno almeno un allegato; l'assistente lo usa per marcare le spese con 📎scontrino nel contesto.
 * `getFrequentDescriptions(limit)` → `lib/queries.ts`: Recupera le ultime 200 descrizioni inserite ed effettua un conteggio delle frequenze in memoria sul server. Ogni suggerimento (`ExpenseSuggestion`) porta con sé categoria e divisione del suo utilizzo più recente: un tap nel form compila tutti e tre i campi. Evita l'esposizione di funzioni RPC aggiuntive.
-* `getDataVersion()` → `lib/queries.ts`: impronta dei dati condivisi (numero di righe e ultima modifica di spese, allegati, articoli della lista, controlli scontrino, profili). Cambia a ogni inserimento, modifica o eliminazione — un conguaglio tocca `updated_at` delle spese che chiude. La espone `/api/sync` per `SharedDataRefresh`.
+* `getDataVersion()` → `lib/queries.ts`: impronta dei dati condivisi (numero di righe e ultima modifica di spese, allegati, articoli della lista, controlli scontrino, profili, faccende). Cambia a ogni inserimento, modifica o eliminazione — un conguaglio tocca `updated_at` delle spese che chiude. La espone `/api/sync` per `SharedDataRefresh`.
 
 ### Modulo Lista della Spesa (`queries.ts`)
 * `getOpenShoppingItems(db?)` → `lib/queries.ts`: Gli articoli ancora da comprare, ordinati per `urgency` decrescente e poi per anzianità. L'ordinamento è quello dell'enum (`bassa < media < alta`): non esiste una colonna di priorità.
@@ -48,12 +48,10 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 
 > Il `select` con i due join su `profiles` (`added_by_profile`, `bought_by_profile`) è una **stringa letterale** e non una concatenazione: `@supabase/supabase-js` inferisce il tipo del risultato dal literal, e concatenare due pezzi lo degrada a `string` facendo collassare il tipo su `GenericStringError[]`.
 
-### Modulo Gestione Casa (`queries.ts`)
-* `getChoreStatus()` → `lib/queries.ts`: Interroga la vista `v_chore_status` (solo faccende attive), ordinata per `due_in_days` crescente (le più scadute per prime) e poi `sort_order`. È la query che alimenta la lista "Da fare" di `/casa` e la card compatta in home.
-* `getChoreTemplates()` → `lib/queries.ts`: L'intero catalogo, comprese le voci disattivate. Usata solo da `/casa/catalogo`.
-* `getRecentChoreLogs(limit)` → `lib/queries.ts`: Feed "Fatto di recente", con join sul nome di chi ha registrato (`profiles!chore_logs_done_by_fkey(display_name)`) e sui kudos ricevuti (`chore_kudos(from_user_id, emoji)`, fase 2).
-* `getChoreWeekRows(weeksBack)` / `getChoreKudosWeekRows(weeksBack)` / `getChoreWeekAreaRows(weeksBack)` → `lib/queries.ts`: righe grezze di `v_chore_week` / `v_chore_kudos_week` / `v_chore_week_area` per le ultime N settimane (default 12), ridotte lato server in `lib/chores/weekly.ts` (`summarizeWeeks`, `computeStreak`, `computeBalance`, `summarizeWeekAreas`, `computeFilledNotches`) — funzioni pure, senza dipendenze da Supabase, per poterle verificare isolatamente. `computeFilledNotches(totalXp, goalXp)` alimenta la "bottiglia" della card `WeekGoalCard` (`components/chores/GoalBottle.tsx`): quante delle 5 soglie del 20% di `WEEKLY_GOAL_XP` sono superate, sullo stesso `totalXp` di casa — nessun dato per utente.
-* `getCurrentChoreWeekStart()` → `lib/queries.ts`: chiama la RPC `current_chore_week_start()` invece di ricalcolare `date_trunc('week', ...)` lato client, per restare coerente col fuso `Europe/Rome` usato dalle viste.
+### Modulo Faccende Domestiche (`queries.ts`)
+* `getChoreBalance(db?)` → `lib/queries.ts`: Le due righe di `v_chore_balance`, con i `null` della vista risolti in un `ChoreBalance` (`lib/chores/bottle.ts`). È tutto quello che serve al messaggio sotto le bottiglie: l'app non somma faccende a mano.
+* `getChoreEntriesSince(day, db?)` → `lib/queries.ts`: Le faccende da un giorno in poi, dal giorno più recente e, dentro lo stesso giorno, nell'ordine in cui sono state segnate — che è l'ordine in cui riempiono le tacche. La pagina chiede gli ultimi 7 giorni.
+* `getFrequentChoreNames(limit)` → `lib/queries.ts`: I nomi più usati tra le ultime 200 faccende, per i suggerimenti del pannello "Ho fatto una faccenda". Stesso approccio di `getFrequentDescriptions`.
 
 ---
 
@@ -85,29 +83,16 @@ Calcola la posizione netta di ciascun utente sommando i dati della vista quote l
 
 ---
 
-## Stato delle Faccende tramite Viste SQL (modulo Gestione Casa)
+## Parità delle Faccende tramite Vista SQL (`v_chore_balance`)
 
-Stesso principio del saldo spese, applicato al modulo faccende: lo stato è calcolato sul database, non ricalcolato lato client/assistente/bot.
+Stesso principio del saldo spese: la parità delle faccende la calcola il database → sezione 14 dello schema.
 
-### 1. Vista stato faccende (`v_chore_status`)
-Per ogni faccenda **attiva**, l'ultimo completamento (via `LATERAL JOIN` su `chore_logs`) e la scadenza derivata dalla cadenza → sezione 11 dello schema:
-* `days_since`: giorni dall'ultimo completamento (`NULL` se mai fatta).
-* `due_in_days`: `cadence_days - days_since`. Negativo = in attesa da più giorni della cadenza; `0` = mai registrata o scaduta oggi; `NULL` per un **gesto** (`cadence_days IS NULL`).
-* **Nessuna riga è materializzata per le occorrenze future**: non esiste un job che genera "la faccenda di domani". Lo stato "da fare" è interamente derivato da `LEFT JOIN LATERAL` sull'ultimo log più aritmetica sulla cadenza — niente cron, niente righe fantasma da pulire.
-* Il riferimento a "oggi" è `(now() AT TIME ZONE 'Europe/Rome')::date`, non `current_date` (che seguirebbe il fuso della sessione, UTC su Supabase, e darebbe uno scarto di un giorno vicino a mezzanotte).
-
-### 2. Vista aggregati settimanali (`v_chore_week`)
-XP e numero di faccende per utente e per settimana ISO (fuso `Europe/Rome`). La vista resta per utente (`user_id` incluso), ma lato client `summarizeWeeks()` (`lib/chores/weekly.ts`) somma subito tutti gli utenti in un unico `choreXp` di casa: dalla decisione 9 (`docs/design-modulo-gestione-casa.md`) non esiste più nessun consumatore della scomposizione per persona — rimossa la barra di equilibrio, non serviva più nemmeno il dato intermedio.
-
-**Nessuna vista di saldo.** A differenza delle spese non esiste un equivalente di `v_user_open_balance` per le faccende: il modulo non modella un debito fra i due (principio di design, non un'omissione futura).
-
-### 3. Kudos per settimana (`v_chore_kudos_week`, fase 2)
-Numero di kudos per settimana ISO, indipendentemente da chi li ha dati o ricevuti. Combinato con `v_chore_week` in `summarizeWeeks()` (`lib/chores/weekly.ts`): `totalXp` (quello che conta per l'obiettivo settimanale di casa, e per la bottiglia — vedi `computeFilledNotches`) = XP delle faccende + `kudos_count * KUDOS_XP`, sempre e solo a livello di casa.
-
-### 4. Faccende per area e per settimana (`v_chore_week_area`, rifinitura UI fase 2)
-Conteggio e XP per area (`chore_area`) e per settimana ISO, **a livello di casa**: raggruppa solo su `week_start` e `area`, senza `user_id`. È una scelta strutturale, non solo di query — un riepilogo "questa settimana in cucina X, in bagno Y" non deve poter diventare "questa settimana TU in cucina X, LUI in bagno Y": la vista non ha nemmeno la colonna per farlo. Alimenta i chip di riepilogo nella card "La nostra settimana" (`summarizeWeekAreas()` in `lib/chores/weekly.ts`).
-
----
+* **Livello**: in un giorno, il livello di una persona è `greatest(faccende − chore_bonus(works_from_home, giorno), 0)`. La tacca bonus vale 1 dal lunedì al venerdì per chi lavora da casa, 0 altrimenti: con 0 o 1 faccenda chi lavora da casa è comunque al livello 0. Le bottiglie sono **pari** quando i livelli coincidono — nell'app si vede come liquido alla stessa altezza, perché le bottiglie sono allineate in alto e la tacca bonus sta sotto il fondo dell'altra.
+* **`net_position`**: somma su tutti i giorni di (mio livello − livello dell'altro). `> 0` avanti, `< 0` indietro. Le due righe hanno valori opposti, come `v_user_open_balance`. L'arretrato non si azzera mai; le bottiglie sì, a mezzanotte (`chore_today()`, fuso `Europe/Rome`).
+* **`net_today` / `net_before_today`**: la stessa somma limitata a oggi o ai giorni prima, per dire nel messaggio quanto viene dai giorni scorsi.
+* **`today_count`, `today_bonus`, `today_capacity`**: la bottiglia di oggi (capienza 5 + bonus).
+* **`tasks_to_parity`**: le faccende che servono davvero per tornare pari. Sono i livelli mancanti, più uno se oggi la tacca bonus è ancora vuota: con Andrea a 3 e Fede a 0, a Fede ne servono 4.
+* I giorni senza nessuna faccenda non cambiano niente: 0 contro 0 è pari. La vista guarda solo i giorni con almeno una riga, più oggi.
 
 ## Stato della Lista della Spesa tramite Viste SQL
 

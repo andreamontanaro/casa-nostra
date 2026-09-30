@@ -3,6 +3,7 @@ import { ATTACHMENTS_BUCKET } from '@/lib/attachments'
 import type { ServiceClient } from '@/lib/supabase/service'
 import type { Tables } from '@/types/database'
 import { expenseContribution, sharesOf } from '@/lib/spending'
+import type { ChoreBalance } from '@/lib/chores/bottle'
 
 /**
  * Client Supabase da usare per la query. Di norma si omette e viene creato il
@@ -237,7 +238,7 @@ export async function getFrequentDescriptions(limit = 5): Promise<ExpenseSuggest
  */
 export async function getDataVersion(): Promise<string | null> {
   const supabase = await createClient()
-  const [expenses, attachments, items, checks, profiles] = await Promise.all([
+  const [expenses, attachments, items, checks, profiles, chores] = await Promise.all([
     supabase.from('expenses').select('updated_at', { count: 'exact' })
       .order('updated_at', { ascending: false }).limit(1),
     supabase.from('expense_attachments').select('created_at', { count: 'exact' })
@@ -248,14 +249,17 @@ export async function getDataVersion(): Promise<string | null> {
       .order('checked_at', { ascending: false }).limit(1),
     supabase.from('profiles').select('updated_at')
       .order('updated_at', { ascending: false }).limit(1),
+    supabase.from('chore_entries').select('created_at', { count: 'exact' })
+      .order('created_at', { ascending: false }).limit(1),
   ])
-  if (expenses.error || attachments.error || items.error || checks.error || profiles.error) return null
+  if (expenses.error || attachments.error || items.error || checks.error || profiles.error || chores.error) return null
   return [
     `${expenses.count}@${expenses.data[0]?.updated_at ?? ''}`,
     `${attachments.count}@${attachments.data[0]?.created_at ?? ''}`,
     `${items.count}@${items.data[0]?.updated_at ?? ''}`,
     `${checks.count}@${checks.data[0]?.checked_at ?? ''}`,
     profiles.data[0]?.updated_at ?? '',
+    `${chores.count}@${chores.data[0]?.created_at ?? ''}`,
   ].join('|')
 }
 
@@ -354,4 +358,78 @@ export async function getExpenseShares(expenseId: string) {
     .select('user_id, user_share').eq('expense_id', expenseId)
   if (error) throw error
   return data ?? []
+}
+
+// ------------------------------------------------------------
+// Modulo "Faccende domestiche"
+// ------------------------------------------------------------
+
+/**
+ * La parità delle faccende come la calcola `v_chore_balance`: una riga per
+ * persona, con oggi, l'arretrato e le faccende che mancano. Le colonne della
+ * vista sono tutte nullable per Postgres, ma la vista non produce mai null.
+ */
+export async function getChoreBalance(db?: QueryClient): Promise<ChoreBalance[]> {
+  const supabase = await client(db)
+  const { data, error } = await supabase.from('v_chore_balance').select('*')
+
+  if (error) throw error
+  return (data ?? []).map((row) => ({
+    userId: row.user_id ?? '',
+    displayName: row.display_name ?? '',
+    worksFromHome: row.works_from_home ?? false,
+    todayCount: row.today_count ?? 0,
+    todayBonus: row.today_bonus ?? 0,
+    todayCapacity: row.today_capacity ?? 5,
+    netToday: row.net_today ?? 0,
+    netBeforeToday: row.net_before_today ?? 0,
+    netPosition: row.net_position ?? 0,
+    tasksToParity: row.tasks_to_parity ?? 0,
+  }))
+}
+
+export type ChoreEntry = Tables<'chore_entries'>
+
+/**
+ * Le faccende da un giorno in poi (YYYY-MM-DD), dal giorno più recente; dentro
+ * lo stesso giorno nell'ordine in cui sono state segnate, che è l'ordine in
+ * cui riempiono le tacche.
+ */
+export async function getChoreEntriesSince(sinceDay: string, db?: QueryClient): Promise<ChoreEntry[]> {
+  const supabase = await client(db)
+  const { data, error } = await supabase
+    .from('chore_entries')
+    .select('*')
+    .gte('done_on', sinceDay)
+    .order('done_on', { ascending: false })
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data ?? []
+}
+
+/** I nomi di faccenda più usati, per i suggerimenti: niente catalogo, conta la storia. */
+export async function getFrequentChoreNames(limit = 8): Promise<string[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('chore_entries')
+    .select('name')
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  if (error) return []
+
+  // "Lavo i piatti" e "lavo i piatti" sono la stessa voce: vince la grafia più recente.
+  const byKey = new Map<string, { name: string; count: number }>()
+  for (const row of data ?? []) {
+    const key = row.name.trim().toLowerCase()
+    const seen = byKey.get(key)
+    if (seen) seen.count += 1
+    else byKey.set(key, { name: row.name.trim(), count: 1 })
+  }
+
+  return [...byKey.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map((s) => s.name)
 }

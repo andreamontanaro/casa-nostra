@@ -86,7 +86,7 @@ Alcune linee guida concrete:
 
 ## Navigazione
 
-Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* le schermate. La **barra in basso** è solo un accesso rapido alle tre più frequenti (Home, Storico, Lista). Il modulo Casa è deprecato e non va reintrodotto. Su desktop la navigazione è laterale. Le voci di entrambe stanno in `lib/nav.ts`: aggiungendo una schermata va aggiunta lì, e finisce nel menu senza toccare la barra — la barra non cresce.
+Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* le schermate. La **barra in basso** è solo un accesso rapido alle tre più frequenti (Home, Storico, Lista). Il vecchio modulo Casa (XP, kudos, obiettivo condiviso) è stato rimosso e non va reintrodotto; le faccende oggi sono `/faccende`, solo nel menu (vedi "Faccende domestiche" più sotto). Su desktop la navigazione è laterale. Le voci di entrambe stanno in `lib/nav.ts`: aggiungendo una schermata va aggiunta lì, e finisce nel menu senza toccare la barra — la barra non cresce.
 
 ## Schermate principali
 
@@ -143,6 +143,18 @@ Il modulo `/lista` tiene traccia di cosa manca in casa: articoli con tipo di pro
 - **Le notifiche Telegram della lista sono volutamente poche**: solo l'esito di un controllo scontrino e l'aggiunta di un articolo urgente. Notificare ogni prodotto renderebbe rumore anche le notifiche delle spese.
 - **Il riconoscimento dei prodotti sullo scontrino lo fa Gemini**, in una sola chiamata che legge l'immagine e la confronta con la lista. Gli id che il modello restituisce vengono sempre riverificati contro la lista reale prima di scrivere.
 - **Uno scontrino mandato su Telegram registra anche la spesa** (`lib/shopping/receipt-expense.ts`), con le opzioni di default del form: totale e data dello scontrino, pagante chi manda la foto, `DEFAULT_SPLIT` per la categoria, foto allegata alla spesa. Non succede per il controllo fatto dall'app, dove il form è a un tap di distanza. Non creare mai la spesa in silenzio: il messaggio deve sempre dire cosa è stato registrato o perché no (totale illeggibile, doppione dello stesso importo in quella data).
+
+## Faccende domestiche
+
+Il modulo `/faccende` (dal 30 settembre 2026, su richiesta e schizzo di Fede) tiene traccia di chi fa cosa con **due bottiglie**, una per persona. Ogni faccenda riempie una tacca, dal basso, con il nome scritto dentro. Documentazione nella wiki (02, 03, 05, 08); qui le cose da sapere prima di metterci mano:
+
+- **Tutte le faccende valgono uguale.** Non c'è peso, area, durata né catalogo: conta solo quante. I suggerimenti sono le faccende già segnate. Non reintrodurre XP o categorie.
+- **La cosa importante è che le bottiglie siano allo stesso livello.** Andrea ha 5 tacche e Fede 6 dal lunedì al venerdì, perché lavora da casa (`profiles.works_from_home`, non il nome). Quella tacca in più è un **bonus**: è la prima faccenda del giorno e non entra mai nel confronto. Nel weekend le bottiglie sono uguali, 5 e 5. Le bottiglie sono allineate in alto, così la tacca bonus sta sotto il fondo dell'altra e "pari" vuol dire liquido alla stessa altezza. 0 a 0 è pari.
+- **Il debito c'è, ed è voluto.** Chi resta indietro se lo porta ai giorni successivi, senza limite; le bottiglie si svuotano comunque a mezzanotte (Europe/Rome). Vale in entrambe le direzioni. Il calcolo sta nella vista `v_chore_balance`: non ricontare le faccende lato client, come per il saldo delle spese.
+- **La bottiglia piena è un limite vero.** Non si segna la sesta tacca di Andrea o la settima di Fede: lo rifiuta il trigger sul database (`chore_bottle_full`), e l'app disattiva solo il bottone.
+- **Nessuna notifica, di nessun tipo**, e nessun legame con i soldi. Il modulo serve a tenere traccia, non a mettere pressione: il testo resta neutro (niente rosso, niente "sei avanti").
+- Segnare non chiede conferma (si annulla dal toast) e si può fare per l'altro o per ieri. Eliminare chiede conferma, e si elimina solo quello che si è fatto o segnato (RLS).
+- La logica sta in `lib/chores/service.ts` con un client esplicito, come la lista: se un giorno l'assistente dovrà segnare faccende, chiama quello.
 
 ## Workflow di fine sessione
 

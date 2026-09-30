@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      chore_entries: {
+        Row: {
+          created_at: string
+          created_by: string
+          done_by: string
+          done_on: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          done_by: string
+          done_on?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          done_by?: string
+          done_on?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chore_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chore_entries_done_by_fkey"
+            columns: ["done_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_attachments: {
         Row: {
           created_at: string
@@ -186,6 +228,7 @@ export type Database = {
           id: string
           telegram_user_id: number | null
           updated_at: string
+          works_from_home: boolean
         }
         Insert: {
           created_at?: string
@@ -194,6 +237,7 @@ export type Database = {
           id: string
           telegram_user_id?: number | null
           updated_at?: string
+          works_from_home?: boolean
         }
         Update: {
           created_at?: string
@@ -202,6 +246,7 @@ export type Database = {
           id?: string
           telegram_user_id?: number | null
           updated_at?: string
+          works_from_home?: boolean
         }
         Relationships: []
       }
@@ -519,6 +564,21 @@ export type Database = {
       }
     }
     Views: {
+      v_chore_balance: {
+        Row: {
+          display_name: string | null
+          net_before_today: number | null
+          net_position: number | null
+          net_today: number | null
+          tasks_to_parity: number | null
+          today_bonus: number | null
+          today_capacity: number | null
+          today_count: number | null
+          user_id: string | null
+          works_from_home: boolean | null
+        }
+        Relationships: []
+      }
       v_expense_shares: {
         Row: {
           expense_amount: number | null
@@ -626,6 +686,11 @@ export type Database = {
       }
     }
     Functions: {
+      chore_bonus: {
+        Args: { p_day: string; p_works_from_home: boolean }
+        Returns: number
+      }
+      chore_today: { Args: never; Returns: string }
       is_authorized_user: { Args: never; Returns: boolean }
       register_receipt_check: {
         Args: {
