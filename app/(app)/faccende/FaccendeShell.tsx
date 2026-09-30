@@ -187,82 +187,89 @@ export function FaccendeShell({
   const canDelete = !!selected && (selected.done_by === viewerId || selected.created_by === viewerId)
 
   return (
-    <div className="flex flex-col gap-6 px-4 pt-6 pb-24">
+    <div className="flex flex-col gap-6 px-4 pt-6 pb-24 lg:pb-8">
       <header className="px-1">
         <h1 className="font-display text-3xl font-semibold text-foreground">Faccende di casa</h1>
       </header>
 
-      <div className="grid grid-cols-2 items-start gap-4 sm:gap-8">
-        {people.map((person) => {
-          const mine = todayEntries.filter((e) => e.done_by === person.userId)
-          return (
-            <ChoreBottle
-              key={person.userId}
-              name={person.displayName}
-              notches={bottleNotches(mine, person.todayCapacity, person.todayBonus)}
-              onEntryTap={handleEntryTap}
-              onAdd={() => openSheet(person.userId)}
-            />
-          )
-        })}
-      </div>
+      {/* Su desktop due colonne, come la home: le bottiglie a sinistra, ferme mentre si
+          scorrono i giorni scorsi, e tutto il resto a destra. Le bottiglie hanno una
+          larghezza massima: allargate, la spalla disegnata in SVG si deformerebbe. */}
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="mx-auto grid w-full max-w-md grid-cols-2 items-start gap-4 sm:gap-8 lg:sticky lg:top-24">
+          {people.map((person) => {
+            const mine = todayEntries.filter((e) => e.done_by === person.userId)
+            return (
+              <ChoreBottle
+                key={person.userId}
+                name={person.displayName}
+                notches={bottleNotches(mine, person.todayCapacity, person.todayBonus)}
+                onEntryTap={handleEntryTap}
+                onAdd={() => openSheet(person.userId)}
+              />
+            )
+          })}
+        </div>
 
-      <Card
-        role="status"
-        className={cn(
-          'flex flex-col gap-1 px-5 py-4 text-center',
-          message.kind === 'pari' && 'bg-accent-muted/60',
-        )}
-      >
-        <p className="font-display text-xl font-semibold text-foreground">
-          {message.kind === 'pari' ? `😊 ${message.title}` : message.title}
-        </p>
-        {message.details.map((line) => (
-          <p key={line} className="text-sm text-muted">{line}</p>
-        ))}
-      </Card>
+        <div className="flex flex-col gap-6">
+          <Card
+            role="status"
+            className={cn(
+              'flex flex-col gap-1 px-5 py-4 text-center',
+              message.kind === 'pari' && 'bg-accent-muted/60',
+            )}
+          >
+            <p className="font-display text-xl font-semibold text-foreground">
+              {message.kind === 'pari' ? `😊 ${message.title}` : message.title}
+            </p>
+            {message.details.map((line) => (
+              <p key={line} className="text-sm text-muted">{line}</p>
+            ))}
+          </Card>
 
-      <Button size="lg" onClick={() => openSheet(viewerId)} className="w-full">
-        <Plus className="size-5" aria-hidden />
-        Ho fatto una faccenda
-      </Button>
+          <Button size="lg" onClick={() => openSheet(viewerId)} className="w-full">
+            <Plus className="size-5" aria-hidden />
+            Ho fatto una faccenda
+          </Button>
 
-      {pastDays.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="px-1 text-sm font-semibold text-muted">Giorni scorsi</h2>
-          {pastDays.map((day) => (
-            <Card key={day} className="flex flex-col gap-3 px-4 py-4">
-              <p className="text-sm font-semibold text-foreground first-letter:uppercase">
-                {day === shiftDay(today, -1) ? 'Ieri' : DAY_LABEL.format(new Date(`${day}T12:00:00Z`))}
-              </p>
-              {people.map((person) => {
-                const done = shownEntries.filter((e) => e.done_on === day && e.done_by === person.userId)
-                return (
-                  <div key={person.userId} className="flex flex-col gap-1.5">
-                    <span className="text-xs font-medium text-muted">
-                      {person.displayName} · {done.length}
-                    </span>
-                    {done.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {done.map((e) => (
-                          <button
-                            key={e.id}
-                            type="button"
-                            onClick={() => handleEntryTap(e)}
-                            className="min-h-11 rounded-full bg-surface-raised px-3 text-sm text-foreground active:scale-[0.97]"
-                          >
-                            {e.name}
-                          </button>
-                        ))}
+          {pastDays.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="px-1 text-sm font-semibold text-muted">Giorni scorsi</h2>
+              {pastDays.map((day) => (
+                <Card key={day} className="flex flex-col gap-3 px-4 py-4">
+                  <p className="text-sm font-semibold text-foreground first-letter:uppercase">
+                    {day === shiftDay(today, -1) ? 'Ieri' : DAY_LABEL.format(new Date(`${day}T12:00:00Z`))}
+                  </p>
+                  {people.map((person) => {
+                    const done = shownEntries.filter((e) => e.done_on === day && e.done_by === person.userId)
+                    return (
+                      <div key={person.userId} className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-muted">
+                          {person.displayName} · {done.length}
+                        </span>
+                        {done.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {done.map((e) => (
+                              <button
+                                key={e.id}
+                                type="button"
+                                onClick={() => handleEntryTap(e)}
+                                className="min-h-11 rounded-full bg-surface-raised px-3 text-sm text-foreground active:scale-[0.97]"
+                              >
+                                {e.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
-            </Card>
-          ))}
-        </section>
-      )}
+                    )
+                  })}
+                </Card>
+              ))}
+            </section>
+          )}
+        </div>
+      </div>
 
       <AddChoreSheet
         key={sheetKey}

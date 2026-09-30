@@ -30,7 +30,7 @@ export function ChoreBottle({ name, notches, onEntryTap, onAdd }: ChoreBottlePro
   const firstEmpty = notches.findIndex((n) => !n.entry)
 
   return (
-    <figure className="flex min-w-0 flex-col items-stretch">
+    <figure className="mx-auto flex w-full min-w-0 max-w-52 flex-col items-stretch">
       <figcaption className="mb-2 text-center font-display text-2xl font-semibold text-foreground">
         {name}
       </figcaption>
