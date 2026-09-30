@@ -3,11 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
+  acceptChoreHint,
   addChoreEntry,
+  addChoreHint,
   addChorePreset,
   deleteChoreEntry,
   deleteChorePreset,
   dismissRecentChore,
+  removeChoreHint,
   restoreRecentChore,
   type ChoreEntryInput,
 } from '@/lib/chores/service'
@@ -94,6 +97,47 @@ export async function restoreRecentChoreAction(name: string): Promise<ActionStat
   if (!user) return { error: 'Non autenticato.' }
 
   const result = await restoreRecentChore(supabase, name)
+  if (!result.ok) return { error: result.error }
+
+  revalidateChores()
+  return { ok: true }
+}
+
+/** Suggerisce una faccenda all'altra persona. Nessuna notifica: la vede aprendo l'app. */
+export async function addChoreHintAction(input: {
+  name: string
+  forUser: string
+}): Promise<{ error?: string; id?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autenticato.' }
+
+  const result = await addChoreHint(supabase, user.id, input)
+  if (!result.ok) return { error: result.error }
+
+  revalidateChores()
+  return { id: result.id }
+}
+
+/** Il suggerimento ricevuto diventa una faccenda. Ritorna l'id della faccenda, per "Annulla". */
+export async function acceptChoreHintAction(hintId: string): Promise<{ error?: string; entryId?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autenticato.' }
+
+  const result = await acceptChoreHint(supabase, hintId)
+  if (!result.ok) return { error: result.error }
+
+  revalidateChores()
+  return { entryId: result.entryId }
+}
+
+export async function removeChoreHintAction(hintId: string): Promise<ActionState> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autenticato.' }
+
+  const result = await removeChoreHint(supabase, hintId)
   if (!result.ok) return { error: result.error }
 
   revalidateChores()

@@ -239,7 +239,7 @@ export async function getFrequentDescriptions(limit = 5): Promise<ExpenseSuggest
  */
 export async function getDataVersion(): Promise<string | null> {
   const supabase = await createClient()
-  const [expenses, attachments, items, checks, profiles, chores] = await Promise.all([
+  const [expenses, attachments, items, checks, profiles, chores, hints] = await Promise.all([
     supabase.from('expenses').select('updated_at', { count: 'exact' })
       .order('updated_at', { ascending: false }).limit(1),
     supabase.from('expense_attachments').select('created_at', { count: 'exact' })
@@ -252,8 +252,12 @@ export async function getDataVersion(): Promise<string | null> {
       .order('updated_at', { ascending: false }).limit(1),
     supabase.from('chore_entries').select('created_at', { count: 'exact' })
       .order('created_at', { ascending: false }).limit(1),
+    // I suggerimenti arrivano solo così: senza notifiche, la pagina deve
+    // ricaricarsi da sola quando l'altra persona ne manda uno.
+    supabase.from('chore_hints').select('created_at', { count: 'exact' })
+      .order('created_at', { ascending: false }).limit(1),
   ])
-  if (expenses.error || attachments.error || items.error || checks.error || profiles.error || chores.error) return null
+  if (expenses.error || attachments.error || items.error || checks.error || profiles.error || chores.error || hints.error) return null
   return [
     `${expenses.count}@${expenses.data[0]?.updated_at ?? ''}`,
     `${attachments.count}@${attachments.data[0]?.created_at ?? ''}`,
@@ -261,6 +265,7 @@ export async function getDataVersion(): Promise<string | null> {
     `${checks.count}@${checks.data[0]?.checked_at ?? ''}`,
     profiles.data[0]?.updated_at ?? '',
     `${chores.count}@${chores.data[0]?.created_at ?? ''}`,
+    `${hints.count}@${hints.data[0]?.created_at ?? ''}`,
   ].join('|')
 }
 
@@ -434,4 +439,19 @@ export async function getCustomChorePresets(): Promise<CustomChorePreset[]> {
 
   if (error) return []
   return (data ?? []).map((row) => ({ id: row.id, name: row.name, groupId: row.group_id }))
+}
+
+export type ChoreHint = Tables<'chore_hints'>
+
+/** I suggerimenti di un giorno (di norma oggi), nell'ordine in cui sono arrivati. */
+export async function getChoreHints(day: string): Promise<ChoreHint[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('chore_hints')
+    .select('*')
+    .eq('hint_on', day)
+    .order('created_at', { ascending: true })
+
+  if (error) return []
+  return data ?? []
 }

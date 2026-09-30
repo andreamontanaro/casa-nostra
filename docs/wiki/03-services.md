@@ -40,6 +40,9 @@ Gusci sottili sopra `lib/chores/service.ts` → `app/actions/chores.ts`, stessa 
 
 * `addChorePresetAction({ name, groupId })` / `deleteChorePresetAction(id)`: Crea o toglie un'azione vostra. La creazione parte anche insieme a `addChoreAction` quando nel pannello si spunta «Salva tra le vostre azioni»: se l'azione non si salva (doppione) lo dice il toast, ma la tacca resta.
 * `dismissRecentChoreAction(name)` / `restoreRecentChoreAction(name)`: Toglie un nome dai "Recenti" o lo rimette (il bottone "Annulla" del toast). Senza conferma, perché non cancella niente: le faccende già segnate restano.
+* `addChoreHintAction({ name, forUser })`: Suggerisce una faccenda all'altra persona per oggi. Il limite della bottiglia e i doppioni li rifiuta il database.
+* `acceptChoreHintAction(hintId)`: Chiama la RPC `accept_chore_hint` e restituisce l'id della faccenda creata, per il bottone "Annulla" del toast (che la elimina come una faccenda qualsiasi).
+* `removeChoreHintAction(hintId)`: Ritira (chi l'ha mandato) o scarta (chi l'ha ricevuto) un suggerimento.
 
 **Nessuna notifica Telegram**, per scelta esplicita: le faccende servono a tenere traccia, non a mettere pressione.
 

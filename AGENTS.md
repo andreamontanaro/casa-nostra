@@ -154,6 +154,7 @@ Il modulo `/faccende` (dal 30 settembre 2026, su richiesta e schizzo di Fede) ti
 - **La bottiglia piena è un limite vero.** Non si segna la sesta tacca di Andrea o la settima di Fede: lo rifiuta il trigger sul database (`chore_bottle_full`), e l'app disattiva solo il bottone.
 - **Nessuna notifica, di nessun tipo**, e nessun legame con i soldi. Il modulo serve a tenere traccia, non a mettere pressione: il testo resta neutro (niente rosso, niente "sei avanti").
 - Segnare non chiede conferma: un tocco su un'azione riempie subito la tacca, e si annulla dal toast. Si può segnare anche per l'altro o per ieri. Eliminare chiede conferma, e si elimina solo quello che si è fatto o segnato (RLS).
+- **Suggerimenti** (`chore_hints`): il "+" sulla bottiglia dell'altra persona le suggerisce una faccenda, che compare sbiadita nella sua prima tacca libera. Chi lo riceve lo conferma (RPC `accept_chore_hint`, che in una transazione lo toglie e segna la faccenda), lo scarta, oppure fa altro e il suggerimento sale di una tacca. Non conta per la parità finché non è confermato, occupa comunque una tacca (il trigger non lascia suggerire oltre la bottiglia piena) e scade a mezzanotte. Non è una notifica: arriva solo con il refresh della pagina (`getDataVersion` guarda anche `chore_hints`). Non trasformarlo in un sollecito.
 - La logica sta in `lib/chores/service.ts` con un client esplicito, come la lista: se un giorno l'assistente dovrà segnare faccende, chiama quello.
 
 ## Workflow di fine sessione

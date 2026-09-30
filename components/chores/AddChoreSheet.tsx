@@ -16,7 +16,11 @@ import {
 } from '@/lib/chores/presets'
 import { cn } from '@/lib/utils'
 
+export type AddChoreMode = 'fatto' | 'suggerisci'
+
 export interface AddChoreValues {
+  /** `fatto` riempie una tacca; `suggerisci` manda il nome all'altra persona. */
+  mode: AddChoreMode
   name: string
   doneBy: string
   day: 'oggi' | 'ieri'
@@ -29,12 +33,16 @@ interface Person {
   label: string
   /** La bottiglia di oggi è piena: si può ancora segnare per ieri. */
   fullToday: boolean
+  /** Tacche di oggi ancora libere anche dai suggerimenti. */
+  hintRoom: number
 }
 
 interface AddChoreSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   people: Person[]
+  viewerId: string
+  initialMode: AddChoreMode
   initialDoneBy: string
   /** I nomi delle ultime faccende segnate, per la scheda "Recenti". */
   recent: string[]
@@ -67,6 +75,8 @@ export function AddChoreSheet({
   open,
   onOpenChange,
   people,
+  viewerId,
+  initialMode,
   initialDoneBy,
   recent,
   custom,
@@ -75,6 +85,7 @@ export function AddChoreSheet({
   onDeletePreset,
   onDismissRecent,
 }: AddChoreSheetProps) {
+  const [mode, setMode] = useState<AddChoreMode>(initialMode)
   const [query, setQuery] = useState('')
   const [doneBy, setDoneBy] = useState(initialDoneBy)
   const [day, setDay] = useState<'oggi' | 'ieri'>('oggi')
@@ -91,8 +102,10 @@ export function AddChoreSheet({
   const [toDelete, setToDelete] = useState<CustomChorePreset | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const other = people.find((p) => p.id !== viewerId)
+  const suggesting = mode === 'suggerisci' && !!other
   const person = people.find((p) => p.id === doneBy)
-  const blocked = day === 'oggi' && !!person?.fullToday
+  const blocked = suggesting ? (other?.hintRoom ?? 0) <= 0 : day === 'oggi' && !!person?.fullToday
   const typed = query.trim()
   const customNames = custom.map((c) => c.name)
   const results = searchChoreNames(typed, [...recent, ...customNames])
@@ -105,7 +118,11 @@ export function AddChoreSheet({
 
   function save(name: string, group?: string) {
     if (blocked || !name.trim() || name.trim().length > CHORE_NAME_MAX) return
-    onSubmit({ name: name.trim(), doneBy, day, saveToGroup: group })
+    onSubmit(
+      suggesting
+        ? { mode: 'suggerisci', name: name.trim(), doneBy: other!.id, day: 'oggi', saveToGroup: group }
+        : { mode: 'fatto', name: name.trim(), doneBy, day, saveToGroup: group },
+    )
   }
 
   function submitTyped(event: React.FormEvent) {
@@ -135,9 +152,33 @@ export function AddChoreSheet({
   const tabCustom = custom.filter((c) => c.groupId === tab)
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Ho fatto una faccenda" size="full">
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={suggesting ? `Suggerisci a ${other!.label}` : 'Ho fatto una faccenda'}
+      size="full"
+    >
       {/* Il corpo della Sheet non ha margini suoi: li mette ogni pannello (come ItemFormSheet). */}
       <div className="flex flex-col gap-6 px-4 pt-2 pb-6">
+        {other && (
+          <SegmentedControl
+            groupId="chore-mode"
+            label="Segnare o suggerire"
+            value={mode}
+            onChange={(v) => setMode(v as AddChoreMode)}
+            options={[
+              { value: 'fatto', label: 'Ho fatto' },
+              { value: 'suggerisci', label: `Suggerisci a ${other.label}` },
+            ]}
+          />
+        )}
+
+        {suggesting ? (
+          <p className="px-1 text-sm text-muted">
+            Compare sbiadito nella prima tacca libera di {other!.label}, che lo conferma quando l’ha fatto.
+            Vale per oggi e non conta finché non è confermato.
+          </p>
+        ) : (
         <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
           <div className="flex flex-col gap-2">
             <span className={LABEL}>Chi</span>
@@ -163,10 +204,13 @@ export function AddChoreSheet({
             />
           </div>
         </div>
+        )}
 
         {blocked && (
           <p className="rounded-2xl bg-surface-raised px-4 py-3 text-sm text-muted" role="status">
-            La bottiglia di oggi è piena. Puoi ancora segnare una faccenda di ieri.
+            {suggesting
+              ? `La bottiglia di ${other!.label} è già piena per oggi, suggerimenti compresi.`
+              : 'La bottiglia di oggi è piena. Puoi ancora segnare una faccenda di ieri.'}
           </p>
         )}
 
@@ -183,7 +227,7 @@ export function AddChoreSheet({
           />
           <button
             type="submit"
-            aria-label="Riempi una tacca con questa faccenda"
+            aria-label={suggesting ? 'Suggerisci questa faccenda' : 'Riempi una tacca con questa faccenda'}
             disabled={!typed || blocked}
             className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground transition-transform active:scale-95 disabled:opacity-50"
           >

@@ -30,22 +30,45 @@ export interface NotchEntry {
   name: string
 }
 
+export interface NotchHint {
+  id: string
+  name: string
+}
+
 export interface Notch {
   /** La tacca bonus di chi lavora da casa: è la più bassa e non entra nel confronto. */
   bonus: boolean
   entry: NotchEntry | null
+  /** Un suggerimento dell'altra persona, sbiadito in una tacca ancora vuota. */
+  hint: NotchHint | null
 }
 
 /**
  * Le tacche di una bottiglia dal basso verso l'alto. Le faccende arrivano
  * nell'ordine in cui sono state segnate e riempiono la tacca libera più
  * bassa: con il bonus, la prima faccenda del giorno finisce nella tacca bonus.
+ *
+ * I suggerimenti occupano le tacche vuote subito sopra le faccende, nell'ordine
+ * in cui sono arrivati. Non sono faccende: quando se ne segna una, i
+ * suggerimenti salgono di una tacca. Quelli che non ci stanno più li
+ * restituisce `overflowHints`.
  */
-export function bottleNotches(entries: NotchEntry[], capacity: number, bonus: number): Notch[] {
+export function bottleNotches(
+  entries: NotchEntry[],
+  capacity: number,
+  bonus: number,
+  hints: NotchHint[] = [],
+): Notch[] {
   return Array.from({ length: capacity }, (_, i) => ({
     bonus: i < bonus,
     entry: entries[i] ?? null,
+    hint: i < entries.length ? null : (hints[i - entries.length] ?? null),
   }))
+}
+
+/** I suggerimenti che non trovano una tacca libera (la bottiglia si è riempita dopo). */
+export function overflowHints(entryCount: number, capacity: number, hints: NotchHint[]): NotchHint[] {
+  return hints.slice(Math.max(capacity - entryCount, 0))
 }
 
 export function choresLabel(n: number): string {

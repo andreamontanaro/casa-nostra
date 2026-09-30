@@ -28,8 +28,8 @@ function row(userId, fields = {}) {
 test('la prima faccenda di chi lavora da casa va nella tacca bonus, in basso', () => {
   const notches = bottleNotches([{ id: '1', name: 'Lavo i piatti' }, { id: '2', name: 'Cucino' }], 6, 1)
   assert.equal(notches.length, 6)
-  assert.deepEqual(notches[0], { bonus: true, entry: { id: '1', name: 'Lavo i piatti' } })
-  assert.deepEqual(notches[1], { bonus: false, entry: { id: '2', name: 'Cucino' } })
+  assert.deepEqual(notches[0], { bonus: true, entry: { id: '1', name: 'Lavo i piatti' }, hint: null })
+  assert.deepEqual(notches[1], { bonus: false, entry: { id: '2', name: 'Cucino' }, hint: null })
   assert.equal(notches.slice(2).every((n) => !n.bonus && n.entry === null), true)
 })
 
@@ -133,4 +133,32 @@ test('un nome tolto dai recenti torna solo se viene rifatto dopo', () => {
   ]
   // Cucino tolto dopo l'ultimo uso: fuori. Stiro rifatto dopo essere stato tolto: dentro.
   assert.deepEqual(recentChoreNames(entries, dismissals), ['Stiro'])
+})
+
+const { overflowHints } = await loadTs('../lib/chores/bottle.ts')
+
+test('i suggerimenti stanno nelle tacche vuote sopra le faccende', () => {
+  const notches = bottleNotches([{ id: '1', name: 'Spolvero' }], 5, 0, [{ id: 'h1', name: 'Stendo i panni' }, { id: 'h2', name: 'Stiro' }])
+  assert.equal(notches[0].entry?.name, 'Spolvero')
+  assert.equal(notches[0].hint, null)
+  assert.equal(notches[1].hint?.name, 'Stendo i panni')
+  assert.equal(notches[2].hint?.name, 'Stiro')
+  assert.equal(notches[3].hint, null)
+})
+
+test('segnando un’altra faccenda il suggerimento sale di una tacca', () => {
+  const hints = [{ id: 'h1', name: 'Stendo i panni' }]
+  const before = bottleNotches([], 5, 0, hints)
+  const after = bottleNotches([{ id: '1', name: 'Cucino' }], 5, 0, hints)
+  assert.equal(before[0].hint?.name, 'Stendo i panni')
+  assert.equal(after[0].entry?.name, 'Cucino')
+  assert.equal(after[1].hint?.name, 'Stendo i panni')
+})
+
+test('i suggerimenti che non ci stanno più restano fuori dalla bottiglia', () => {
+  const hints = [{ id: 'h1', name: 'Stendo' }, { id: 'h2', name: 'Stiro' }]
+  const entries = [1, 2, 3, 4].map((i) => ({ id: String(i), name: 'x' }))
+  assert.equal(bottleNotches(entries, 5, 0, hints)[4].hint?.name, 'Stendo')
+  assert.deepEqual(overflowHints(4, 5, hints), [{ id: 'h2', name: 'Stiro' }])
+  assert.deepEqual(overflowHints(2, 5, hints), [])
 })

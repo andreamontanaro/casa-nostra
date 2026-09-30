@@ -82,6 +82,48 @@ export type Database = {
           },
         ]
       }
+      chore_hints: {
+        Row: {
+          created_at: string
+          for_user: string
+          from_user: string
+          hint_on: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          for_user: string
+          from_user: string
+          hint_on?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          for_user?: string
+          from_user?: string
+          hint_on?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chore_hints_for_user_fkey"
+            columns: ["for_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chore_hints_from_user_fkey"
+            columns: ["from_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chore_presets: {
         Row: {
           created_at: string
@@ -744,6 +786,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_chore_hint: { Args: { p_hint_id: string }; Returns: string }
       chore_bonus: {
         Args: { p_day: string; p_works_from_home: boolean }
         Returns: number

@@ -39,7 +39,7 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 * `getAllSettlements()` → `lib/queries.ts`: tutti i conguagli con i nomi dei due, dal più recente. Li usano le statistiche e lo storico, che li mette fra le spese (`SettlementWithNames`).
 * `getExpenseIdsWithAttachments()` → `lib/queries.ts`: Restituisce l'insieme degli id di spesa che hanno almeno un allegato; l'assistente lo usa per marcare le spese con 📎scontrino nel contesto.
 * `getFrequentDescriptions(limit)` → `lib/queries.ts`: Recupera le ultime 200 descrizioni inserite ed effettua un conteggio delle frequenze in memoria sul server. Ogni suggerimento (`ExpenseSuggestion`) porta con sé categoria e divisione del suo utilizzo più recente: un tap nel form compila tutti e tre i campi. Evita l'esposizione di funzioni RPC aggiuntive.
-* `getDataVersion()` → `lib/queries.ts`: impronta dei dati condivisi (numero di righe e ultima modifica di spese, allegati, articoli della lista, controlli scontrino, profili, faccende). Cambia a ogni inserimento, modifica o eliminazione — un conguaglio tocca `updated_at` delle spese che chiude. La espone `/api/sync` per `SharedDataRefresh`.
+* `getDataVersion()` → `lib/queries.ts`: impronta dei dati condivisi (numero di righe e ultima modifica di spese, allegati, articoli della lista, controlli scontrino, profili, faccende, suggerimenti delle faccende). Cambia a ogni inserimento, modifica o eliminazione — un conguaglio tocca `updated_at` delle spese che chiude. La espone `/api/sync` per `SharedDataRefresh`.
 
 ### Modulo Lista della Spesa (`queries.ts`)
 * `getOpenShoppingItems(db?)` → `lib/queries.ts`: Gli articoli ancora da comprare, ordinati per `urgency` decrescente e poi per anzianità. L'ordinamento è quello dell'enum (`bassa < media < alta`): non esiste una colonna di priorità.
@@ -52,6 +52,7 @@ Tutte le operazioni di lettura dati sono isolate in file di query dedicati:
 * `getChoreBalance(db?)` → `lib/queries.ts`: Le due righe di `v_chore_balance`, con i `null` della vista risolti in un `ChoreBalance` (`lib/chores/bottle.ts`). È tutto quello che serve al messaggio sotto le bottiglie: l'app non somma faccende a mano.
 * `getChoreEntriesSince(day, db?)` → `lib/queries.ts`: Le faccende da un giorno in poi, dal giorno più recente e, dentro lo stesso giorno, nell'ordine in cui sono state segnate — che è l'ordine in cui riempiono le tacche. La pagina chiede gli ultimi 7 giorni.
 * `getRecentChoreNames(limit)` → `lib/queries.ts`: I nomi delle ultime faccende segnate (tra le ultime 200), dal più recente, meno quelli tolti a mano (`chore_recent_dismissals`), per la scheda "🕘 Recenti" del pannello "Ho fatto una faccenda". Il calcolo è la funzione pura `recentChoreNames` (`lib/chores/presets.ts`), verificata in `tests/chores.test.mjs`.
+* `getChoreHints(day)` → `lib/queries.ts`: I suggerimenti di un giorno (la pagina passa oggi), nell'ordine di arrivo: è l'ordine in cui occupano le tacche libere (`bottleNotches` in `lib/chores/bottle.ts`; quelli che non ci stanno più li restituisce `overflowHints`).
 * `getCustomChorePresets()` → `lib/queries.ts`: Le azioni (`chore_presets`), che il pannello mostra nel loro ambito. Sono le sole: non ce ne sono di predefinite.
 
 ---

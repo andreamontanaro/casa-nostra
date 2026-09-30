@@ -1,7 +1,7 @@
 'use client'
 
-import { House, Plus } from 'lucide-react'
-import type { Notch, NotchEntry } from '@/lib/chores/bottle'
+import { House, Lightbulb, Plus } from 'lucide-react'
+import type { Notch, NotchEntry, NotchHint } from '@/lib/chores/bottle'
 import { cn } from '@/lib/utils'
 
 interface ChoreBottleProps {
@@ -9,8 +9,12 @@ interface ChoreBottleProps {
   notches: Notch[]
   /** Tap su una tacca piena: dettagli ed eventuale eliminazione. */
   onEntryTap: (entry: NotchEntry) => void
-  /** Tap sulla prima tacca vuota: segna una faccenda in questa bottiglia. */
+  /** Tap su un suggerimento sbiadito: confermarlo, scartarlo o ritirarlo. */
+  onHintTap: (hint: NotchHint) => void
+  /** Tap sulla prima tacca vuota: segna (o suggerisce) una faccenda in questa bottiglia. */
   onAdd: () => void
+  /** Etichetta del "+" per chi usa uno screen reader. */
+  addLabel?: string
 }
 
 /**
@@ -25,9 +29,9 @@ interface ChoreBottleProps {
  * tronca; l'SVG disegna solo la parte alta, con un tratto che non si deforma
  * quando la larghezza cambia.
  */
-export function ChoreBottle({ name, notches, onEntryTap, onAdd }: ChoreBottleProps) {
+export function ChoreBottle({ name, notches, onEntryTap, onHintTap, onAdd, addLabel }: ChoreBottleProps) {
   const filled = notches.filter((n) => n.entry).length
-  const firstEmpty = notches.findIndex((n) => !n.entry)
+  const firstEmpty = notches.findIndex((n) => !n.entry && !n.hint)
 
   return (
     <figure className="mx-auto flex w-full min-w-0 max-w-52 flex-col items-stretch">
@@ -85,11 +89,25 @@ export function ChoreBottle({ name, notches, onEntryTap, onAdd }: ChoreBottlePro
                   {notch.bonus && <House className="size-3.5 shrink-0" aria-label="Bonus:" />}
                   <span className="truncate">{notch.entry.name}</span>
                 </button>
+              ) : notch.hint ? (
+                <button
+                  type="button"
+                  onClick={() => onHintTap(notch.hint!)}
+                  aria-label={`Suggerimento: ${notch.hint.name}`}
+                  className={cn(
+                    'm-1 flex h-[calc(100%-0.5rem)] w-[calc(100%-0.5rem)] items-center justify-center gap-1.5 rounded-xl px-2',
+                    'border border-dashed border-accent/50 bg-accent-muted/30 text-sm font-medium text-accent-soft/70',
+                    'transition-[background-color,transform] duration-200 hover:bg-accent-muted/50 active:scale-[0.98]',
+                  )}
+                >
+                  <Lightbulb className="size-3.5 shrink-0" aria-hidden />
+                  <span className="truncate">{notch.hint.name}</span>
+                </button>
               ) : i === firstEmpty ? (
                 <button
                   type="button"
                   onClick={onAdd}
-                  aria-label={`Segna una faccenda di ${name}`}
+                  aria-label={addLabel ?? `Segna una faccenda di ${name}`}
                   className="flex size-full items-center justify-center gap-1.5 text-sm text-muted transition-colors hover:bg-surface-raised"
                 >
                   {notch.bonus ? <House className="size-4" aria-hidden /> : <Plus className="size-4" aria-hidden />}

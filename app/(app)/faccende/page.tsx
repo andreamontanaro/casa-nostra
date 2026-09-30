@@ -3,6 +3,7 @@ import { todayISO } from '@/lib/fmt'
 import {
   getChoreBalance,
   getChoreEntriesSince,
+  getChoreHints,
   getCurrentUser,
   getCustomChorePresets,
   getRecentChoreNames,
@@ -14,12 +15,13 @@ const HISTORY_DAYS = 7
 
 export default async function FaccendePage() {
   const today = todayISO()
-  const [user, balances, entries, suggestions, customPresets] = await Promise.all([
+  const [user, balances, entries, suggestions, customPresets, hints] = await Promise.all([
     getCurrentUser(),
     getChoreBalance(),
     getChoreEntriesSince(shiftDay(today, -HISTORY_DAYS)),
     getRecentChoreNames(),
     getCustomChorePresets(),
+    getChoreHints(today),
   ])
 
   return (
@@ -30,6 +32,7 @@ export default async function FaccendePage() {
       entries={entries}
       suggestions={suggestions}
       customPresets={customPresets}
+      hints={hints}
     />
   )
 }

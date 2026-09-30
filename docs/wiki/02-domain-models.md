@@ -150,3 +150,12 @@ Un nome nascosto dalla scheda "Recenti" del pannello → `docs/migrations/2026-0
 * **Nasconde, non cancella**: le faccende con quel nome restano in `chore_entries`, e con loro bottiglie e arretrato. Il nome torna tra i recenti appena viene segnata una faccenda con quel nome **dopo** `dismissed_at` (`recentChoreNames` in `lib/chores/presets.ts`). Togliere di nuovo lo stesso nome aggiorna solo l'ora (upsert).
 * **RLS di casa**: entrambi tolgono e rimettono.
 
+### 11. Suggerimento all'altra persona (`chore_hints`)
+Una faccenda suggerita a chi deve farla → `docs/migrations/2026-09-30_faccende_suggerimenti.sql`, sezione 14 dello schema.
+* **Proprietà**: `id`, `name` (1–40), `for_user` (chi lo riceve), `from_user` (chi lo manda, `≠ for_user`), `hint_on` (default `chore_today()`), `created_at`.
+* **Vale un giorno solo**: si crea solo per oggi (`chore_hint_not_today`) e l'app legge solo quelli di oggi; chi ne inserisce uno cancella quelli dei giorni prima.
+* **Occupa una tacca, ma non è una faccenda**: il trigger `trg_chore_hints_check_bottle` rifiuta un suggerimento se faccende + suggerimenti di oggi riempiono già la bottiglia (`chore_bottle_full`). `v_chore_balance` non lo vede: la parità cambia solo quando viene confermato.
+* **Conferma transazionale**: `accept_chore_hint(p_hint_id)` toglie il suggerimento (solo se è di `auth.uid()` e di oggi, altrimenti `chore_hint_not_found`) e inserisce la faccenda; se la bottiglia è piena il trigger di `chore_entries` fa fallire tutto e il suggerimento resta.
+* **Doppioni**: indice unico su (`for_user`, `hint_on`, `lower(trim(name))`).
+* **RLS**: entrambi leggono; si inserisce solo come `from_user`; lo elimina chi l'ha mandato (ritira) o chi l'ha ricevuto (scarta).
+

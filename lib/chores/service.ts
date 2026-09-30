@@ -157,3 +157,72 @@ export async function restoreRecentChore(
   if (error) return { ok: false, error: 'Non riesco a rimetterla tra i recenti. Riprova.' }
   return { ok: true }
 }
+
+// ------------------------------------------------------------
+// Suggerimenti all'altra persona
+// ------------------------------------------------------------
+
+export type AddHintResult =
+  | { ok: true; id: string; name: string }
+  | { ok: false; error: string; full?: boolean }
+
+/**
+ * Suggerisce una faccenda all'altra persona, per oggi. Occupa una tacca
+ * libera della sua bottiglia: se non ce ne sono, il trigger lo rifiuta.
+ */
+export async function addChoreHint(
+  db: QueryClient,
+  userId: string,
+  input: { name: string; forUser: string },
+): Promise<AddHintResult> {
+  const name = cleanName(input.name)
+  if (!name) return { ok: false, error: 'Scrivi che faccenda suggerire.' }
+  if (name.length > CHORE_NAME_MAX) return { ok: false, error: TOO_LONG }
+  if (input.forUser === userId) return { ok: false, error: 'Un suggerimento va all’altra persona.' }
+
+  const { data, error } = await db
+    .from('chore_hints')
+    .insert({ name, for_user: input.forUser, from_user: userId })
+    .select('id, name')
+    .single()
+
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) return { ok: false, error: `"${name}" è già suggerita per oggi.` }
+    if (error.message.includes('chore_bottle_full')) {
+      return { ok: false, error: 'La bottiglia di oggi è già piena, suggerimenti compresi.', full: true }
+    }
+    return { ok: false, error: 'Errore durante l’invio. Riprova.' }
+  }
+  return { ok: true, id: data.id, name: data.name }
+}
+
+/**
+ * Conferma un suggerimento ricevuto: la RPC lo toglie e segna la faccenda
+ * nella stessa transazione, quindi o succedono tutte e due o nessuna.
+ */
+export async function acceptChoreHint(
+  db: QueryClient,
+  hintId: string,
+): Promise<{ ok: true; entryId: string } | { ok: false; error: string }> {
+  const { data, error } = await db.rpc('accept_chore_hint', { p_hint_id: hintId })
+  if (error) {
+    if (error.message.includes('chore_bottle_full')) {
+      return { ok: false, error: 'La bottiglia di oggi è già piena.' }
+    }
+    if (error.message.includes('chore_hint_not_found')) {
+      return { ok: false, error: 'Questo suggerimento non c’è più: forse è stato ritirato.' }
+    }
+    return { ok: false, error: 'Errore durante il salvataggio. Riprova.' }
+  }
+  return { ok: true, entryId: data }
+}
+
+/** Toglie un suggerimento: lo ritira chi l'ha mandato, lo scarta chi l'ha ricevuto. */
+export async function removeChoreHint(
+  db: QueryClient,
+  hintId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await db.from('chore_hints').delete().eq('id', hintId)
+  if (error) return { ok: false, error: 'Errore durante l’eliminazione. Riprova.' }
+  return { ok: true }
+}
