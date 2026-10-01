@@ -4,6 +4,7 @@ import { useOptimistic, useState, useTransition } from 'react'
 import { Lightbulb, Plus } from 'lucide-react'
 import { AddChoreSheet, type AddChoreMode, type AddChoreValues } from '@/components/chores/AddChoreSheet'
 import { ChoreBottle } from '@/components/chores/ChoreBottle'
+import { TiltPrompt } from '@/components/chores/TiltPrompt'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
@@ -296,8 +297,11 @@ export function FaccendeShell({
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-24 lg:pb-8">
-      <header className="px-1">
+      <header className="relative px-1">
         <h1 className="font-display text-3xl font-semibold text-foreground">Faccende di casa</h1>
+        <div className="absolute top-1/2 right-0 -translate-y-1/2">
+          <TiltPrompt />
+        </div>
       </header>
 
       {/* Su desktop due colonne, come la home: le bottiglie a sinistra, ferme mentre si
