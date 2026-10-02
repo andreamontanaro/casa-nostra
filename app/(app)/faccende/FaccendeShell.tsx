@@ -1,13 +1,16 @@
 'use client'
 
-import { useOptimistic, useState, useTransition } from 'react'
+import { useOptimistic, useState, useSyncExternalStore, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { Lightbulb, Plus } from 'lucide-react'
 import { AddChoreSheet, type AddChoreMode, type AddChoreValues } from '@/components/chores/AddChoreSheet'
+import { BottleViewToggle } from '@/components/chores/BottleViewToggle'
 import { ChoreBottle } from '@/components/chores/ChoreBottle'
 import { TiltPrompt } from '@/components/chores/TiltPrompt'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
+import { Skeleton } from '@/components/ui/Skeleton'
 import {
   acceptChoreHintAction,
   addChoreAction,
@@ -28,6 +31,7 @@ import {
   type NotchEntry,
   type NotchHint,
 } from '@/lib/chores/bottle'
+import { getBottleView, getServerBottleView, setBottleView, subscribeBottleView } from '@/lib/chores/bottle-view'
 import { CHORE_PRESET_GROUPS, type CustomChorePreset } from '@/lib/chores/presets'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -41,6 +45,29 @@ const DAY_LABEL = new Intl.DateTimeFormat('it-IT', {
 })
 
 const OFFLINE = 'Connessione interrotta. Riprova tra un momento.'
+
+/**
+ * Le bottiglie in 3D, con three.js dentro: un pacchetto a parte che si scarica
+ * solo quando qualcuno sceglie il 3D (o ci si avvicina col dito). Chi resta sul
+ * 2D, che è la vista di serie, non lo scarica mai.
+ */
+const loadBottles3D = () => import('@/components/chores/ChoreBottles3D')
+const ChoreBottles3D = dynamic(loadBottles3D, { ssr: false, loading: () => <Bottles3DLoading /> })
+
+function preloadBottles3D() {
+  void loadBottles3D().catch(() => {})
+}
+
+/** Al posto delle bottiglie 3D mentre arrivano: stesso ingombro, niente salti. */
+function Bottles3DLoading() {
+  return (
+    <div role="status" className="flex flex-col gap-2">
+      <span className="sr-only">Carico le bottiglie in 3D…</span>
+      <Skeleton className="mx-auto w-full max-w-md rounded-3xl" style={{ aspectRatio: 0.95 }} />
+      <Skeleton className="mx-auto h-4 w-48 rounded-md" />
+    </div>
+  )
+}
 
 interface FaccendeShellProps {
   viewerId: string
@@ -83,6 +110,8 @@ export function FaccendeShell({
   const [hintBusy, setHintBusy] = useState(false)
   const [selected, setSelected] = useState<ChoreEntry | null>(null)
   const [deleting, setDeleting] = useState(false)
+  // 2D di serie; il 3D solo se scelto su questo dispositivo (il server disegna sempre il 2D).
+  const view = useSyncExternalStore(subscribeBottleView, getBottleView, getServerBottleView)
 
   // La tacca si riempie al tocco; se il salvataggio fallisce, a fine
   // transizione torna vuota da sola.
@@ -295,12 +324,38 @@ export function FaccendeShell({
 
   const canDelete = !!selected && (selected.done_by === viewerId || selected.created_by === viewerId)
 
+  const bottles = people.map((person) => {
+    const isOther = person.userId !== viewerId
+    return {
+      id: person.userId,
+      name: person.displayName,
+      notches: bottleNotches(
+        todayEntries.filter((e) => e.done_by === person.userId),
+        person.todayCapacity,
+        person.todayBonus,
+        hintsFor(person.userId),
+      ),
+      onAdd: () => openSheet(person.userId, isOther ? 'suggerisci' : 'fatto'),
+      addLabel: isOther ? `Suggerisci una faccenda a ${person.displayName}` : undefined,
+    }
+  })
+
+  function handle3DUnavailable() {
+    setBottleView('2d')
+    toast.error('Su questo dispositivo le bottiglie in 3D non si riescono a disegnare: torno al 2D.')
+  }
+
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-24 lg:pb-8">
-      <header className="relative px-1">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-1">
         <h1 className="font-display text-3xl font-semibold text-foreground">Faccende di casa</h1>
-        <div className="absolute top-1/2 right-0 -translate-y-1/2">
-          <TiltPrompt />
+        {/* Sempre a destra, anche quando va a capo: il bottone dei sensori gli sta a sinistra. */}
+        <div className="relative ml-auto">
+          {/* In posizione assoluta: quando compare non sposta niente. */}
+          <div className="absolute top-1/2 right-full mr-2 -translate-y-1/2">
+            <TiltPrompt />
+          </div>
+          <BottleViewToggle view={view} onChange={setBottleView} onPreload3D={preloadBottles3D} />
         </div>
       </header>
 
@@ -309,23 +364,28 @@ export function FaccendeShell({
           larghezza massima: allargate, la spalla disegnata in SVG si deformerebbe. */}
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
         <div className="flex flex-col gap-3 lg:sticky lg:top-24">
-          <div className="mx-auto grid w-full max-w-md grid-cols-2 items-start gap-4 sm:gap-8">
-            {people.map((person) => {
-              const mine = todayEntries.filter((e) => e.done_by === person.userId)
-              const isOther = person.userId !== viewerId
-              return (
+          {view === '3d' ? (
+            <ChoreBottles3D
+              bottles={bottles}
+              onEntryTap={handleEntryTap}
+              onHintTap={handleHintTap}
+              onUnavailable={handle3DUnavailable}
+            />
+          ) : (
+            <div className="mx-auto grid w-full max-w-md grid-cols-2 items-start gap-4 sm:gap-8">
+              {bottles.map((bottle) => (
                 <ChoreBottle
-                  key={person.userId}
-                  name={person.displayName}
-                  notches={bottleNotches(mine, person.todayCapacity, person.todayBonus, hintsFor(person.userId))}
+                  key={bottle.id}
+                  name={bottle.name}
+                  notches={bottle.notches}
                   onEntryTap={handleEntryTap}
                   onHintTap={handleHintTap}
-                  onAdd={() => openSheet(person.userId, isOther ? 'suggerisci' : 'fatto')}
-                  addLabel={isOther ? `Suggerisci una faccenda a ${person.displayName}` : undefined}
+                  onAdd={bottle.onAdd}
+                  addLabel={bottle.addLabel}
                 />
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Suggerimenti rimasti senza tacca: la bottiglia si è riempita dopo che sono arrivati. */}
           {people.map((person) => {

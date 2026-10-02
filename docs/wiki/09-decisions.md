@@ -67,3 +67,13 @@ Questa pagina riassume le scelte tecnologiche e architetturali principali effett
 ### Il bot risponde solo se interpellato
 * **Scelta**: Nel gruppo l'assistente interviene su comandi, menzioni e risposte ai suoi messaggi; `TELEGRAM_REPLY_MODE=all` è opt-in → `app/api/telegram/webhook/route.ts`.
 * **Motivazione**: Il gruppo è anche una chat fra due persone. Rispondere a tutto lo renderebbe inutilizzabile per la conversazione normale e moltiplicherebbe le chiamate a Gemini senza che nessuno le abbia chieste.
+
+---
+
+## Faccende
+
+### Vista 3D a scelta, caricata solo su richiesta
+* **Contesto**: Le bottiglie in 3D (vetro, liquido come volume, rotazione col dito) richiedono WebGL e three.js, circa 150 KB compressi in più, e consumano più batteria del liquido 2D, che non ha dipendenze.
+* **Scelta**: Il 2D resta la vista di serie; il 3D si sceglie con un interruttore accanto al titolo e la scelta vale per il dispositivo → `lib/chores/bottle-view.ts`. Il componente 3D si carica con `next/dynamic` (`ssr: false`) e three.js si importa solo in `lib/chores/bottles3d/` → `app/(app)/faccende/FaccendeShell.tsx`, verificato da `tests/liquid3d.test.mjs`.
+* **Motivazione**: Chi non vuole il 3D non deve pagarlo: né in download, né in memoria, né in batteria. La scelta per dispositivo, come tema e accento, permette di tenerlo sul telefono nuovo e non su quello vecchio. La fisica (piano a volume costante, onde) sta in un modulo puro testabile con `node --test`, come per il 2D: la scena disegna, il livello lo decidono sempre le tacche piene.
+
