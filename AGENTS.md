@@ -87,7 +87,7 @@ Alcune linee guida concrete:
 
 ## Navigazione
 
-Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* le schermate. La **barra in basso** è solo un accesso rapido alle tre più frequenti (Home, Storico, Lista). Il vecchio modulo Casa (XP, kudos, obiettivo condiviso) è stato rimosso e non va reintrodotto; le faccende oggi sono `/faccende`, solo nel menu (vedi "Faccende domestiche" più sotto). Su desktop la navigazione è laterale. Le voci di entrambe stanno in `lib/nav.ts`: aggiungendo una schermata va aggiunta lì, e finisce nel menu senza toccare la barra — la barra non cresce.
+Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* le schermate. La **barra in basso** è solo un accesso rapido alle cinque più frequenti (Home, Storico, Lista, Faccende, Energia: le ultime due dal 15 ottobre 2026, su richiesta). Il vecchio modulo Casa (XP, kudos, obiettivo condiviso) è stato rimosso e non va reintrodotto; le faccende oggi sono `/faccende` (vedi "Faccende domestiche" più sotto). Su desktop la navigazione è laterale. Le voci di entrambe stanno in `lib/nav.ts`: aggiungendo una schermata va aggiunta lì, e finisce nel menu senza toccare la barra — la barra non cresce da sola, e cinque voci sono il massimo (oltre, le etichette non stanno a 320 px).
 
 ## Schermate principali
 

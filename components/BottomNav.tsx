@@ -8,10 +8,10 @@ import { springLayout, springSnappy } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 /**
- * Accesso rapido alle quattro schermate che si aprono più volte al giorno.
+ * Accesso rapido alle cinque schermate che si aprono più volte al giorno.
  * L'elenco completo delle sezioni sta nel menu dell'header: la barra riflette
- * la frequenza d'uso, non la mappa dell'app — quindi non cresce quando
- * arriva un modulo nuovo. Voci e ordine in `lib/nav.ts`.
+ * la frequenza d'uso, non la mappa dell'app — quindi non cresce da sola
+ * quando arriva un modulo nuovo. Voci e ordine in `lib/nav.ts`.
  */
 export function BottomNav() {
   const pathname = usePathname()

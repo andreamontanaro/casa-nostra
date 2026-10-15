@@ -40,6 +40,12 @@ export const NAV_PRIMARY: NavItem[] = [
     icon: SprayCan,
   },
   {
+    href: '/energia',
+    label: 'Energia',
+    description: 'Consumi di casa in tempo reale',
+    icon: Zap,
+  },
+  {
     href: '/conguaglio',
     label: 'Regola il saldo',
     description: 'Chiudi il saldo dopo il bonifico',
@@ -49,12 +55,6 @@ export const NAV_PRIMARY: NavItem[] = [
 
 /** Schermate di consultazione e configurazione: sempre e solo nel menu. */
 export const NAV_SECONDARY: NavItem[] = [
-  {
-    href: '/energia',
-    label: 'Energia',
-    description: 'Consumi di casa in tempo reale',
-    icon: Zap,
-  },
   {
     href: '/statistiche',
     label: 'Statistiche',
@@ -71,10 +71,11 @@ export const NAV_SECONDARY: NavItem[] = [
 
 /**
  * Cosa compare nella barra in basso: le schermate che si aprono più volte al
- * giorno. Il conguaglio resta fuori — è l'azione più rara dell'app e vive nel
- * menu insieme alle altre.
+ * giorno, cinque al massimo (oltre le etichette non stanno a 320 px). Il
+ * conguaglio resta fuori — è l'azione più rara dell'app e vive nel menu
+ * insieme alle altre.
  */
-export const BOTTOM_NAV_HREFS = ['/', '/spese', '/lista']
+export const BOTTOM_NAV_HREFS = ['/', '/spese', '/lista', '/faccende', '/energia']
 
 export const BOTTOM_NAV_ITEMS: NavItem[] = BOTTOM_NAV_HREFS.map(
   (href) => NAV_PRIMARY.find((item) => item.href === href)!,
@@ -85,6 +86,8 @@ export const BOTTOM_NAV_LABELS: Record<string, string> = {
   '/': 'Home',
   '/spese': 'Storico',
   '/lista': 'Lista',
+  '/faccende': 'Faccende',
+  '/energia': 'Energia',
 }
 
 /**

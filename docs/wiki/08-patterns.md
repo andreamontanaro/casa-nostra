@@ -14,7 +14,7 @@ Aggiornamento del redesign approvato l’8 settembre 2026. Il vecchio modulo **C
 
 ## Navigazione e densità
 
-- Barra inferiore mobile: **Home, Storico, Lista**. Menu completo: anche Faccende domestiche, Regola il saldo, Energia e Statistiche, più Impostazioni.
+- Barra inferiore mobile: **Home, Storico, Lista, Faccende, Energia** (le ultime due dal 15 ottobre 2026, su richiesta). Cinque voci sono il massimo: a 320 px ognuna ha circa 60 px, quanto basta per la pillola e per «Faccende». Menu completo: anche Regola il saldo e Statistiche, più Impostazioni.
 - Desktop: navigazione laterale, area centrale più ampia e layout a colonne dove aiuta a leggere.
 - Assistente nell’header; una sola FAB per aggiungere spese in home. Su richiesta sono state rimosse la CTA superiore “Aggiungi spesa” e la scorciatoia dalla home alla lista.
 - Priorità ai movimenti: storico con pannello “Filtri e ricerca” inizialmente chiuso e totale compatto. Home con anello compatto e pannello “Categorie e dettagli del saldo” chiuso.
