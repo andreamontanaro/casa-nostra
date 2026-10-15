@@ -21,7 +21,6 @@ import {
   type EnergySnapshot,
   type EnergyStatus,
 } from './readings'
-import { describeShape } from './shape'
 
 /**
  * Logica del modulo Energia: legge Fastweb Power Control riusando la sessione
@@ -309,35 +308,4 @@ export async function getEnergySnapshot(db: ServiceClient): Promise<EnergySnapsh
 
   const merged: StateRow = { ...row, ...update } as StateRow
   return failure ? snapshotFrom(merged, failure.status, failure.retryAt) : snapshotFrom(merged, 'ok', null)
-}
-
-/**
- * Modalità diagnostica (mai in produzione): la forma delle risposte di ogni
- * form, senza dati personali, per scrivere i parser di `readings.ts`.
- */
-export async function diagnoseFastweb(db: ServiceClient): Promise<Record<string, unknown>> {
-  const config = getFastwebConfig()
-  if (!config) return { stato: 'spento' }
-  const row = await loadState(db)
-  const key = sessionKey(config)
-  const block = activeBlock(row, credentialsFingerprint(key))
-  if (block) return { stato: block.status, riprova: block.until }
-
-  const session = new FastwebSession(db, config, key, row)
-  const out: Record<string, unknown> = {}
-  try {
-    for (const form of Object.keys(POWER_FORMS) as PowerFormKey[]) {
-      const data = await session.call(form)
-      const fields = session.forms?.[form]
-      out[form] = {
-        campi: fields ? Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, k === 'securityToken' ? `‹${v.length}›` : v])) : null,
-        risposta: describeShape(data),
-      }
-    }
-  } catch (error) {
-    out.errore = error instanceof FastwebUnavailable ? { stato: error.status, riprova: error.retryAt } : 'errore di rete'
-  }
-  const update = session.stateUpdate()
-  if (Object.keys(update).length) await saveState(db, update)
-  return out
 }

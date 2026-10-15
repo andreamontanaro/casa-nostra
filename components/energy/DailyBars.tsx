@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { formatDate, formatKwh } from '@/lib/fmt'
+import { formatDate, formatDateShort, formatKwh } from '@/lib/fmt'
 import type { DailyConsumption } from '@/lib/energy/readings'
 import { cn } from '@/lib/utils'
 
@@ -17,15 +17,31 @@ const noon = (date: string) => new Date(`${date}T12:00:00Z`)
  * tastiera) il valore compare sopra la barra; i numeri di tutti i giorni
  * stanno nella tabella sotto.
  */
-export function DailyBars({ days }: { days: DailyConsumption[] }) {
+export function DailyBars({
+  days,
+  weekKwh,
+  previousWeekKwh,
+}: {
+  days: DailyConsumption[]
+  weekKwh: number | null
+  previousWeekKwh: number | null
+}) {
   const [active, setActive] = useState<string | null>(null)
   const max = Math.max(...days.map((d) => d.kwh), 0.1)
-  const total = days.reduce((sum, d) => sum + d.kwh, 0)
+  const total = weekKwh ?? days.reduce((sum, d) => sum + d.kwh, 0)
+  // Confronto con i 7 giorni prima, senza giudizio: niente colori, solo il numero.
+  const delta = previousWeekKwh ? Math.round(((total - previousWeekKwh) / previousWeekKwh) * 100) : null
+  const range = `${formatDateShort(days[0].date)} – ${formatDateShort(days[days.length - 1].date)}`
 
   return (
     <div>
       <p className="font-display text-xl font-semibold tabular-nums">{formatKwh(total)}</p>
-      <p className="text-xs text-muted tabular-nums">in {days.length} giorni · in media {formatKwh(total / Math.max(days.length, 1))} al giorno</p>
+      <p className="text-xs text-muted tabular-nums">{range} · in media {formatKwh(total / days.length)} al giorno</p>
+      {delta !== null && previousWeekKwh !== null && (
+        <p className="mt-1 text-xs text-muted tabular-nums">
+          {delta === 0 ? 'Come' : delta > 0 ? `+${delta}% rispetto a` : `−${Math.abs(delta)}% rispetto a`} i 7 giorni prima ({formatKwh(previousWeekKwh)})
+        </p>
+      )}
 
       <div className="mt-6 flex h-40 items-end gap-1" onPointerLeave={(e) => e.pointerType === 'mouse' && setActive(null)}>
         {days.map((day) => {

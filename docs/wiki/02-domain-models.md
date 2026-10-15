@@ -165,6 +165,6 @@ Sessione MyFastweb e ultime letture del modulo Energia → `docs/migrations/2026
 * **Sessione**: `session_enc` contiene cookie e token dei form della pagina Power Control, cifrati AES-256-GCM con una chiave derivata (scrypt) da `FASTWEB_USERNAME` e `FASTWEB_PASSWORD` → `lib/energy/crypto.ts`. Senza le credenziali non si apre; se la password cambia non si apre più e si rifà il login.
 * **Login**: `login_attempt_at` è l'ultimo tentativo, riuscito o no, ed è anche il lucchetto (vedi `05-data-access.md`); `logged_in_at` l'ultimo riuscito.
 * **Blocco**: dopo un captcha (6 ore) o credenziali rifiutate (1 ora) `blocked_until`, `blocked_reason` (`captcha` | `rifiutato`) e `blocked_for`, l'impronta delle credenziali per cui vale: cambiandole si riprova subito.
-* **Cache**: `realtime` (`{ watts, limitKw }`) con `realtime_at`, `details` (giorni, apparecchi, presa, avvisi) con `details_at`. Solo dati già ripuliti da `lib/energy/readings.ts`: mai i dati dell'intestatario che Fastweb manda insieme (`realtime_sin`).
+* **Cache**: `realtime` (`{ watts, limitKw }`) con `realtime_at`, `details` (giorni, totali dei 7 giorni e dei 7 prima, apparecchi, presa, avvisi) con `details_at`. Solo dati già ripuliti da `lib/energy/readings.ts`: mai i dati dell'intestatario che Fastweb manda insieme (`realtime_sin`).
 * **RLS attiva senza policy** e privilegi revocati ad `anon` e `authenticated`: la legge e la scrive solo il service role.
 

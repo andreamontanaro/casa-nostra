@@ -170,7 +170,7 @@ Il modulo `/energia` (dal 15 ottobre 2026) mostra la potenza di adesso come una 
 - **Service role solo dopo la sessione di Casa Nostra.** `/api/energia` e la pagina verificano l'utente con `getCurrentUser()` e solo dopo creano il client service role. La rotta resta dietro `proxy.ts`.
 - **Si legge solo a pagina aperta.** Polling ogni 15 s a pagina visibile, nessun cron e nessuna notifica: avvisi su Telegram per la soglia superata sarebbero un'evoluzione, da chiedere prima.
 - **Spegnibile**: senza `FASTWEB_USERNAME` e `FASTWEB_PASSWORD` tutto esce subito e la schermata dice che il collegamento non è configurato. Attivazione in `docs/wiki/06-configuration.md`.
-- **Se Fastweb cambia formato**: `/api/energia?forma=1` su un'anteprima (mai in produzione) mostra la forma delle risposte senza dati personali; si correggono i parser in `readings.ts` e i loro test.
+- **Se Fastweb cambia formato** si correggono i parser in `lib/energy/readings.ts` e i loro test (`tests/energy.test.mjs`, con risposte che hanno la forma vera); la modalità diagnostica usata per scriverli (`/api/energia?forma=1`, mai in produzione: la forma delle risposte senza dati personali) è nel commit `4364c98` e si può rimettere per il tempo di una prova su un'anteprima.
 
 ## Workflow di fine sessione
 

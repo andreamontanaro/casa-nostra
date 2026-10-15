@@ -24,22 +24,32 @@ export interface DailyConsumption {
   kwh: number
 }
 
-/** Quanto ha consumato un apparecchio nel periodo, in kWh. */
+/** Quanto ha consumato un apparecchio negli ultimi 7 giorni, in kWh. */
 export interface ApplianceConsumption {
+  /** Codice di Fastweb (`fridge`, `washing_machine`, …): sceglie l'icona. */
+  code: string | null
+  /** Il nome come lo scrive Fastweb ("Frigorifero"). */
   name: string
   kwh: number
 }
 
-/** Un avviso di distacco (o di carico vicino al limite) registrato da Fastweb. */
+/** Un avviso di Power Control: interruzione della fornitura, distacco. */
 export interface LoadNotice {
   /** Data e ora ISO, se Fastweb la dà. */
   at: string | null
-  text: string
+  /** Tipo di Fastweb, es. `provider_disconnection` (interruzione della rete). */
+  type: string | null
+  title: string
+  text: string | null
 }
 
 /** Tutto quello che cambia lentamente: si rilegge ogni mezz'ora, non a ogni giro. */
 export interface EnergyDetails {
+  /** Gli ultimi 7 giorni interi (oggi escluso), dal più vecchio. */
   days: DailyConsumption[]
+  /** Totale dei 7 giorni e dei 7 prima, in kWh, per il confronto. */
+  weekKwh: number | null
+  previousWeekKwh: number | null
   appliances: ApplianceConsumption[]
   /** La presa Power Control risponde? null se non si sa. */
   plugOnline: boolean | null
@@ -144,29 +154,64 @@ export function readStoredRealtime(value: unknown): RealtimeReading | null {
 }
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+const MAX_NOTICES = 10
+
+function cleanText(value: unknown, max: number): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : null
+}
+
+function nonNegative(value: unknown): number | null {
+  const n = toNumber(value)
+  return n !== null && n >= 0 ? n : null
+}
+
+/** Fastweb conta in Wh con dieci decimali: si tiene il Wh intero. */
+function kwhFromWh(value: unknown): number | null {
+  const wh = nonNegative(value)
+  return wh === null ? null : Math.round(wh) / 1000
+}
+
+function isoInstant(value: unknown): string | null {
+  return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null
+}
+
+const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
+
+function byDate<T extends { date: string }>(a: T, b: T) {
+  return a.date.localeCompare(b.date)
+}
+
+function newestFirst(a: LoadNotice, b: LoadNotice) {
+  return (b.at ? Date.parse(b.at) : 0) - (a.at ? Date.parse(a.at) : 0)
+}
 
 /** I dettagli salvati in cache, ricontrollati campo per campo. */
 export function readStoredDetails(value: unknown): EnergyDetails | null {
   if (!isRecord(value)) return null
-  const days: DailyConsumption[] = []
-  for (const item of Array.isArray(value.days) ? value.days : []) {
-    if (!isRecord(item) || typeof item.date !== 'string' || !ISO_DAY.test(item.date)) continue
-    const kwh = toNumber(item.kwh)
-    if (kwh !== null && kwh >= 0) days.push({ date: item.date, kwh })
+  const days = list(value.days).flatMap((item): DailyConsumption[] => {
+    if (!isRecord(item) || typeof item.date !== 'string' || !ISO_DAY.test(item.date)) return []
+    const kwh = nonNegative(item.kwh)
+    return kwh === null ? [] : [{ date: item.date, kwh }]
+  })
+  const appliances = list(value.appliances).flatMap((item): ApplianceConsumption[] => {
+    if (!isRecord(item)) return []
+    const name = cleanText(item.name, 60)
+    const kwh = nonNegative(item.kwh)
+    return name && kwh !== null ? [{ code: cleanText(item.code, 40), name, kwh }] : []
+  })
+  const notices = list(value.notices).flatMap((item): LoadNotice[] => {
+    if (!isRecord(item)) return []
+    const title = cleanText(item.title, 80)
+    return title ? [{ at: isoInstant(item.at), type: cleanText(item.type, 40), title, text: cleanText(item.text, 240) }] : []
+  })
+  return {
+    days: days.sort(byDate),
+    weekKwh: nonNegative(value.weekKwh),
+    previousWeekKwh: nonNegative(value.previousWeekKwh),
+    appliances,
+    plugOnline: typeof value.plugOnline === 'boolean' ? value.plugOnline : null,
+    notices: notices.sort(newestFirst).slice(0, MAX_NOTICES),
   }
-  const appliances: ApplianceConsumption[] = []
-  for (const item of Array.isArray(value.appliances) ? value.appliances : []) {
-    if (!isRecord(item) || typeof item.name !== 'string' || !item.name.trim()) continue
-    const kwh = toNumber(item.kwh)
-    if (kwh !== null && kwh >= 0) appliances.push({ name: item.name.trim().slice(0, 60), kwh })
-  }
-  const notices: LoadNotice[] = []
-  for (const item of Array.isArray(value.notices) ? value.notices : []) {
-    if (!isRecord(item) || typeof item.text !== 'string' || !item.text.trim()) continue
-    notices.push({ at: typeof item.at === 'string' ? item.at : null, text: item.text.trim().slice(0, 200) })
-  }
-  const plugOnline = typeof value.plugOnline === 'boolean' ? value.plugOnline : null
-  return { days, appliances, plugOnline, notices }
 }
 
 /** I `data` delle quattro risposte lente, così come arrivano (da ripulire). */
@@ -178,12 +223,63 @@ export interface RawDetails {
 }
 
 /**
- * Consumi per giorno e per apparecchio, stato della presa e avvisi.
- * PROVVISORIO: la forma di queste risposte si legge con la modalità
- * diagnostica di `/api/energia` sull'anteprima; fino ad allora non se ne
- * prende niente.
+ * `consumptionMedium` (period `last-seven-days`): `totals.period` ha un
+ * elemento per giorno, `{ day: "2026-10-08", total: <Wh>, … }`;
+ * `medium_o.total_consumption` i totali in Wh dei 7 giorni e dei 7 prima.
+ * (`medium_o` ha anche il numero di contratto: non si legge.)
  */
+function parseDaily(data: unknown) {
+  const totals = isRecord(data) && isRecord(data.totals) ? data.totals : null
+  const days = list(totals?.period).flatMap((item): DailyConsumption[] => {
+    if (!isRecord(item) || typeof item.day !== 'string') return []
+    const date = item.day.slice(0, 10)
+    const kwh = kwhFromWh(item.total)
+    return ISO_DAY.test(date) && kwh !== null ? [{ date, kwh }] : []
+  })
+  const medium = isRecord(data) && isRecord(data.medium_o) ? data.medium_o : null
+  const week = medium && isRecord(medium.total_consumption) ? medium.total_consumption : null
+  return {
+    days: days.sort(byDate),
+    weekKwh: kwhFromWh(week?.selected_period),
+    previousWeekKwh: kwhFromWh(week?.previous_period),
+  }
+}
+
+/** `consumptionAppliancesHome`: `appliances` con `{ appliance, name_fe, power: <Wh> }`. */
+function parseAppliances(data: unknown): ApplianceConsumption[] {
+  return list(isRecord(data) ? data.appliances : null).flatMap((item): ApplianceConsumption[] => {
+    if (!isRecord(item)) return []
+    const code = cleanText(item.appliance, 40)
+    const name = cleanText(item.name_fe, 60) ?? code
+    const kwh = kwhFromWh(item.power)
+    return name && kwh !== null ? [{ code, name, kwh }] : []
+  })
+}
+
+/** `plugStatus`: `{ status: "ONLINE" }`. Un valore che non si conosce non accende l'avviso. */
+function parsePlugStatus(data: unknown): boolean | null {
+  const status = isRecord(data) && typeof data.status === 'string' ? data.status.trim().toUpperCase() : ''
+  return status === 'ONLINE' ? true : status === 'OFFLINE' ? false : null
+}
+
+/** `loadNotify`: `notifications` con `{ type, title, message, created_at }`. */
+function parseNotices(data: unknown): LoadNotice[] {
+  const notices = list(isRecord(data) ? data.notifications : null).flatMap((item): LoadNotice[] => {
+    if (!isRecord(item)) return []
+    const title = cleanText(item.title, 80)
+    return title
+      ? [{ at: isoInstant(item.created_at), type: cleanText(item.type, 40), title, text: cleanText(item.message, 240) }]
+      : []
+  })
+  return notices.sort(newestFirst).slice(0, MAX_NOTICES)
+}
+
+/** Consumi per giorno e per apparecchio, stato della presa e avvisi: solo i campi in elenco. */
 export function parseDetails(raw: RawDetails): EnergyDetails {
-  void raw
-  return { days: [], appliances: [], plugOnline: null, notices: [] }
+  return {
+    ...parseDaily(raw.daily),
+    appliances: parseAppliances(raw.appliances),
+    plugOnline: parsePlugStatus(raw.plugStatus),
+    notices: parseNotices(raw.loadNotify),
+  }
 }

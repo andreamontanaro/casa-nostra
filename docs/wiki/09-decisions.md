@@ -75,7 +75,7 @@ Questa pagina riassume le scelte tecnologiche e architetturali principali effett
 ### Le chiamate interne di MyFastweb, in assenza di API
 * **Contesto**: Fastweb Power Control misura i consumi di casa, ma Fastweb non offre API pubbliche e il contatore non è raggiungibile in altro modo.
 * **Scelta**: Il server rifà i passi della dashboard di MyFastweb con username e password (`lib/energy/fastweb.ts`), dopo una prova su un'anteprima Vercel che ha confermato il login senza captcha.
-* **Motivazione**: È l'unico accesso ai dati. Il prezzo è la fragilità: se Fastweb cambia la pagina il modulo si ferma. Per questo l'integrazione è spegnibile (senza credenziali l'app è quella di prima), ogni guasto diventa uno stato leggibile in pagina e la modalità diagnostica permette di riscrivere i parser senza indovinare.
+* **Motivazione**: È l'unico accesso ai dati. Il prezzo è la fragilità: se Fastweb cambia la pagina il modulo si ferma. Per questo l'integrazione è spegnibile (senza credenziali l'app è quella di prima), ogni guasto diventa uno stato leggibile in pagina, e i parser si sono scritti leggendo la forma vera delle risposte (con una modalità diagnostica temporanea, recuperabile dal commit `4364c98`) invece di indovinarla.
 
 ### Sessione su Supabase, cifrata, solo service role
 * **Contesto**: Le funzioni serverless non condividono memoria: tenere la sessione solo in memoria vorrebbe dire un login a ogni istanza nuova, e più login aumentano il rischio di captcha.

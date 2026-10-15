@@ -14,7 +14,25 @@ import {
 import { formatKwh } from '@/lib/fmt'
 import type { ApplianceConsumption } from '@/lib/energy/readings'
 
-// Le etichette sono quelle di Fastweb: l'icona si sceglie per parola chiave.
+// Icona per codice di Fastweb; per un codice nuovo si prova con il nome.
+const ICON_BY_CODE: Record<string, LucideIcon> = {
+  fridge: Refrigerator,
+  washing_machine: WashingMachine,
+  dishwasher: WashingMachine,
+  dryer: WashingMachine,
+  oven: CookingPot,
+  cooking: CookingPot,
+  microwave: Microwave,
+  boiler: Flame,
+  water_heater: Flame,
+  air_conditioning: AirVent,
+  heat_pump: AirVent,
+  consumer_electronics_illumination: Lightbulb,
+  standby: Plug,
+  always_on: Plug,
+  other: Zap,
+}
+
 const ICONS: [RegExp, LucideIcon][] = [
   [/frig|congel|freezer/i, Refrigerator],
   [/lavatr|lavastov|lavastovigl|asciug/i, WashingMachine],
@@ -27,8 +45,8 @@ const ICONS: [RegExp, LucideIcon][] = [
   [/stand.?by|attesa/i, Plug],
 ]
 
-function iconFor(name: string): LucideIcon {
-  return ICONS.find(([pattern]) => pattern.test(name))?.[1] ?? Zap
+function iconFor({ code, name }: ApplianceConsumption): LucideIcon {
+  return (code && ICON_BY_CODE[code]) || ICONS.find(([pattern]) => pattern.test(name))?.[1] || Zap
 }
 
 /**
@@ -44,16 +62,16 @@ export function ApplianceList({ appliances }: { appliances: ApplianceConsumption
   return (
     <ul className="space-y-3">
       {sorted.map((appliance) => {
-        const Icon = iconFor(appliance.name)
+        const Icon = iconFor(appliance)
         const share = total > 0 ? Math.round((appliance.kwh / total) * 100) : 0
         return (
-          <li key={appliance.name} className="flex min-h-11 items-center gap-3">
+          <li key={appliance.code ?? appliance.name} className="flex min-h-11 items-center gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-muted text-accent-soft">
               <Icon className="size-4" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="truncate font-medium capitalize">{appliance.name}</span>
+                <span className="min-w-0 font-medium">{appliance.name}</span>
                 <span className="shrink-0 tabular-nums">
                   {formatKwh(appliance.kwh)} <span className="text-muted">· {share}%</span>
                 </span>

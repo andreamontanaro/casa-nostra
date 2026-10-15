@@ -4,9 +4,8 @@ import { readdir, readFile } from 'node:fs/promises'
 import { loadTs } from './load-ts.mjs'
 
 const {
-  batteryLevel, DEFAULT_LIMIT_KW, toNumber, parseRealtime, readStoredRealtime, readStoredDetails, describeError,
+  batteryLevel, DEFAULT_LIMIT_KW, toNumber, parseRealtime, parseDetails, readStoredRealtime, readStoredDetails, describeError,
 } = await loadTs('../lib/energy/readings.ts')
-const { describeShape } = await loadTs('../lib/energy/shape.ts')
 const { deriveSessionKey, credentialsFingerprint, sealJson, openJson } = await loadTs('../lib/energy/crypto.ts')
 const { CookieJar, formFields } = await loadTs('../lib/energy/fastweb.ts')
 
@@ -76,17 +75,24 @@ test('la cache si rilegge con le stesse regole', () => {
   assert.deepEqual(readStoredRealtime({ watts: 526, limitKw: 3, extra: 'x' }), { watts: 526, limitKw: 3 })
   assert.equal(readStoredRealtime('526'), null)
   const details = readStoredDetails({
-    days: [{ date: '2026-10-14', kwh: 7.4 }, { date: 'ieri', kwh: 1 }, { date: '2026-10-13', kwh: -1 }],
-    appliances: [{ name: ' Frigo ', kwh: '2,5' }, { name: '', kwh: 1 }],
+    days: [{ date: '2026-10-14', kwh: 7.4 }, { date: 'ieri', kwh: 1 }, { date: '2026-10-13', kwh: -1 }, { date: '2026-10-12', kwh: 3 }],
+    weekKwh: 40.5,
+    previousWeekKwh: 'tanti',
+    appliances: [{ code: 'fridge', name: ' Frigo ', kwh: '2,5' }, { name: '', kwh: 1 }],
     plugOnline: true,
-    notices: [{ at: '2026-10-14T18:00:00Z', text: 'Distacco' }, { text: '' }],
+    notices: [{ at: '2026-10-14T18:00:00Z', title: 'Distacco', text: 'Testo' }, { title: '' }, { at: 'ieri', title: 'Senza data' }],
     segreto: 'no',
   })
   assert.deepEqual(details, {
-    days: [{ date: '2026-10-14', kwh: 7.4 }],
-    appliances: [{ name: 'Frigo', kwh: 2.5 }],
+    days: [{ date: '2026-10-12', kwh: 3 }, { date: '2026-10-14', kwh: 7.4 }],
+    weekKwh: 40.5,
+    previousWeekKwh: null,
+    appliances: [{ code: 'fridge', name: 'Frigo', kwh: 2.5 }],
     plugOnline: true,
-    notices: [{ at: '2026-10-14T18:00:00Z', text: 'Distacco' }],
+    notices: [
+      { at: '2026-10-14T18:00:00Z', type: null, title: 'Distacco', text: 'Testo' },
+      { at: null, type: null, title: 'Senza data', text: null },
+    ],
   })
   assert.equal(readStoredDetails(null), null)
 })
@@ -97,36 +103,76 @@ test('describeError legge anche gli errori di Supabase, che non sono Error', () 
   assert.equal(describeError('c'), 'c')
 })
 
-// ─── Modalità diagnostica ─────────────────────────────────────
+// ─── Dettagli: risposte con la forma vera di Fastweb ───────────
+// Valori inventati; la forma è quella letta il 15/10/2026 sull'anteprima.
 
-test('describeShape toglie le chiavi personali e maschera i testi sospetti', () => {
-  const shape = describeShape({
-    errorCode: 0,
-    data: {
-      realtime: 526,
-      realtime_sin: { cf: 'RSSMRA80A01H501U' },
-      codiceCliente: 1234567,
-      intestatario: 'Mario Rossi',
-      apparecchi: [{ name: 'frigo', wh: 1200 }, { name: 'forno', wh: 800 }, { name: 'tv', wh: 1 }, { name: 'luci', wh: 2 }],
-      giorno: '2026-10-14',
-      nota: 'scrivi a mario@example.com',
-      pod: 'IT001E12345678',
-      codice: 'RSSMRA80A01H501U',
+const day = (date, total) => ({ label: date.slice(8, 10) + '/' + date.slice(5, 7), legenda: 'x', total, total_fe: 'x', day: date, total_h: 50 })
+
+const RAW = {
+  daily: {
+    medium_o: {
+      account_number: '12345678',
+      period: 'last-seven-days',
+      total_consumption: { selected_period: 56513, previous_period: 56907 },
+      daily_breakdown: { selected_period: { index: [], columns: [], data: [] } },
     },
+    totals: { period: [day('2026-10-09', 5762.0000467), day('2026-10-08', 11657.99995), { day: 'ieri', total: 1 }, day('2026-10-10', -3)], previous: [] },
+    type: 'day',
+    max: 13989.6,
+  },
+  appliances: {
+    appliances: [
+      { appliance: 'other', name_fe: 'Altro', power: 16337.5, power_fe: '16,34 kWh', perc: 28.9 },
+      { appliance: 'fridge', name_fe: 'Frigorifero', power: '10271,49', perc: 18.2 },
+      { appliance: 'nuovo', power: 100 },
+      { name_fe: 'Senza consumo' },
+    ],
+    total: '56,51',
+  },
+  plugStatus: { status: 'ONLINE' },
+  loadNotify: {
+    ok: 'ok', status: 'OK', unread: 0,
+    notifications: [
+      { id: 'a', type: 'provider_disconnection', read: true, title: 'Interruzione di fornitura elettrica', message: 'Messaggio.', created_at: '2026-10-09T02:19:21Z' },
+      { id: 'b', type: 'provider_disconnection', read: true, title: 'Interruzione di fornitura elettrica', message: 'Altro messaggio.', created_at: '2026-10-09T13:00:29Z' },
+      { id: 'c', title: '', created_at: '2026-10-10T10:00:00Z' },
+    ],
+  },
+}
+
+test('parseDetails legge giorni, totali, apparecchi, presa e avvisi', () => {
+  const details = parseDetails(RAW)
+  assert.deepEqual(details.days, [
+    { date: '2026-10-08', kwh: 11.658 },
+    { date: '2026-10-09', kwh: 5.762 },
+  ])
+  assert.equal(details.weekKwh, 56.513)
+  assert.equal(details.previousWeekKwh, 56.907)
+  assert.deepEqual(details.appliances, [
+    { code: 'other', name: 'Altro', kwh: 16.338 },
+    { code: 'fridge', name: 'Frigorifero', kwh: 10.271 },
+    { code: 'nuovo', name: 'nuovo', kwh: 0.1 },
+  ])
+  assert.equal(details.plugOnline, true)
+  assert.deepEqual(details.notices.map((n) => n.at), ['2026-10-09T13:00:29Z', '2026-10-09T02:19:21Z'])
+  assert.deepEqual(details.notices[0], {
+    at: '2026-10-09T13:00:29Z', type: 'provider_disconnection', title: 'Interruzione di fornitura elettrica', text: 'Altro messaggio.',
   })
-  assert.equal(shape.errorCode, 0)
-  assert.equal(shape.data.realtime, 526)
-  assert.equal(shape.data.realtime_sin, '‹tolto›')
-  assert.equal(shape.data.codiceCliente, '‹tolto›')
-  assert.equal(shape.data.intestatario, '‹tolto›')
-  assert.equal(shape.data.pod, '‹tolto›')
-  assert.equal(shape.data.codice, '‹tolto›')
-  assert.equal(shape.data.giorno, '2026-10-14')
-  assert.match(shape.data.nota, /^‹testo/)
-  assert.equal(shape.data.apparecchi['‹array›'], 4)
-  assert.deepEqual(shape.data.apparecchi.primi[0], { name: 'frigo', wh: 1200 })
-  assert.equal(shape.data.apparecchi.primi.length, 3)
-  assert.doesNotMatch(JSON.stringify(shape), /RSSMRA|mario@|IT001E|Rossi|1234567/)
+})
+
+test('parseDetails non porta con sé il numero di contratto né altri campi', () => {
+  const details = parseDetails(RAW)
+  assert.doesNotMatch(JSON.stringify(details), /12345678|account|perc|unread|"id"/)
+  // E la cache, riletta, è identica.
+  assert.deepEqual(readStoredDetails(JSON.parse(JSON.stringify(details))), details)
+})
+
+test('parseDetails regge risposte vuote o strane senza inventare niente', () => {
+  assert.deepEqual(parseDetails({ daily: null, appliances: 'x', plugStatus: {}, loadNotify: [] }), {
+    days: [], weekKwh: null, previousWeekKwh: null, appliances: [], plugOnline: null, notices: [],
+  })
+  assert.equal(parseDetails({ ...RAW, plugStatus: { status: 'offline' } }).plugOnline, false)
+  assert.equal(parseDetails({ ...RAW, plugStatus: { status: 'BOH' } }).plugOnline, null)
 })
 
 // ─── Cifratura della sessione ─────────────────────────────────

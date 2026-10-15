@@ -144,7 +144,14 @@ Lo usa `SharedDataRefresh` per decidere se ricaricare la pagina: cinque query da
   "status": "ok",
   "realtime": { "watts": 526, "limitKw": 3 },
   "realtimeAt": "2026-10-15T16:02:11.000Z",
-  "details": { "days": [{ "date": "2026-10-14", "kwh": 7.4 }], "appliances": [{ "name": "frigo", "kwh": 2.5 }], "plugOnline": true, "notices": [] },
+  "details": {
+    "days": [{ "date": "2026-10-08", "kwh": 11.658 }, { "date": "2026-10-09", "kwh": 5.762 }],
+    "weekKwh": 56.513,
+    "previousWeekKwh": 56.907,
+    "appliances": [{ "code": "fridge", "name": "Frigorifero", "kwh": 10.271 }],
+    "plugOnline": true,
+    "notices": [{ "at": "2026-10-09T13:00:29Z", "type": "provider_disconnection", "title": "Interruzione di fornitura elettrica", "text": "…" }]
+  },
   "detailsAt": "2026-10-15T15:40:00.000Z",
   "retryAt": null
 }
@@ -153,7 +160,7 @@ Lo usa `SharedDataRefresh` per decidere se ricaricare la pagina: cinque query da
 * **`status`**: `ok`; `spento` (mancano le credenziali Fastweb); `captcha` o `rifiutato` (niente login fino a `retryAt`); `errore` (Fastweb non ha risposto come previsto, o manca la configurazione: si restituisce l'ultima lettura, HTTP 503 se non c'è nemmeno quella). La schermata mostra l'ultima lettura attenuata con l'ora e una riga che spiega quando riprova.
 * **Protezione**: dietro `proxy.ts` come ogni rotta privata; la rotta ricontrolla l'utente con `getCurrentUser()` prima di creare il client service role, l'unico che legge `energy_fastweb_state`. Risposta `no-store`, runtime Node, `maxDuration` 30 s (il caso lento è sessione scaduta → login → pagina Power Control, circa 4 s per passo).
 * **Cache**: la potenza si rilegge da Fastweb al massimo ogni 10 s, i dettagli ogni 30 minuti; nel frattempo risponde la riga salvata. Due telefoni aperti sulla schermata fanno una sola chiamata a Fastweb.
-* **Modalità diagnostica**: `?forma=1`, mai in produzione (404). Restituisce la forma delle risposte di ogni form della pagina Power Control (chiavi, tipi, numeri; testi sospetti mascherati e chiavi personali tolte da `lib/energy/shape.ts`). Serve a scrivere i parser quando Fastweb cambia formato.
+* **Formato**: `days` sono i 7 giorni interi prima di oggi; i kWh sono arrotondati al Wh. Come si leggono le risposte di Fastweb è in `07-integrations.md`; la modalità diagnostica usata per scriverli (`/api/energia?forma=1`, mai in produzione: la forma delle risposte senza dati personali) è nel commit `4364c98` e si può rimettere per il tempo di una prova su un'anteprima.
 
 ---
 
