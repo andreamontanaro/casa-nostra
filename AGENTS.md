@@ -58,7 +58,7 @@ L'integrazione usa il pacchetto `@supabase/ssr`. I client sono in `lib/supabase/
 L'architettura del progetto è documentata dettagliatamente in `docs/wiki/01-architecture.md`. 
 
 L'applicazione segue la struttura standard di Next.js App Router:
-- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata).
+- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata), più i moduli `/lista`, `/faccende`, `/energia`, `/statistiche`, `/impostazioni`.
 - **Mutazioni**: Implementate tramite Server Actions in `app/actions/`.
 - **Query**: Caricate nei Server Component tramite funzioni di utility in `lib/queries.ts` e `lib/queries-cars.ts`.
 - **Interattività**: Isolata nei Client Component (es. `HomeShell.tsx`, `ExpenseForm.tsx`).
@@ -127,7 +127,7 @@ Un bot Telegram opzionale collega l'app al gruppo dei due conviventi. Fa due cos
 Cose da sapere prima di metterci mano:
 
 - **Il motore dell'assistente è condiviso**: sta in `lib/assistant/` (tool, system instruction, ciclo di tool calling) e accetta un client Supabase esplicito. `app/api/assistant/route.ts` e `app/api/telegram/webhook/route.ts` sono due gusci sottili sopra `runAssistant`. Se aggiungi un tool o cambi il prompt, lo fai una volta sola lì — non duplicare la logica in un canale solo.
-- **Il webhook non ha sessione**: usa il client service role (`lib/supabase/service.ts`), che bypassa RLS. L'autorizzazione la fanno il secret dell'update e il collegamento `profiles.telegram_user_id`. Non usare quel client altrove e non esporre mai `SUPABASE_SERVICE_ROLE_KEY` al browser.
+- **Il webhook non ha sessione**: usa il client service role (`lib/supabase/service.ts`), che bypassa RLS. L'autorizzazione la fanno il secret dell'update e il collegamento `profiles.telegram_user_id`. Non usare quel client altrove (l'unica altra eccezione è il modulo Energia, sotto) e non esporre mai `SUPABASE_SERVICE_ROLE_KEY` al browser.
 - **Le notifiche non stanno nel percorso critico**: si preparano nella Server Action e si inviano con `after()`. Non aggiungere `await` su Telegram prima di rispondere all'utente (l'unica eccezione voluta è `requestSettlementOnTelegram`, dove l'esito serve per il toast).
 - **L'integrazione è spegnibile**: senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` tutto il codice Telegram esce subito e l'app si comporta come prima. Mantieni questa proprietà.
 - **Configurazione e troubleshooting**: `docs/telegram-setup.md`. Schema: sezione 10 di `casa_nostra_schema.sql` e `docs/migrations/2026-09-03_telegram.sql`.
@@ -159,6 +159,18 @@ Il modulo `/faccende` (dal 30 settembre 2026, su richiesta e schizzo di Fede) ti
 - **Il liquido delle bottiglie è animato** (dal 1° ottobre 2026): una faccenda nuova la versa un getto, la superficie segue l'inclinazione del telefono e sciaborda, il bonus è uno strato più chiaro sul fondo. La fisica è pura e testata (`lib/chores/liquid.ts`, `tests/liquid.test.mjs`); i sensori li ascolta `lib/chores/device-tilt.ts`, il disegno lo aggiorna `lib/chores/use-bottle-liquid.ts` direttamente nel DOM. Il livello viene sempre dalle tacche piene: l'animazione non decide niente. I nomi delle faccende sono disegnati tre volte e ritagliati lungo la superficie: se cambi una tacca, cambiala in `NotchFaces` e nei bottoni trasparenti insieme. Rispetta "riduci movimento" e non tenere il ciclo acceso a liquido fermo.
 - **Vista 3D, a scelta** (dal 2 ottobre 2026). Accanto al titolo c'è «2D | 3D»: **di serie è il 2D**, la scelta resta sul dispositivo (`lib/chores/bottle-view.ts`, localStorage `chore-bottles`). Il 3D è un canvas WebGL con bottiglie di vetro da girare col dito, liquido come volume e le stesse regole (livello = tacche piene, bonus sotto, allineate in alto, stessi tocchi, stessi sensori). **three.js si scarica solo se si sceglie il 3D**: `ChoreBottles3D` si importa solo con `next/dynamic` (`ssr: false`) in `FaccendeShell`, e three si importa solo in `lib/chores/bottles3d/`; lo verifica `tests/liquid3d.test.mjs`. Non aggiungere import statici che lo tirino nel pacchetto principale. La fisica pura è `lib/chores/liquid3d.ts` (testata), la scena `lib/chores/bottles3d/scene.ts`, gli shader `shaders.ts`. È pensato per il telefono: disegna solo mentre qualcosa si muove e solo a schermo, abbassa la risoluzione se i fotogrammi arrivano lenti, e tornando al 2D libera la GPU. Se WebGL manca o si perde più volte a pagina in vista, si torna al 2D con un toast.
 - La logica sta in `lib/chores/service.ts` con un client esplicito, come la lista: se un giorno l'assistente dovrà segnare faccende, chiama quello.
+
+## Energia (Fastweb Power Control)
+
+Il modulo `/energia` (dal 15 ottobre 2026) mostra la potenza di adesso come una **batteria** che si riempie verso il massimo sopportabile dal contatore (3 kW se Fastweb non lo dice), più consumi degli ultimi 7 giorni, ripartizione per apparecchio, stato della presa e avvisi di distacco. Documentazione nella wiki (01, 02, 04, 05, 06, 07, 08, 09); qui le cose da sapere prima di metterci mano:
+
+- **Fastweb non ha API pubbliche**: `lib/energy/fastweb.ts` rifà i passi della dashboard di MyFastweb (login con username e password, pagina Power Control, chiamate `ajax/`). Il flusso è collaudato: non cambiarlo senza una prova su un'anteprima. Se Fastweb chiede il captcha (`needRecaptcha`) ci si ferma, **non si aggira mai**.
+- **I dati personali non passano.** Le risposte contengono codice fiscale, email, POD e numero cliente (`realtime_sin`). `lib/energy/readings.ts` legge solo i campi in elenco e costruisce oggetti nuovi: niente spread di `data`, niente corpi di risposta nei log.
+- **Login il meno possibile.** La sessione MyFastweb si riusa tra le invocazioni: sta, cifrata con una chiave derivata dalle credenziali, nella riga unica di `energy_fastweb_state` (RLS senza policy, solo service role). Le letture recenti si riusano (10 s la potenza, 30 minuti il resto), un login ogni 5 minuti al massimo con un lucchetto sul database, dopo un captcha 6 ore di pausa. Non aggiungere percorsi che facciano login fuori da `lib/energy/service.ts`.
+- **Service role solo dopo la sessione di Casa Nostra.** `/api/energia` e la pagina verificano l'utente con `getCurrentUser()` e solo dopo creano il client service role. La rotta resta dietro `proxy.ts`.
+- **Si legge solo a pagina aperta.** Polling ogni 15 s a pagina visibile, nessun cron e nessuna notifica: avvisi su Telegram per la soglia superata sarebbero un'evoluzione, da chiedere prima.
+- **Spegnibile**: senza `FASTWEB_USERNAME` e `FASTWEB_PASSWORD` tutto esce subito e la schermata dice che il collegamento non è configurato. Attivazione in `docs/wiki/06-configuration.md`.
+- **Se Fastweb cambia formato**: `/api/energia?forma=1` su un'anteprima (mai in produzione) mostra la forma delle risposte senza dati personali; si correggono i parser in `readings.ts` e i loro test.
 
 ## Workflow di fine sessione
 

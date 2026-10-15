@@ -1259,5 +1259,51 @@ CREATE POLICY "chore_hints_delete_involved"
 
 
 -- ============================================================
+-- 15. MODULO "ENERGIA" (Fastweb Power Control)
+-- ------------------------------------------------------------
+-- Potenza istantanea e consumi letti dalle chiamate interne di
+-- MyFastweb (lib/energy/). La sessione MyFastweb e l'ultima lettura
+-- stanno in una riga sola, cifrata e raggiungibile solo dal service
+-- role. Applicata come migrazione separata,
+-- docs/migrations/2026-10-15_energia.sql.
+-- ============================================================
+
+CREATE TABLE public.energy_fastweb_state (
+  id                 smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  -- Cookie e token dei form MyFastweb, cifrati (AES-256-GCM) con una
+  -- chiave derivata dalle credenziali: senza FASTWEB_PASSWORD non
+  -- servono a niente.
+  session_enc        text,
+  -- Ultimo tentativo di login, riuscito o no: ne parte al massimo
+  -- uno ogni pochi minuti, ed e' anche il lucchetto contro due login
+  -- in parallelo (UPDATE condizionale su questa colonna).
+  login_attempt_at   timestamptz,
+  logged_in_at       timestamptz,
+  -- Fastweb ha chiesto il captcha o ha rifiutato le credenziali:
+  -- niente login fino a blocked_until. Il blocco vale solo per le
+  -- credenziali con questa impronta: cambiandole si riprova subito.
+  blocked_until      timestamptz,
+  blocked_reason     text CHECK (blocked_reason IN ('captcha', 'rifiutato')),
+  blocked_for        text,
+  -- Ultime letture gia' ripulite (solo numeri ed etichette, mai i
+  -- dati dell'intestatario).
+  realtime           jsonb,
+  realtime_at        timestamptz,
+  details            jsonb,
+  details_at         timestamptz,
+  updated_at         timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.energy_fastweb_state IS
+  'Sessione MyFastweb (cifrata) e ultime letture di Power Control. Riga unica, accessibile solo con il service role.';
+
+INSERT INTO public.energy_fastweb_state (id) VALUES (1);
+
+ALTER TABLE public.energy_fastweb_state ENABLE ROW LEVEL SECURITY;
+-- Nessuna policy, di proposito. Per sicurezza anche niente privilegi:
+REVOKE ALL ON public.energy_fastweb_state FROM anon, authenticated;
+
+
+-- ============================================================
 -- FINE SCHEMA
 -- ============================================================

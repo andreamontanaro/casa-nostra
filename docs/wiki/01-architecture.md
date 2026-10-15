@@ -53,9 +53,9 @@ Il flusso di dipendenza è rigorosamente unidirezionale dall'alto verso il basso
 La struttura del progetto segue la convenzione standard di Next.js:
 
 * `app/` → `app/`: Contiene le rotte, i layout e le Server Actions.
-  * `(app)/` → `app/(app)/`: Rotte private protette da autenticazione (home, spese, lista, faccende, conguaglio, impostazioni, statistiche).
+  * `(app)/` → `app/(app)/`: Rotte private protette da autenticazione (home, spese, lista, faccende, energia, conguaglio, impostazioni, statistiche).
   * `actions/` → `app/actions/`: Server Actions per le mutazioni dei dati (es. `expenses.ts`, `auth.ts`, `shopping.ts`, `chores.ts`).
-  * `api/` → `app/api/`: Endpoint API serverless (l'assistente IA e il webhook del bot Telegram).
+  * `api/` → `app/api/`: Endpoint API serverless (l'assistente IA, la lettura dei consumi da Fastweb e il webhook del bot Telegram).
   * `landing/` → `app/landing/`: Landing page pubblica per utenti non autenticati.
   * `login/` → `app/login/`: Pagina di login.
   * `condividi/` → `app/condividi/route.ts`: Arrivo di riserva della condivisione di uno scontrino verso l'app installata (vedi "Rotte di Servizio").
@@ -67,6 +67,7 @@ La struttura del progetto segue la convenzione standard di Next.js:
   * `assistant/` → `lib/assistant/`: Motore condiviso dell'assistente IA (tool, system instruction, ciclo di tool calling), usato sia dalla chat nell'app sia dal bot Telegram.
   * `shopping/` → `lib/shopping/`: Logica di dominio della lista della spesa (aggiunta, spunta, controllo scontrino con Gemini) e costanti del bucket degli scontrini. È condivisa da Server Action, assistente e webhook Telegram: accetta sempre un client Supabase esplicito.
   * `chores/` → `lib/chores/`: Faccende domestiche. `service.ts` aggiunge ed elimina con un client Supabase esplicito (come `lib/shopping/`); `bottle.ts` sono funzioni pure che decidono le tacche e il messaggio della parità a partire da `v_chore_balance`, verificate da `tests/chores.test.mjs`. Il liquido animato delle bottiglie: `liquid.ts` è la fisica, pura (livelli, getto, onde, inclinazione; `tests/liquid.test.mjs`), `device-tilt.ts` ascolta i sensori del telefono una volta sola per tutte le bottiglie, `use-bottle-liquid.ts` fa girare la simulazione e scrive nel DOM a ogni fotogramma. La vista 3D, a scelta (`bottle-view.ts` ricorda 2D o 3D sul dispositivo): `liquid3d.ts` è la sua fisica, pura (volume a piano inclinato dentro la bottiglia vera, griglia di onde; `tests/liquid3d.test.mjs`), `bottles3d/` è la scena three.js con i suoi shader. È l'unica cartella che importa three.js e la raggiunge solo `components/chores/ChoreBottles3D.tsx`, caricato con `next/dynamic` quando si sceglie il 3D.
+  * `energy/` → `lib/energy/`: Modulo Energia, solo lato server tranne `readings.ts`. `fastweb.ts` è il client delle chiamate interne di MyFastweb (cookie a mano, redirect manuali, lettura dei form); `crypto.ts` cifra la sessione salvata; `service.ts` decide quando riusare la cache, quando rinnovare i token e quando rifare il login, con un client Supabase esplicito (il service role); `readings.ts` sono i tipi e le funzioni pure (letture ripulite, fasce della batteria) che usa anche la schermata; `shape.ts` descrive la forma delle risposte per la modalità diagnostica. Verificati da `tests/energy.test.mjs`, che controlla anche che nessun componente client importi i moduli lato server.
   * `telegram/` → `lib/telegram/`: Configurazione, client dell'API Bot, formattazione dei messaggi, memoria conversazionale e testi delle notifiche.
 * `types/` → `types/`: Tipi TypeScript generati dal DB e costanti dell'applicazione.
 * `public/` → `public/`: Manifest dell'app installata (`manifest.webmanifest`), icone SVG e PNG, e `sw.js`, il service worker che riceve gli scontrini condivisi da altre app (vedi `06-configuration.md`).
@@ -82,6 +83,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 ### Rotte di Servizio
 * `/api/assistant` → `app/api/assistant/route.ts`: Chat con l'assistente IA (richiede sessione).
 * `/api/sync` → `app/api/sync/route.ts`: Impronta dei dati condivisi per l'aggiornamento automatico delle pagine (richiede sessione, vedi `04-api-surface.md`).
+* `/api/energia` → `app/api/energia/route.ts`: Potenza istantanea e consumi da Fastweb Power Control per la schermata Energia (richiede sessione; legge e scrive la sessione MyFastweb con il service role, vedi `04-api-surface.md`).
 * `/api/telegram/webhook` → `app/api/telegram/webhook/route.ts`: Riceve gli update del bot Telegram; si autentica con il secret condiviso, non con la sessione.
 * `/condividi` → `app/condividi/route.ts`: `action` del `share_target` del manifest. Di norma il POST con la foto non arriva mai qui: lo intercetta il service worker `public/sw.js` (scope `/condividi`), che parcheggia il file nella Cache Storage e manda a `/lista?condiviso=1`. La Route Handler risponde solo quando il worker non è ancora attivo, rimandando alla lista con un messaggio (`?condiviso=non-pronto`).
 
@@ -95,6 +97,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/spese/[id]` → `app/(app)/spese/[id]/page.tsx`: Dettaglio e modifica/eliminazione di una singola spesa, con chi l'ha inserita, quando è stata modificata e, se saldata, il conguaglio che l'ha chiusa.
 * `/lista` → `app/(app)/lista/page.tsx`: Lista della spesa — cosa manca in casa, raggruppato per tipo di prodotto, con controllo dello scontrino → `app/(app)/lista/ShoppingShell.tsx`.
 * `/faccende` → `app/(app)/faccende/page.tsx`: Faccende domestiche — le due bottiglie affiancate con il messaggio della parità e i giorni scorsi → `app/(app)/faccende/FaccendeShell.tsx`. Solo nel menu, non nella barra in basso.
+* `/energia` → `app/(app)/energia/page.tsx`: Energia — la potenza di adesso come una batteria che si riempie verso il limite del contatore, i consumi degli ultimi 7 giorni, per apparecchio, lo stato della presa e gli avvisi di distacco → `app/(app)/energia/EnergiaShell.tsx`. Il primo disegno usa l'ultima lettura salvata; poi la pagina chiede `/api/energia` ogni 15 s finché è visibile. Solo nel menu, non nella barra in basso.
 * `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio. Raggiungibile dal menu dell'header e dalla CTA "Conguaglia" in home, non dalla bottom nav (è l'azione più rara: vedi `08-patterns.md`).
 * `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu dell'header (non dalla bottom nav: vedi `08-patterns.md`).
 * `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password, collegamento dell'account Telegram).

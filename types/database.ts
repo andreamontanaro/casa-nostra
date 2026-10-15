@@ -156,6 +156,51 @@ export type Database = {
           },
         ]
       }
+      energy_fastweb_state: {
+        Row: {
+          blocked_for: string | null
+          blocked_reason: string | null
+          blocked_until: string | null
+          details: Json | null
+          details_at: string | null
+          id: number
+          logged_in_at: string | null
+          login_attempt_at: string | null
+          realtime: Json | null
+          realtime_at: string | null
+          session_enc: string | null
+          updated_at: string
+        }
+        Insert: {
+          blocked_for?: string | null
+          blocked_reason?: string | null
+          blocked_until?: string | null
+          details?: Json | null
+          details_at?: string | null
+          id?: number
+          logged_in_at?: string | null
+          login_attempt_at?: string | null
+          realtime?: Json | null
+          realtime_at?: string | null
+          session_enc?: string | null
+          updated_at?: string
+        }
+        Update: {
+          blocked_for?: string | null
+          blocked_reason?: string | null
+          blocked_until?: string | null
+          details?: Json | null
+          details_at?: string | null
+          id?: number
+          logged_in_at?: string | null
+          login_attempt_at?: string | null
+          realtime?: Json | null
+          realtime_at?: string | null
+          session_enc?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expense_attachments: {
         Row: {
           created_at: string

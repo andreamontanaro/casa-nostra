@@ -70,6 +70,24 @@ Questa pagina riassume le scelte tecnologiche e architetturali principali effett
 
 ---
 
+## Energia
+
+### Le chiamate interne di MyFastweb, in assenza di API
+* **Contesto**: Fastweb Power Control misura i consumi di casa, ma Fastweb non offre API pubbliche e il contatore non è raggiungibile in altro modo.
+* **Scelta**: Il server rifà i passi della dashboard di MyFastweb con username e password (`lib/energy/fastweb.ts`), dopo una prova su un'anteprima Vercel che ha confermato il login senza captcha.
+* **Motivazione**: È l'unico accesso ai dati. Il prezzo è la fragilità: se Fastweb cambia la pagina il modulo si ferma. Per questo l'integrazione è spegnibile (senza credenziali l'app è quella di prima), ogni guasto diventa uno stato leggibile in pagina e la modalità diagnostica permette di riscrivere i parser senza indovinare.
+
+### Sessione su Supabase, cifrata, solo service role
+* **Contesto**: Le funzioni serverless non condividono memoria: tenere la sessione solo in memoria vorrebbe dire un login a ogni istanza nuova, e più login aumentano il rischio di captcha.
+* **Scelta**: Una tabella di una riga con RLS attiva e nessuna policy; cookie e token cifrati AES-256-GCM con una chiave scrypt derivata dalle credenziali (`lib/energy/crypto.ts`). La stessa riga fa da cache delle letture e da lucchetto del login.
+* **Motivazione**: I cookie di una sessione aperta valgono quanto la password, e MyFastweb mostra dati personali e contrattuali. Un dump del database da solo non basta a entrarci, e non serve una variabile in più: la chiave nasce dalla password, quindi cambiarla invalida da sola la vecchia sessione.
+
+### Polling solo a pagina aperta, nessun cron
+* **Scelta**: La schermata chiede `/api/energia` ogni 15 s finché è visibile; non c'è un job che legga Fastweb in background.
+* **Motivazione**: La potenza istantanea interessa mentre la si guarda. Un cron leggerebbe Fastweb giorno e notte (più login, più rischio captcha) per dati che nessuno vede. Avvisi automatici (soglia superata su Telegram) richiederebbero un cron: sono un'evoluzione possibile, non il punto di partenza.
+
+---
+
 ## Faccende
 
 ### Vista 3D a scelta, caricata solo su richiesta

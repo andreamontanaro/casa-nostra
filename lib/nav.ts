@@ -6,6 +6,7 @@ import {
   Settings,
   ShoppingBasket,
   SprayCan,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -48,6 +49,12 @@ export const NAV_PRIMARY: NavItem[] = [
 
 /** Schermate di consultazione e configurazione: sempre e solo nel menu. */
 export const NAV_SECONDARY: NavItem[] = [
+  {
+    href: '/energia',
+    label: 'Energia',
+    description: 'Consumi di casa in tempo reale',
+    icon: Zap,
+  },
   {
     href: '/statistiche',
     label: 'Statistiche',

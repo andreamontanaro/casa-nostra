@@ -159,3 +159,12 @@ Una faccenda suggerita a chi deve farla → `docs/migrations/2026-09-30_faccende
 * **Doppioni**: indice unico su (`for_user`, `hint_on`, `lower(trim(name))`).
 * **RLS**: entrambi leggono; si inserisce solo come `from_user`; lo elimina chi l'ha mandato (ritira) o chi l'ha ricevuto (scarta).
 
+### 12. Collegamento con Fastweb Power Control (`energy_fastweb_state`)
+Sessione MyFastweb e ultime letture del modulo Energia → `docs/migrations/2026-10-15_energia.sql`, sezione 15 dello schema.
+* **Una riga sola** (`id = 1`, vincolo `CHECK`), creata dalla migration.
+* **Sessione**: `session_enc` contiene cookie e token dei form della pagina Power Control, cifrati AES-256-GCM con una chiave derivata (scrypt) da `FASTWEB_USERNAME` e `FASTWEB_PASSWORD` → `lib/energy/crypto.ts`. Senza le credenziali non si apre; se la password cambia non si apre più e si rifà il login.
+* **Login**: `login_attempt_at` è l'ultimo tentativo, riuscito o no, ed è anche il lucchetto (vedi `05-data-access.md`); `logged_in_at` l'ultimo riuscito.
+* **Blocco**: dopo un captcha (6 ore) o credenziali rifiutate (1 ora) `blocked_until`, `blocked_reason` (`captcha` | `rifiutato`) e `blocked_for`, l'impronta delle credenziali per cui vale: cambiandole si riprova subito.
+* **Cache**: `realtime` (`{ watts, limitKw }`) con `realtime_at`, `details` (giorni, apparecchi, presa, avvisi) con `details_at`. Solo dati già ripuliti da `lib/energy/readings.ts`: mai i dati dell'intestatario che Fastweb manda insieme (`realtime_sin`).
+* **RLS attiva senza policy** e privilegi revocati ad `anon` e `authenticated`: la legge e la scrive solo il service role.
+

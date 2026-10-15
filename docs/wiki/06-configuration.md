@@ -31,7 +31,7 @@ Queste variabili non hanno il prefisso `NEXT_PUBLIC_`, sono mantenute esclusivam
 
 * `SUPABASE_SERVICE_ROLE_KEY` → `lib/supabase/service.ts`:
   - **Tipo**: Stringa (JWT service role di Supabase).
-  - **Scopo**: Consente al webhook Telegram — che riceve richieste dai server di Telegram, senza cookie di sessione — di leggere e scrivere sul database **bypassando RLS**. Usata esclusivamente da `createServiceClient()`; non deve mai raggiungere il browser.
+  - **Scopo**: Consente al webhook Telegram — che riceve richieste dai server di Telegram, senza cookie di sessione — di leggere e scrivere sul database **bypassando RLS**, e al modulo Energia di leggere la sessione MyFastweb, che nessun utente può leggere. Usata esclusivamente da `createServiceClient()`; non deve mai raggiungere il browser. Serve anche nelle anteprime (Preview) per provare Energia lì.
 
 ### Variabili dell'Integrazione Telegram
 Se `TELEGRAM_BOT_TOKEN` o `TELEGRAM_CHAT_ID` non sono impostate, l'integrazione è considerata spenta e l'app si comporta esattamente come prima (nessuna notifica, nessun webhook attivo) → `lib/telegram/config.ts`.
@@ -44,6 +44,14 @@ Se `TELEGRAM_BOT_TOKEN` o `TELEGRAM_CHAT_ID` non sono impostate, l'integrazione 
 * `NEXT_PUBLIC_SITE_URL`: URL pubblico dell'app, usato per rendere assoluti i link nei messaggi Telegram (senza, i link vengono omessi).
 
 La procedura completa di configurazione è in `docs/telegram-setup.md`.
+
+### Variabili dell'Integrazione Fastweb (Energia)
+Senza tutte e due l'integrazione è spenta: la schermata Energia dice che il collegamento non è configurato e nessuna richiesta parte verso Fastweb → `lib/energy/config.ts`.
+
+* `FASTWEB_USERNAME`: username di MyFastweb (lo stesso del sito).
+* `FASTWEB_PASSWORD`: password di MyFastweb. Su Vercel come variabile **Sensitive**. Serve anche a derivare la chiave che cifra la sessione salvata: cambiarla invalida la sessione e fa rifare il login, che è quello che si vuole.
+
+**Attivazione**: eseguire `docs/migrations/2026-10-15_energia.sql` nell'editor SQL di Supabase (crea la riga di `energy_fastweb_state`), poi impostare le due variabili e `SUPABASE_SERVICE_ROLE_KEY` nell'ambiente Vercel (Production, e Preview per provarla in anteprima) e ridistribuire. Se Fastweb chiede il captcha la schermata lo dice e non riprova per 6 ore: non c'è niente da sbloccare a mano.
 
 ---
 

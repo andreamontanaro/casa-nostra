@@ -18,10 +18,17 @@ Utilizzato nei Server Component, nelle Server Actions e nelle API Route Handlers
 * **Refresh dei Cookie**: La logica di scrittura dei cookie (`setAll`) è avvolta in un blocco `try-catch` → `lib/supabase/server.ts#L17-L24`. Se il client viene invocato durante il rendering di un Server Component (fase in cui Next.js vieta la scrittura degli header), l'errore viene ignorato. Il refresh effettivo dei cookie di sessione è delegato a monte al middleware `proxy.ts`.
 
 ### 3. Client Service Role (`service.ts`)
-Utilizzato **esclusivamente** dal webhook Telegram → `lib/supabase/service.ts`:
+Utilizzato **esclusivamente** dal webhook Telegram e dal modulo Energia → `lib/supabase/service.ts`:
 * Inizializza il client con `SUPABASE_SERVICE_ROLE_KEY` e senza persistenza di sessione: gli update di Telegram arrivano senza cookie, quindi non esiste una sessione da cui derivare i permessi.
 * Questa chiave **bypassa RLS**: l'autorizzazione, in quel percorso, la fa il webhook verificando il secret dell'update e il collegamento `profiles.telegram_user_id`.
 * Le funzioni di `lib/queries.ts` accettano un parametro opzionale `db` proprio per essere riusate con questo client (omesso, usano il client di sessione con RLS attiva).
+* Il modulo Energia lo usa per un'altra ragione: `energy_fastweb_state` contiene la sessione MyFastweb (cifrata) e non ha policy RLS, così nessun utente la legge dal browser con la chiave anon. Lo creano solo `app/api/energia/route.ts` e `app/(app)/energia/page.tsx`, **dopo** aver verificato la sessione di Casa Nostra con `getCurrentUser()`.
+
+### 4. Energia: una riga, un lucchetto (`lib/energy/service.ts`)
+* **Cache**: `getEnergySnapshot` legge la riga; se `realtime_at` ha meno di 10 s e `details_at` meno di 30 minuti risponde da lì, senza chiamare Fastweb. `getCachedEnergySnapshot` (primo disegno della pagina) non chiama mai Fastweb.
+* **Sessione**: cookie e token dei form si riusano finché Fastweb risponde. Se una risposta non è JSON (redirect al login o a `contenuti-riservati/`) si ricarica la pagina Power Control per i token; se anche quella rimanda altrove si rifà il login. Al massimo un rinnovo per richiesta.
+* **Lucchetto del login**: un `UPDATE` condizionale, `login_attempt_at = now()` solo se `login_attempt_at` è nullo o più vecchio di 5 minuti. Passa a una richiesta sola: le altre, se nel frattempo è comparsa una sessione nuova, la adottano; altrimenti rispondono con l'ultima lettura e `retryAt`. È anche il limite di un login ogni 5 minuti.
+* **Blocco**: un captcha o un rifiuto scrivono `blocked_until` e l'impronta delle credenziali; finché vale, `/api/energia` risponde dalla riga senza chiamare Fastweb.
 
 ---
 

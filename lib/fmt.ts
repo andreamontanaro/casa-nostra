@@ -34,6 +34,24 @@ export function formatEur(amount: number) {
   return EUR.format(amount)
 }
 
+// Energia: potenza in W (intera) e kW, consumi in kWh. Spazio non separabile
+// tra numero e unità, così «526 W» non va a capo a metà.
+const WATTS = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 0, useGrouping: 'always' })
+const KW = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1, useGrouping: 'always' })
+const KWH = new Intl.NumberFormat('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: 'always' })
+
+export function formatWatts(watts: number) {
+  return `${WATTS.format(watts)}\u00a0W`
+}
+
+export function formatKw(kw: number) {
+  return `${KW.format(kw)}\u00a0kW`
+}
+
+export function formatKwh(kwh: number) {
+  return `${KWH.format(kwh)}\u00a0kWh`
+}
+
 export function formatDate(dateStr: string) {
   return DATE_LONG.format(new Date(dateStr))
 }

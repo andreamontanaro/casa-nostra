@@ -39,6 +39,11 @@
   --destructive: #ba1a1a;
   --destructive-foreground: #fffdf8;
 
+  /* Avviso — un limite vicino (energia vicino alla soglia). Arancio scuro,
+     lontano dall'Ambra degli accenti; testo sopra resta --foreground. */
+  --warning: #a14d00;
+  --warning-muted: #fbe3cf;
+
   /* Positivo — saldo a credito, importi positivi (mint/verde) */
   --positive: #176b5b;
   --positive-muted: #dceee4;
@@ -75,6 +80,9 @@
 
   --dk-destructive: #ffb4ab;
   --dk-destructive-foreground: #4a0805;
+
+  --dk-warning: #f5b26b;
+  --dk-warning-muted: #4d3420;
 
   --dk-positive: #94d5b8;
   --dk-positive-muted: #2a493a;
@@ -187,6 +195,8 @@
 
     --destructive: var(--dk-destructive);
     --destructive-foreground: var(--dk-destructive-foreground);
+    --warning: var(--dk-warning);
+    --warning-muted: var(--dk-warning-muted);
 
     --positive: var(--dk-positive);
     --positive-muted: var(--dk-positive-muted);
@@ -224,6 +234,8 @@
 
   --destructive: var(--dk-destructive);
   --destructive-foreground: var(--dk-destructive-foreground);
+  --warning: var(--dk-warning);
+  --warning-muted: var(--dk-warning-muted);
 
   --positive: var(--dk-positive);
   --positive-muted: var(--dk-positive-muted);
@@ -267,6 +279,8 @@
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-muted: var(--warning-muted);
 
   --color-positive: var(--positive);
   --color-positive-muted: var(--positive-muted);

@@ -14,7 +14,7 @@ Aggiornamento del redesign approvato l’8 settembre 2026. Il vecchio modulo **C
 
 ## Navigazione e densità
 
-- Barra inferiore mobile: **Home, Storico, Lista**. Menu completo: anche Faccende domestiche, Statistiche e Regola il saldo, più Impostazioni.
+- Barra inferiore mobile: **Home, Storico, Lista**. Menu completo: anche Faccende domestiche, Regola il saldo, Energia e Statistiche, più Impostazioni.
 - Desktop: navigazione laterale, area centrale più ampia e layout a colonne dove aiuta a leggere.
 - Assistente nell’header; una sola FAB per aggiungere spese in home. Su richiesta sono state rimosse la CTA superiore “Aggiungi spesa” e la scorciatoia dalla home alla lista.
 - Priorità ai movimenti: storico con pannello “Filtri e ricerca” inizialmente chiuso e totale compatto. Home con anello compatto e pannello “Categorie e dettagli del saldo” chiuso.
@@ -83,6 +83,18 @@ Sotto le bottiglie un messaggio solo, dal punto di vista di chi guarda: "😊 Si
 
 **Suggerimenti.** Il "+" sulla bottiglia dell'altra persona (o il bottone "Suggerisci a …" sotto "Ho fatto una faccenda") apre lo stesso pannello in modalità "Suggerisci": niente chi e quando, le stesse azioni per ambito, un tocco manda il suggerimento. Nella bottiglia di chi lo riceve compare nella prima tacca libera sopra le faccende, sbiadito: bordo tratteggiato, fondo appena tinto, lampadina, testo attenuato. Toccandolo, chi lo riceve ha "Fatto!" (la tacca si riempie subito, con "Annulla"), "Ho fatto un'altra cosa" (apre il pannello; il suggerimento sale di una tacca) e "Scarta il suggerimento"; chi l'ha mandato ha "Ritira". I suggerimenti rimasti senza tacca finiscono in una riga sotto le bottiglie. Nessun rosso, nessun conteggio di suggerimenti ignorati.
 
+## Energia
+
+La schermata `/energia` (15 ottobre 2026) parte da una domanda sola: quanto posso ancora accendere?
+
+- **La batteria.** In cima, la potenza di adesso in grande (Fraunces, numeri tabulari: «526 W») e sotto «su 3 kW sopportabili · 18%». Poi una batteria orizzontale, alta 96 px, con il polo a destra, che si riempie in proporzione al massimo sopportabile dal contatore (`realtime_max` di Fastweb, 3 kW se manca) e ha un divisorio per ogni kW, come gli elementi di una pila; sotto, la scala in kW. Il riempimento scorre in 700 ms tra una lettura e l'altra, fermo con "riduci movimento". Anche pochi watt mostrano un filo di carica.
+- **Tre fasce, mai solo colore.** Sotto il 70% del limite il riempimento è l'accento («Lontano dal limite», icona di spunta); dal 70% al limite è `--warning` («Vicino al limite: meglio non accendere altro», triangolo); sopra è `--destructive` («Oltre il limite: il contatore potrebbe staccare»). Regole e soglia in `batteryLevel` (`lib/energy/readings.ts`), testate. La batteria è un `role="meter"` con il valore in parole.
+- **`--warning`** è un token nuovo (arancio scuro #a14d00, in scuro #f5b26b, con `--warning-muted`): un limite vicino è un significato, come `--positive`, e non cambia con l'accento. Testo sopra in `--foreground`; contrasto ≥ 5:1 su crema e ≥ 6,8:1 sulle superfici scure.
+- **In diretta.** Accanto al titolo un punto che pulsa e «In diretta · 12 s fa»; con una lettura più vecchia di 2 minuti diventa «Ultima lettura · alle 14:32» e la batteria si attenua. L'ora relativa si calcola solo nel browser, dopo l'idratazione.
+- **Sotto**: gli ultimi 7 giorni a barre (una serie, nell'accento; valore sopra la barra al passaggio di dito, mouse o tastiera; tabella giorno per giorno in un `<details>`), la ripartizione per apparecchio (righe con icona scelta per parola chiave, kWh, quota e una barra sottile), gli avvisi di distacco. Se la presa Power Control non risponde, un avviso in cima.
+- **Aggiornamento.** `EnergiaShell` chiede `/api/energia` ogni 15 s solo a pagina visibile e in rete, una richiesta alla volta, e subito al ritorno nella pagina. Se Fastweb non risponde l'attesa raddoppia fino a 5 minuti; dopo un captcha o un rifiuto aspetta l'ora indicata dal server, e una riga neutra in cima dice cosa succede e quando riprova. Il primo disegno arriva dal server con l'ultima lettura salvata, senza aspettare Fastweb.
+- **Su desktop** la batteria occupa tutta la larghezza e le card dei 7 giorni e degli apparecchi si affiancano.
+
 ## Assistente
 
 Sheet Radix con focus contenuto, chiusura da tastiera e textarea. I pulsanti contestuali aprono un messaggio modificabile; non lo inviano automaticamente. Un solo invio attivo fino alla chiusura dello stream. Errori di rete conservano il testo e ricordano di verificare eventuali operazioni confermate.
@@ -97,7 +109,7 @@ Importi totali e conguagli restano distinti. Barre mensili con tabella consultab
 
 ## Attesa e scheletri
 
-Ogni schermata privata ha il suo `loading.tsx`: `/`, `/spese`, `/spese/[id]`, `/spese/nuova`, `/lista`, `/conguaglio`, `/statistiche`, `/impostazioni`.
+Ogni schermata privata ha il suo `loading.tsx`: `/`, `/spese`, `/spese/[id]`, `/spese/nuova`, `/lista`, `/faccende`, `/energia`, `/conguaglio`, `/statistiche`, `/impostazioni`.
 
 - **Lo scheletro ricalca il layout fisso della pagina che sta caricando**, non una lista generica di barre: stesse classi del contenitore (padding, `gap`, `max-width`, griglie `xl:`), stessi elementi fermi (barra dei filtri chiusa, barra sticky del conguaglio, intestazioni dei gruppi) e stesso numero di righe atteso. Quando i dati arrivano non si sposta niente sotto il dito.
 - **Le altezze si fissano con `min-h-*` sul contenitore** — l'altezza vera viene dal box di testo o dal touch target da 44/48 px — e le barre dentro restano più sottili: sembrano testo, non blocchi pieni.

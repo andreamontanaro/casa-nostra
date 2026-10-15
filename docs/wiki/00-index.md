@@ -19,6 +19,8 @@ Il modulo **Lista della spesa** (`/lista`) tiene traccia di cosa manca in casa: 
 
 Il modulo **Faccende domestiche** (`/faccende`) tiene traccia di chi fa cosa in casa con due bottiglie, una per persona: ogni faccenda riempie una tacca e tutte valgono uguale. Chi lavora da casa ha una tacca bonus nei giorni feriali; chi resta indietro si porta il debito ai giorni successivi, calcolato dalla vista `v_chore_balance`. Nessuna notifica e nessun legame con i soldi.
 
+Il modulo **Energia** (`/energia`) mostra la potenza che la casa sta assorbendo in questo momento, come una batteria che si riempie verso il massimo sopportabile dal contatore, più i consumi degli ultimi 7 giorni, la ripartizione per apparecchio, lo stato della presa e gli avvisi di distacco. I dati vengono da **Fastweb Power Control** attraverso le chiamate interne di MyFastweb (Fastweb non ha API pubbliche), con una sessione riusata e conservata cifrata sul database. Si spegne togliendo le credenziali, come Telegram.
+
 ---
 
 ## Indice della Wiki
@@ -28,9 +30,9 @@ Seleziona una sezione per approfondire i dettagli tecnici:
 * **[01. Architettura](01-architecture.md)**: Struttura delle directory, routing Next.js App Router, middleware di autenticazione (`proxy.ts`) e flusso delle dipendenze.
 * **[02. Modelli di Dominio](02-domain-models.md)**: Schema del database, entità di dominio (Profiles, Expenses, Settlements, Attachments, Shopping Items) e vincoli di integrità.
 * **[03. Servizi e Logica Applicativa](03-services.md)**: Server Actions per le mutazioni e calcoli del dominio (calcolo consumi pieno-a-pieno, ripartizione chilometrica).
-* **[04. Superficie delle API](04-api-surface.md)**: Route handler dell'Assistente IA (`/api/assistant`) e webhook del bot Telegram (`/api/telegram/webhook`), motore condiviso, dichiarazioni dei tool di Gemini, prompt e streaming payload.
+* **[04. Superficie delle API](04-api-surface.md)**: Route handler dell'Assistente IA (`/api/assistant`), della schermata Energia (`/api/energia`) e webhook del bot Telegram (`/api/telegram/webhook`), motore condiviso, dichiarazioni dei tool di Gemini, prompt e streaming payload.
 * **[05. Accesso ai Dati](05-data-access.md)**: Integrazione client Supabase (Browser/Server), query e viste SQL di calcolo saldo (`v_user_open_balance`), funzioni transazionali Postgres.
 * **[06. Configurazione ed Environment](06-configuration.md)**: Variabili d'ambiente, configurazioni locali e limiti applicativi (dimensioni file, MIME accettati).
-* **[07. Integrazioni Esterne](07-integrations.md)**: Servizi di terze parti (Supabase Auth/Database/Storage, Google Gemini API via `@google/genai`, Bot API di Telegram).
+* **[07. Integrazioni Esterne](07-integrations.md)**: Servizi di terze parti (Supabase Auth/Database/Storage, Google Gemini API via `@google/genai`, Bot API di Telegram, Fastweb Power Control via MyFastweb).
 * **[08. Design System e Pattern di UI](08-patterns.md)**: Implementazione di Material Design 3, Tailwind CSS v4, Safe Area mobile e pattern interattivi (optimistic UI, transizioni di pagina).
 * **[09. Decisioni Architetturali](09-decisions.md)**: Logica e motivazioni dietro alle scelte tecnologiche ed architetturali principali (Next.js 16, RLS, calcolo saldo sul DB, ecc.).

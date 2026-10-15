@@ -1,0 +1,86 @@
+'use client'
+
+import { useState } from 'react'
+import { formatDate, formatKwh } from '@/lib/fmt'
+import type { DailyConsumption } from '@/lib/energy/readings'
+import { cn } from '@/lib/utils'
+
+const WEEKDAY = new Intl.DateTimeFormat('it-IT', { weekday: 'short', timeZone: 'Europe/Rome' })
+const DAY = new Intl.DateTimeFormat('it-IT', { day: 'numeric', timeZone: 'Europe/Rome' })
+
+/** Mezzogiorno del giorno: lontano dalla mezzanotte, il fuso non lo sposta. */
+const noon = (date: string) => new Date(`${date}T12:00:00Z`)
+
+/**
+ * Consumo degli ultimi giorni, una barra per giorno. Una serie sola: niente
+ * legenda, il titolo della card la nomina. Al passaggio (dito, mouse o
+ * tastiera) il valore compare sopra la barra; i numeri di tutti i giorni
+ * stanno nella tabella sotto.
+ */
+export function DailyBars({ days }: { days: DailyConsumption[] }) {
+  const [active, setActive] = useState<string | null>(null)
+  const max = Math.max(...days.map((d) => d.kwh), 0.1)
+  const total = days.reduce((sum, d) => sum + d.kwh, 0)
+
+  return (
+    <div>
+      <p className="font-display text-xl font-semibold tabular-nums">{formatKwh(total)}</p>
+      <p className="text-xs text-muted tabular-nums">in {days.length} giorni · in media {formatKwh(total / Math.max(days.length, 1))} al giorno</p>
+
+      <div className="mt-6 flex h-40 items-end gap-1" onPointerLeave={() => setActive(null)}>
+        {days.map((day) => {
+          const isActive = active === day.date
+          return (
+            <button
+              key={day.date}
+              type="button"
+              aria-label={`${formatDate(day.date)}: ${formatKwh(day.kwh)}`}
+              onPointerEnter={() => setActive(day.date)}
+              onFocus={() => setActive(day.date)}
+              onBlur={() => setActive(null)}
+              onClick={() => setActive(isActive ? null : day.date)}
+              className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              {isActive && (
+                <span className="absolute -top-5 whitespace-nowrap rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-semibold text-background tabular-nums">
+                  {formatKwh(day.kwh)}
+                </span>
+              )}
+              <span
+                aria-hidden
+                className={cn('w-3/4 max-w-10 rounded-t-[4px] transition-colors', isActive ? 'bg-accent' : 'bg-accent/70')}
+                style={{ height: `${Math.max(2, (day.kwh / max) * 112)}px` }}
+              />
+              <span aria-hidden className="text-center text-[11px] leading-tight text-muted">
+                {WEEKDAY.format(noon(day.date))}
+                <br />
+                {DAY.format(noon(day.date))}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <details className="mt-4 border-t border-border">
+        <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold">Consumo giorno per giorno</summary>
+        <table className="w-full text-sm">
+          <caption className="sr-only">Consumo di elettricità per giorno</caption>
+          <thead>
+            <tr className="text-left text-xs text-muted">
+              <th scope="col" className="py-1 font-medium">Giorno</th>
+              <th scope="col" className="py-1 text-right font-medium">Consumo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...days].reverse().map((day) => (
+              <tr key={day.date} className="border-t border-border">
+                <td className="py-2">{formatDate(day.date)}</td>
+                <td className="py-2 text-right tabular-nums">{formatKwh(day.kwh)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </div>
+  )
+}

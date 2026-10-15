@@ -96,3 +96,26 @@ Il webhook è stateless, quindi la cronologia vive nella tabella `telegram_messa
 
 ### 5. Formattazione dei messaggi
 Gemini risponde in Markdown, Telegram accetta solo un sottoinsieme di HTML: la conversione (grassetto, corsivo, codice, link, elenchi) e lo split dei messaggi oltre i 4096 caratteri sono in `lib/telegram/format.ts`. Se Telegram rifiuta l'HTML, il messaggio viene rispedito in chiaro invece di andare perso → `lib/telegram/api.ts`.
+
+---
+
+## Integrazione Fastweb Power Control (MyFastweb)
+
+Fastweb non ha API pubbliche per Power Control. Il modulo Energia rifà, dal server, quello che fa la dashboard di MyFastweb nel browser → `lib/energy/fastweb.ts`. Il flusso è stato collaudato il 15 ottobre 2026 da un'anteprima Vercel (regione iad1): login senza captcha né secondo fattore.
+
+### 1. Passi
+1. `GET https://fastweb.it/myfastweb/accesso/login/` → form `formLogin` con un `securityToken` di 64 caratteri legato al cookie `PHPSESSID`.
+2. `POST …/accesso/login/ajax/`, urlencoded, con i campi del form più `username` e `password` e gli header `X-Requested-With: XMLHttpRequest`, `Origin`, `Referer` → JSON `{ errorCode, errorMessage, type, needRecaptcha, mt, … }`. `errorCode` 0 è il successo; con `mt` la pagina passa da `/myfastweb/redirect/set-mt/`, e lo fa anche il client.
+3. `GET …/abbonamento/consumi-power-control/` (circa 4 s) → un form per dato: `consumptionRealtime_form`, `plugStatus_form`, `consumptionMedium_form` (`period=last-seven-days`), `consumptionAppliances_form` (`action=consumptionAppliancesHome`), `loadNotify_form`, ognuno col suo token. Senza sessione Fastweb rimanda a `…/contenuti-riservati/`.
+4. `POST …/consumi-power-control/ajax/`, multipart come `FormData`, con i campi di un form → `{ errorCode, data }`. Per la potenza: `data.realtime` in W, `data.realtime_max` in kW.
+
+I cookie si tengono a mano (`CookieJar`: `fetch` non li conserva tra le richieste; gestisce anche le cancellazioni con `Max-Age=0` o `expires` passato) e i redirect si seguono a mano per raccogliere i cookie di ogni passaggio. Timeout di 10 s per richiesta.
+
+### 2. Dati personali
+La prima risposta della potenza contiene anche `data.realtime_sin`, con codice fiscale, email, POD e numero cliente dell'intestatario. **Non si salva e non si inoltra mai**: `lib/energy/readings.ts` legge i campi in elenco uno per uno e costruisce oggetti nuovi, senza spread di `data`. I corpi delle risposte non finiscono mai nei log; la modalità diagnostica mostra solo la forma, con le chiavi personali tolte.
+
+### 3. Strategia contro il captcha
+Il rischio vero è far scattare il reCAPTCHA con troppi login dagli indirizzi dei data center. Per questo: la sessione si riusa tra le invocazioni (salvata cifrata in `energy_fastweb_state`), le letture recenti si riusano (10 s la potenza, 30 minuti il resto), si fa al massimo un login ogni 5 minuti con un lucchetto sul database, e con `needRecaptcha` ci si ferma per 6 ore: il captcha non si aggira mai. Credenziali rifiutate: un'ora, o subito se cambiano.
+
+### 4. Strategia di fallimento
+Tutto quello che non va (rete, pagina cambiata, risposta inattesa) diventa `status: 'errore'` con l'ultima lettura salvata: la schermata la mostra attenuata, con l'ora, e riprova con attesa crescente fino a 5 minuti. Se Fastweb cambia la pagina o i nomi dei form, l'errore è in `loadPowerForms` o nei parser: `?forma=1` su un'anteprima dice come sono fatte ora le risposte.
