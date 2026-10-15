@@ -39,7 +39,7 @@ export function DailyBars({
       <p className="text-xs text-muted tabular-nums">{range} · in media {formatKwh(total / days.length)} al giorno</p>
       {delta !== null && previousWeekKwh !== null && (
         <p className="mt-1 text-xs text-muted tabular-nums">
-          {delta === 0 ? 'Come' : delta > 0 ? `+${delta}% rispetto a` : `−${Math.abs(delta)}% rispetto a`} i 7 giorni prima ({formatKwh(previousWeekKwh)})
+          {delta === 0 ? 'Come i' : delta > 0 ? `+${delta}% rispetto ai` : `−${Math.abs(delta)}% rispetto ai`} 7 giorni prima ({formatKwh(previousWeekKwh)})
         </p>
       )}
 

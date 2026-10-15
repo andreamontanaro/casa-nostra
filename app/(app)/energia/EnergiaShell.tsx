@@ -8,7 +8,7 @@ import { PowerBattery } from '@/components/energy/PowerBattery'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { formatDateTime } from '@/lib/fmt'
-import type { EnergySnapshot, EnergyStatus } from '@/lib/energy/readings'
+import type { EnergySnapshot, EnergyStatus, LoadNotice } from '@/lib/energy/readings'
 import { cn } from '@/lib/utils'
 
 /** Ogni quanto si chiede la potenza, a pagina aperta e visibile. */
@@ -17,6 +17,8 @@ const POLL_MS = 15_000
 const MAX_WAIT_MS = 5 * 60_000
 /** Focus e ritorno in rete non fanno partire richieste più fitte di così. */
 const MIN_GAP_MS = 5_000
+/** Avvisi in vista; gli altri stanno in un elenco da aprire. */
+const VISIBLE_NOTICES = 3
 /** Una lettura più vecchia di così si mostra attenuata, con l'ora. */
 const STALE_MS = 2 * 60_000
 
@@ -209,22 +211,17 @@ export function EnergiaShell({ initial }: { initial: EnergySnapshot }) {
             <h2 className="text-sm font-semibold">Avvisi di distacco</h2>
             <p className="mt-1 text-xs text-muted">Interruzioni e distacchi registrati da Power Control</p>
             {details?.notices.length ? (
-              <ul className="mt-2 divide-y divide-border">
-                {details.notices.map((notice, i) => {
-                  // Un'interruzione della rete non dipende da casa; il resto sì.
-                  const Icon = notice.type === 'provider_disconnection' ? ZapOff : TriangleAlert
-                  return (
-                    <li key={`${notice.at}-${i}`} className="flex gap-3 py-3 text-sm">
-                      <Icon className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
-                      <div className="min-w-0">
-                        <p className="font-medium">{notice.title}</p>
-                        {notice.at && <p className="text-xs text-muted">{formatDateTime(notice.at)}</p>}
-                        {notice.text && <p className="mt-1 text-muted">{notice.text}</p>}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
+              <>
+                <NoticeList notices={details.notices.slice(0, VISIBLE_NOTICES)} className="mt-2" />
+                {details.notices.length > VISIBLE_NOTICES && (
+                  <details className="border-t border-border">
+                    <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold">
+                      {details.notices.length - VISIBLE_NOTICES === 1 ? 'Un altro avviso' : `Altri ${details.notices.length - VISIBLE_NOTICES} avvisi`}
+                    </summary>
+                    <NoticeList notices={details.notices.slice(VISIBLE_NOTICES)} />
+                  </details>
+                )}
+              </>
             ) : details ? (
               <p className="mt-3 flex items-center gap-2 text-sm text-muted">
                 <CircleCheck className="size-4 shrink-0 text-accent" aria-hidden />
@@ -242,6 +239,27 @@ export function EnergiaShell({ initial }: { initial: EnergySnapshot }) {
         {details?.plugOnline === true && ' La presa Power Control è collegata.'}
       </p>
     </div>
+  )
+}
+
+function NoticeList({ notices, className }: { notices: LoadNotice[]; className?: string }) {
+  return (
+    <ul className={cn('divide-y divide-border', className)}>
+      {notices.map((notice, i) => {
+        // Un'interruzione della rete non dipende da casa; il resto sì.
+        const Icon = notice.type === 'provider_disconnection' ? ZapOff : TriangleAlert
+        return (
+          <li key={`${notice.at}-${i}`} className="flex gap-3 py-3 text-sm">
+            <Icon className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
+            <div className="min-w-0">
+              <p className="font-medium">{notice.title}</p>
+              {notice.at && <p className="text-xs text-muted">{formatDateTime(notice.at)}</p>}
+              {notice.text && <p className="mt-1 text-muted">{notice.text}</p>}
+            </div>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
