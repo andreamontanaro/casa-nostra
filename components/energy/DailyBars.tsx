@@ -27,7 +27,7 @@ export function DailyBars({ days }: { days: DailyConsumption[] }) {
       <p className="font-display text-xl font-semibold tabular-nums">{formatKwh(total)}</p>
       <p className="text-xs text-muted tabular-nums">in {days.length} giorni · in media {formatKwh(total / Math.max(days.length, 1))} al giorno</p>
 
-      <div className="mt-6 flex h-40 items-end gap-1" onPointerLeave={() => setActive(null)}>
+      <div className="mt-6 flex h-40 items-end gap-1" onPointerLeave={(e) => e.pointerType === 'mouse' && setActive(null)}>
         {days.map((day) => {
           const isActive = active === day.date
           return (
@@ -35,22 +35,24 @@ export function DailyBars({ days }: { days: DailyConsumption[] }) {
               key={day.date}
               type="button"
               aria-label={`${formatDate(day.date)}: ${formatKwh(day.kwh)}`}
-              onPointerEnter={() => setActive(day.date)}
+              // Il mouse mostra al passaggio, il dito al tocco: il valore resta
+              // finché non si tocca un'altra barra.
+              onPointerEnter={(e) => e.pointerType === 'mouse' && setActive(day.date)}
               onFocus={() => setActive(day.date)}
-              onBlur={() => setActive(null)}
-              onClick={() => setActive(isActive ? null : day.date)}
+              onClick={() => setActive(day.date)}
               className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              {isActive && (
-                <span className="absolute -top-5 whitespace-nowrap rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-semibold text-background tabular-nums">
-                  {formatKwh(day.kwh)}
-                </span>
-              )}
               <span
                 aria-hidden
-                className={cn('w-3/4 max-w-10 rounded-t-[4px] transition-colors', isActive ? 'bg-accent' : 'bg-accent/70')}
+                className={cn('relative w-3/4 max-w-10 rounded-t-[4px] transition-colors', isActive ? 'bg-accent' : 'bg-accent/70')}
                 style={{ height: `${Math.max(2, (day.kwh / max) * 112)}px` }}
-              />
+              >
+                {isActive && (
+                  <span className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-semibold text-background tabular-nums">
+                    {formatKwh(day.kwh)}
+                  </span>
+                )}
+              </span>
               <span aria-hidden className="text-center text-[11px] leading-tight text-muted">
                 {WEEKDAY.format(noon(day.date))}
                 <br />

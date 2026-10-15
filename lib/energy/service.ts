@@ -157,10 +157,13 @@ class FastwebSession {
       update.blocked_reason = null
       update.blocked_for = null
     }
-    if (this.dirty || this.jar.changed) {
+    if (this.forms && (this.dirty || this.jar.changed)) {
+      const session: StoredSession = { cookies: this.jar.toJSON(), forms: this.forms }
+      update.session_enc = sealJson(this.key, session)
+    } else if (!this.forms && this.dirty) {
       // Senza token la sessione è morta: si toglie, e al prossimo giro si fa login.
-      const session: StoredSession | null = this.forms ? { cookies: this.jar.toJSON(), forms: this.forms } : null
-      update.session_enc = session ? sealJson(this.key, session) : null
+      // (Se il login lo sta facendo un'altra richiesta `dirty` è false: non si tocca.)
+      update.session_enc = null
     }
     return update
   }

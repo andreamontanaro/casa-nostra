@@ -15,11 +15,17 @@ const ICON: Record<BatteryBand, { Icon: typeof Zap; className: string }> = {
   oltre: { Icon: Zap, className: 'text-destructive' },
 }
 
-/** Le tacche della scala: ogni kW intero, più il limite se non è intero. */
-function scale(limitKw: number): number[] {
-  const marks = Array.from({ length: Math.floor(limitKw) + 1 }, (_, kw) => kw)
-  if (limitKw % 1 !== 0) marks.push(limitKw)
-  return marks
+/** Un divisorio per ogni kW intero dentro la batteria, come gli elementi di una pila. */
+function dividers(limitKw: number): number[] {
+  return Array.from({ length: Math.ceil(limitKw) - 1 }, (_, i) => i + 1).filter((kw) => kw < limitKw)
+}
+
+/**
+ * Le etichette della scala: 0, i kW interi e il limite. Un intero troppo
+ * vicino al limite (3 kW con un limite di 3,3) si salta, o si sovrappongono.
+ */
+function scaleLabels(limitKw: number): number[] {
+  return [0, ...dividers(limitKw).filter((kw) => kw / limitKw <= 0.85), limitKw]
 }
 
 /**
@@ -33,7 +39,7 @@ export function PowerBattery({ reading, stale }: { reading: RealtimeReading; sta
   // Anche pochi watt si vedono: un filo di carica, non una batteria vuota.
   const fill = reading.watts > 0 ? Math.max(level.fill, 0.02) : 0
   const { Icon, className: iconClass } = ICON[level.band]
-  const marks = scale(level.limitKw)
+  const labels = scaleLabels(level.limitKw)
 
   return (
     <figure className={cn('transition-opacity', stale && 'opacity-60')}>
@@ -63,8 +69,7 @@ export function PowerBattery({ reading, stale }: { reading: RealtimeReading; sta
               )}
               style={{ width: `${fill * 100}%` }}
             />
-            {/* Un divisorio per kW, come gli elementi di una pila. */}
-            {marks.slice(1, -1).map((kw) => (
+            {dividers(level.limitKw).map((kw) => (
               <div
                 key={kw}
                 aria-hidden
@@ -78,14 +83,14 @@ export function PowerBattery({ reading, stale }: { reading: RealtimeReading; sta
       </div>
 
       <div aria-hidden className="relative mt-2 mr-3.5 h-4 text-xs text-muted tabular-nums">
-        {marks.map((kw, i) => (
+        {labels.map((kw, i) => (
           <span
             key={kw}
             className={cn(
               'absolute top-0 whitespace-nowrap',
-              i === 0 ? 'left-0' : i === marks.length - 1 ? 'right-0' : '-translate-x-1/2',
+              i === 0 ? 'left-0' : i === labels.length - 1 ? 'right-0' : '-translate-x-1/2',
             )}
-            style={i === 0 || i === marks.length - 1 ? undefined : { left: `${(kw / level.limitKw) * 100}%` }}
+            style={i === 0 || i === labels.length - 1 ? undefined : { left: `${(kw / level.limitKw) * 100}%` }}
           >
             {i === 0 ? '0' : formatKw(kw)}
           </span>
