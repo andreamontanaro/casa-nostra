@@ -109,7 +109,8 @@ export function PowerHistoryChart({
         </div>
       </dl>
 
-      <div className="mt-5 flex gap-2">
+      {/* Lo spazio sopra il grafico è dell'etichetta del cursore, che non copre i numeri. */}
+      <div className="mt-9 flex gap-2">
         {/* Scala a sinistra: le stesse righe della griglia. */}
         <div aria-hidden className="relative h-44 w-11 shrink-0 text-[11px] text-muted tabular-nums">
           {scale.ticks.map((watts) => (
@@ -181,11 +182,17 @@ export function PowerHistoryChart({
             )}
           </div>
 
-          <div aria-hidden className="relative mt-1.5 h-4 text-[11px] text-muted tabular-nums">
+          {/* Sotto i 240 px (un telefono da 320) un'ora ogni due, o le etichette si toccano. */}
+          <div aria-hidden className="@container relative mt-1.5 h-4 text-[11px] text-muted tabular-nums">
             {hours.map((t) => {
               const left = ((t - startMs) / WINDOW_MS) * 100
+              const odd = new Date(t).getUTCHours() % 2 === 1
               return (
-                <span key={t} className={cn('absolute top-0 whitespace-nowrap', edgeAlign(left))} style={{ left: `${left}%` }}>
+                <span
+                  key={t}
+                  className={cn('absolute top-0 whitespace-nowrap', edgeAlign(left), odd && '@max-[240px]:hidden')}
+                  style={{ left: `${left}%` }}
+                >
                   {formatTime(new Date(t).toISOString())}
                 </span>
               )
