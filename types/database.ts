@@ -163,6 +163,8 @@ export type Database = {
           blocked_until: string | null
           details: Json | null
           details_at: string | null
+          history: Json | null
+          history_at: string | null
           id: number
           logged_in_at: string | null
           login_attempt_at: string | null
@@ -177,6 +179,8 @@ export type Database = {
           blocked_until?: string | null
           details?: Json | null
           details_at?: string | null
+          history?: Json | null
+          history_at?: string | null
           id?: number
           logged_in_at?: string | null
           login_attempt_at?: string | null
@@ -191,6 +195,8 @@ export type Database = {
           blocked_until?: string | null
           details?: Json | null
           details_at?: string | null
+          history?: Json | null
+          history_at?: string | null
           id?: number
           logged_in_at?: string | null
           login_attempt_at?: string | null

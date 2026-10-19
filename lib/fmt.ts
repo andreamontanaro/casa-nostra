@@ -52,6 +52,16 @@ export function formatKwh(kwh: number) {
   return `${KWH.format(kwh)}\u00a0kWh`
 }
 
+/** Una potenza come la si legge: \u00ab165 W\u00bb sotto il kW, \u00ab1,7 kW\u00bb sopra. */
+export function formatPower(watts: number) {
+  return watts < 1000 ? formatWatts(watts) : formatKw(watts / 1000)
+}
+
+/** \u00ab14:05\u00bb, nel fuso orario della casa. */
+export function formatTime(iso: string) {
+  return TIME.format(new Date(iso))
+}
+
 export function formatDate(dateStr: string) {
   return DATE_LONG.format(new Date(dateStr))
 }

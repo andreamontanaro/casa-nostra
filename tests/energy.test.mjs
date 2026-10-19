@@ -5,9 +5,11 @@ import { loadTs } from './load-ts.mjs'
 
 const {
   batteryLevel, DEFAULT_LIMIT_KW, toNumber, parseRealtime, parseDetails, readStoredRealtime, readStoredDetails, describeError,
+  parseLatest, readStoredHistory, emptySnapshot,
 } = await loadTs('../lib/energy/readings.ts')
 const { deriveSessionKey, credentialsFingerprint, sealJson, openJson } = await loadTs('../lib/energy/crypto.ts')
-const { CookieJar, formFields } = await loadTs('../lib/energy/fastweb.ts')
+const { CookieJar, formFields, fieldsFor } = await loadTs('../lib/energy/fastweb.ts')
+const { historyScale, hourTicks, nearestIndex, segments, summarize, halfHourRows } = await loadTs('../lib/energy/history.ts')
 
 // ─── Batteria ─────────────────────────────────────────────────
 
@@ -173,6 +175,101 @@ test('parseDetails regge risposte vuote o strane senza inventare niente', () => 
   })
   assert.equal(parseDetails({ ...RAW, plugStatus: { status: 'offline' } }).plugOnline, false)
   assert.equal(parseDetails({ ...RAW, plugStatus: { status: 'BOH' } }).plugOnline, null)
+})
+
+// ─── Ultime 6 ore: `consumptionLatest` con la forma vera ───────
+// Forma letta il 19/10/2026 dalla pagina «Consumo in tempo reale»; valori inventati.
+
+const minute = (iso, power) => ({ power, time: iso, power_fe: 'x', time_fe: iso.slice(11, 16), perc_x: 1, perc_y: 2 })
+
+test('parseLatest legge ora e watt di ogni minuto, in ordine, e il picco', () => {
+  const latest = {
+    '2026-10-19T09:24:44Z': minute('2026-10-19T09:24:44Z', 180.4),
+    '2026-10-19T09:22:44Z': minute('2026-10-19T09:22:44Z', 165),
+    '2026-10-19T09:23:44Z': minute('2026-10-19T09:23:44Z', '170'),
+    rotto: { power: 1, time: 'ieri' },
+    negativo: minute('2026-10-19T09:25:44Z', -3),
+  }
+  const history = parseLatest({ latest, max: 1670.9, max_fe: '1,67 kW' })
+  assert.deepEqual(history, {
+    points: [
+      { at: '2026-10-19T09:22:44Z', watts: 165 },
+      { at: '2026-10-19T09:23:44Z', watts: 170 },
+      { at: '2026-10-19T09:24:44Z', watts: 180 },
+    ],
+    peakWatts: 1671,
+  })
+  assert.doesNotMatch(JSON.stringify(history), /perc|_fe/)
+  assert.deepEqual(readStoredHistory(JSON.parse(JSON.stringify(history))), history)
+})
+
+test('parseLatest accetta anche un elenco, e non inventa una serie vuota', () => {
+  assert.deepEqual(parseLatest({ latest: [minute('2026-10-19T10:00:00Z', 200)] }), {
+    points: [{ at: '2026-10-19T10:00:00Z', watts: 200 }],
+    peakWatts: null,
+  })
+  assert.equal(parseLatest({ latest: {} }), null)
+  assert.equal(parseLatest({ max: 3 }), null)
+  assert.equal(parseLatest(null), null)
+  assert.equal(readStoredHistory({ points: [] }), null)
+})
+
+test('emptySnapshot non ha letture, né la serie', () => {
+  assert.deepEqual(emptySnapshot('spento'), {
+    status: 'spento', realtime: null, realtimeAt: null, details: null, detailsAt: null, history: null, historyAt: null, retryAt: null,
+  })
+})
+
+test('i campi della serie si ricavano dal token della potenza, uno per sessione', () => {
+  const forms = { realtime: { securityToken: 't'.repeat(64), action: 'consumptionRealtime' }, daily: { securityToken: 't', action: 'consumptionMedium', period: 'last-seven-days' } }
+  assert.deepEqual(fieldsFor(forms, 'latest'), { securityToken: 't'.repeat(64), action: 'consumptionLatest' })
+  assert.deepEqual(fieldsFor(forms, 'daily'), forms.daily)
+  assert.equal(fieldsFor({ daily: forms.daily }, 'latest'), null)
+  assert.equal(fieldsFor(null, 'realtime'), null)
+})
+
+const at = (minutes) => new Date(Date.UTC(2026, 9, 19, 9, 0) + minutes * 60_000).toISOString()
+
+test('la scala segue il picco e mostra il limite solo quando ci si avvicina', () => {
+  assert.deepEqual(historyScale(1670, 3000), { topWatts: 2000, ticks: [0, 500, 1000, 1500, 2000], showLimit: false })
+  assert.deepEqual(historyScale(200, 3000), { topWatts: 500, ticks: [0, 100, 200, 300, 400, 500], showLimit: false })
+  const near = historyScale(2800, 3000)
+  assert.equal(near.showLimit, true)
+  assert.ok(near.topWatts >= 3000)
+  assert.equal(near.ticks[near.ticks.length - 1], near.topWatts)
+  assert.ok(near.ticks.length <= 8)
+})
+
+test('le tacche sono le ore piene della finestra', () => {
+  const ticks = hourTicks(Date.parse('2026-10-19T09:22:44Z'), Date.parse('2026-10-19T15:20:41Z'))
+  assert.deepEqual(ticks.map((t) => new Date(t).toISOString().slice(11, 16)), ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00'])
+})
+
+test('il cursore va sul punto più vicino', () => {
+  const points = [0, 1, 2, 10].map((m) => ({ at: at(m), watts: m }))
+  assert.equal(nearestIndex(points, Date.parse(at(1.4))), 1)
+  assert.equal(nearestIndex(points, Date.parse(at(1.6))), 2)
+  assert.equal(nearestIndex(points, Date.parse(at(-5))), 0)
+  assert.equal(nearestIndex(points, Date.parse(at(99))), 3)
+  assert.equal(nearestIndex([], 0), -1)
+})
+
+test('un buco di misura spezza la linea e non conta nei kWh', () => {
+  const points = [...Array.from({ length: 61 }, (_, m) => ({ at: at(m), watts: 1000 })), { at: at(120), watts: 3000 }]
+  assert.deepEqual(segments(points).map((s) => s.length), [61, 1])
+  const summary = summarize(points)
+  assert.ok(Math.abs(summary.kwh - 1) < 1e-9, `${summary.kwh} kWh`)
+  assert.deepEqual(summary.peak, { at: at(120), watts: 3000 })
+  assert.equal(summary.averageWatts, Math.round((61 * 1000 + 3000) / 62))
+  assert.equal(summarize([]), null)
+})
+
+test('la tabella ha media e picco per mezz’ora, dalla più recente', () => {
+  const points = [0, 10, 29, 30, 45].map((m, i) => ({ at: at(m), watts: [100, 200, 300, 1000, 2000][i] }))
+  assert.deepEqual(halfHourRows(points), [
+    { from: at(30), averageWatts: 1500, peakWatts: 2000 },
+    { from: at(0), averageWatts: 200, peakWatts: 300 },
+  ])
 })
 
 // ─── Cifratura della sessione ─────────────────────────────────

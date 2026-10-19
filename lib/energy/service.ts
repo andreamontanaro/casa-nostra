@@ -5,18 +5,23 @@ import { credentialsFingerprint, deriveSessionKey, openJson, sealJson } from './
 import {
   CookieJar,
   POWER_FORMS,
+  fieldsFor,
   loadPowerForms,
   login,
   postPowerForm,
+  type PowerDataKey,
   type PowerFormKey,
   type PowerForms,
 } from './fastweb'
 import {
   describeError,
+  emptySnapshot,
   isRecord,
   parseDetails,
+  parseLatest,
   parseRealtime,
   readStoredDetails,
+  readStoredHistory,
   readStoredRealtime,
   type EnergySnapshot,
   type EnergyStatus,
@@ -45,6 +50,8 @@ const ROW_ID = 1
 
 /** Una lettura della potenza più giovane di così si riusa senza chiamare Fastweb. */
 const REALTIME_FRESH_MS = 10_000
+/** La serie delle ultime 6 ore ha un punto al minuto: più spesso non cambia. */
+const HISTORY_FRESH_MS = 60_000
 /** Consumi per giorno e per apparecchio, presa e avvisi: cambiano lentamente. */
 const DETAILS_FRESH_MS = 30 * 60_000
 /** Al massimo un login ogni 5 minuti, riuscito o no. */
@@ -132,16 +139,21 @@ class FastwebSession {
     this.forms = stored?.forms ?? null
   }
 
-  /** Il `data` della risposta a un form, ancora da ripulire; null se Fastweb non lo dà. */
-  async call(key: PowerFormKey): Promise<unknown> {
-    const fields = this.forms?.[key]
+  /**
+   * Il `data` della risposta a un form, ancora da ripulire; null se Fastweb
+   * non lo dà. Con `refresh: false` un errore non rinnova token e login: per
+   * le chiamate che seguono quella della potenza, che ha già provato la
+   * sessione, un errore vuol dire che è quel dato a non andare.
+   */
+  async call(key: PowerDataKey, { refresh = true }: { refresh?: boolean } = {}): Promise<unknown> {
+    const fields = fieldsFor(this.forms, key)
     if (fields) {
       const first = await postPowerForm(this.jar, fields)
       if (first.kind === 'ok') return first.data
     }
-    if (this.refreshed) return null
+    if (this.refreshed || !refresh) return null
     await this.refresh()
-    const again = this.forms?.[key]
+    const again = fieldsFor(this.forms, key)
     if (!again) return null
     const second = await postPowerForm(this.jar, again)
     return second.kind === 'ok' ? second.data : null
@@ -237,11 +249,13 @@ function snapshotFrom(row: StateRow, status: EnergyStatus, retryAt: string | nul
     realtimeAt: row.realtime_at,
     details: readStoredDetails(row.details),
     detailsAt: row.details_at,
+    history: readStoredHistory(row.history),
+    historyAt: row.history_at,
     retryAt,
   }
 }
 
-const OFF: EnergySnapshot = { status: 'spento', realtime: null, realtimeAt: null, details: null, detailsAt: null, retryAt: null }
+const OFF = emptySnapshot('spento')
 
 /**
  * L'ultima lettura salvata, senza chiamare Fastweb: per il primo disegno
@@ -257,7 +271,8 @@ export async function getCachedEnergySnapshot(db: ServiceClient): Promise<Energy
 
 /**
  * La lettura per `/api/energia`: dalla cache se è fresca, altrimenti da
- * Fastweb. La potenza si rilegge ogni 10 s al massimo, il resto ogni 30 min.
+ * Fastweb. La potenza si rilegge ogni 10 s al massimo, la serie delle ultime
+ * 6 ore ogni minuto, il resto ogni 30 min.
  * Se Fastweb non risponde si restituisce l'ultima lettura con lo stato.
  */
 export async function getEnergySnapshot(db: ServiceClient): Promise<EnergySnapshot> {
@@ -266,8 +281,9 @@ export async function getEnergySnapshot(db: ServiceClient): Promise<EnergySnapsh
   const row = await loadState(db)
 
   const needRealtime = ageMs(row.realtime_at) >= REALTIME_FRESH_MS
+  const needHistory = ageMs(row.history_at) >= HISTORY_FRESH_MS
   const needDetails = ageMs(row.details_at) >= DETAILS_FRESH_MS
-  if (!needRealtime && !needDetails) return snapshotFrom(row, 'ok', null)
+  if (!needRealtime && !needHistory && !needDetails) return snapshotFrom(row, 'ok', null)
 
   const key = sessionKey(config)
   const block = activeBlock(row, credentialsFingerprint(key))
@@ -284,6 +300,14 @@ export async function getEnergySnapshot(db: ServiceClient): Promise<EnergySnapsh
     if (!realtime) throw new FastwebUnavailable('errore', null)
     update.realtime = realtime as unknown as Json
     update.realtime_at = new Date().toISOString()
+    if (needHistory) {
+      // Se la serie non arriva il resto vale lo stesso: resta l'ultima salvata.
+      const history = parseLatest(await session.call('latest', { refresh: false }))
+      if (history) {
+        update.history = history as unknown as Json
+        update.history_at = new Date().toISOString()
+      }
+    }
     if (needDetails) {
       // Una alla volta: sono quattro chiamate ogni mezz'ora, meglio gentili.
       const details = parseDetails({

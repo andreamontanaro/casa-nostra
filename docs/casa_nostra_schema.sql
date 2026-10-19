@@ -1295,11 +1295,17 @@ CREATE TABLE public.energy_fastweb_state (
   realtime_at        timestamptz,
   details            jsonb,
   details_at         timestamptz,
+  -- Potenza delle ultime 6 ore, un punto al minuto (2026-10-19,
+  -- docs/migrations/2026-10-19_energia_storico.sql).
+  history            jsonb,
+  history_at         timestamptz,
   updated_at         timestamptz NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE public.energy_fastweb_state IS
   'Sessione MyFastweb (cifrata) e ultime letture di Power Control. Riga unica, accessibile solo con il service role.';
+COMMENT ON COLUMN public.energy_fastweb_state.history IS
+  'Potenza delle ultime 6 ore, un punto al minuto: { points: [{ at, watts }], peakWatts }. Solo numeri e orari.';
 
 INSERT INTO public.energy_fastweb_state (id) VALUES (1);
 

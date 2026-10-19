@@ -118,8 +118,11 @@ Cosa si legge di ogni `data` (forma verificata il 15/10/2026; parser in `lib/ene
 | `consumptionMedium` | `totals.period[]` con `day` e `total` (Wh); `medium_o.total_consumption.selected_period` e `previous_period` (Wh) | `days`, `weekKwh`, `previousWeekKwh` |
 | `consumptionAppliancesHome` | `appliances[]` con `appliance` (codice), `name_fe`, `power` (Wh sui 7 giorni) | `appliances` |
 | `loadNotify` | `notifications[]` con `type`, `title`, `message`, `created_at` | `notices` (le 10 più recenti) |
+| `consumptionLatest` | `latest`, un oggetto con una chiave per minuto `{ time, power: <W> }`; `max` (W) | `history.points`, `history.peakWatts` |
 
-Il resto si ignora: ripartizione per apparecchio giorno per giorno (`daily_breakdown`), percentuali e testi già formattati (`*_fe`), colore della potenza, e `medium_o.account_number`, il numero di contratto.
+`consumptionLatest` (verificato il 19/10/2026) non è un form della pagina Power Control: è il grafico della pagina «Consumo in tempo reale» (`…/consumi-power-control/cruscotto/consumo-per-ore/`, la freccia nel riquadro della potenza), che chiama lo stesso `ajax/`. Il `securityToken` è uno per sessione, uguale in tutti i form delle due pagine: `fieldsFor` in `lib/energy/fastweb.ts` manda `{ securityToken, action: 'consumptionLatest' }` con il token della potenza, senza scaricare la seconda pagina. Se un giorno Fastweb desse un token per form, la serie smetterebbe di arrivare (il resto no) e andrebbe letto il form da quella pagina.
+
+Il resto si ignora: ripartizione per apparecchio giorno per giorno (`daily_breakdown`), percentuali, posizioni e testi già formattati (`*_fe`, `perc_x`, `perc_y`), colore della potenza, e `medium_o.account_number`, il numero di contratto.
 
 I cookie si tengono a mano (`CookieJar`: `fetch` non li conserva tra le richieste; gestisce anche le cancellazioni con `Max-Age=0` o `expires` passato) e i redirect si seguono a mano per raccogliere i cookie di ogni passaggio. Timeout di 10 s per richiesta.
 
@@ -127,7 +130,7 @@ I cookie si tengono a mano (`CookieJar`: `fetch` non li conserva tra le richiest
 La prima risposta della potenza contiene anche `data.realtime_sin`, con codice fiscale, email, POD e numero cliente dell'intestatario. **Non si salva e non si inoltra mai**: `lib/energy/readings.ts` legge i campi in elenco uno per uno e costruisce oggetti nuovi, senza spread di `data`. Lo stesso vale per il numero di contratto in `consumptionMedium`. I corpi delle risposte non finiscono mai nei log.
 
 ### 3. Strategia contro il captcha
-Il rischio vero è far scattare il reCAPTCHA con troppi login dagli indirizzi dei data center. Per questo: la sessione si riusa tra le invocazioni (salvata cifrata in `energy_fastweb_state`), le letture recenti si riusano (10 s la potenza, 30 minuti il resto), si fa al massimo un login ogni 5 minuti con un lucchetto sul database, e con `needRecaptcha` ci si ferma per 6 ore: il captcha non si aggira mai. Credenziali rifiutate: un'ora, o subito se cambiano.
+Il rischio vero è far scattare il reCAPTCHA con troppi login dagli indirizzi dei data center. Per questo: la sessione si riusa tra le invocazioni (salvata cifrata in `energy_fastweb_state`), le letture recenti si riusano (10 s la potenza, un minuto la serie delle 6 ore, 30 minuti il resto), si fa al massimo un login ogni 5 minuti con un lucchetto sul database, e con `needRecaptcha` ci si ferma per 6 ore: il captcha non si aggira mai. Credenziali rifiutate: un'ora, o subito se cambiano.
 
 ### 4. Strategia di fallimento
 Tutto quello che non va (rete, pagina cambiata, risposta inattesa) diventa `status: 'errore'` con l'ultima lettura salvata: la schermata la mostra attenuata, con l'ora, e riprova con attesa crescente fino a 5 minuti. Se Fastweb cambia la pagina o i nomi dei form, l'errore è in `loadPowerForms` o nei parser; la modalità diagnostica usata per scriverli (`/api/energia?forma=1`, mai in produzione: la forma delle risposte senza dati personali) è nel commit `4364c98` e si può rimettere per il tempo di una prova su un'anteprima.

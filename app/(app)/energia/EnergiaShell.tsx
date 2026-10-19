@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CircleCheck, CloudOff, Info, ShieldAlert, TriangleAlert, Unplug, ZapOff } from 'lucide-react'
 import { ApplianceList } from '@/components/energy/ApplianceList'
 import { DailyBars } from '@/components/energy/DailyBars'
 import { PowerBattery } from '@/components/energy/PowerBattery'
+import { PowerHistoryChart } from '@/components/energy/PowerHistoryChart'
 import { Card } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { formatDateTime } from '@/lib/fmt'
@@ -44,10 +45,16 @@ function agoLabel(iso: string, now: number): string {
  * visibile e in rete, una richiesta alla volta. Al ritorno nella pagina chiede
  * subito. Se Fastweb non risponde l'attesa raddoppia (fino a 5 minuti), e dopo
  * un captcha o un rifiuto si aspetta l'ora che dice il server.
+ *
+ * La serie delle ultime 6 ore pesa (~15 KB): si dice al server quale si ha già
+ * (`?storia=`) e lui la rimanda solo quando è cambiata, una volta al minuto.
  */
 function useEnergyPolling(initial: EnergySnapshot) {
   const [snapshot, setSnapshot] = useState(initial)
   const [loading, setLoading] = useState(false)
+  // Almeno una risposta arrivata: da lì un dato che manca è "non c'è", non "sta arrivando".
+  const [fetched, setFetched] = useState(false)
+  const historyAt = useRef(initial.history ? initial.historyAt : null)
 
   useEffect(() => {
     if (initial.status === 'spento') return
@@ -67,12 +74,16 @@ function useEnergyPolling(initial: EnergySnapshot) {
       setLoading(true)
       let wait = POLL_MS
       try {
-        const res = await fetch('/api/energia', { cache: 'no-store' })
+        const query = historyAt.current ? `?storia=${encodeURIComponent(historyAt.current)}` : ''
+        const res = await fetch(`/api/energia${query}`, { cache: 'no-store' })
         // Sessione di Casa Nostra scaduta: il proxy rimanda alla vetrina.
         if (res.redirected) throw new Error('sessione scaduta')
         const data: unknown = await res.json()
         if (!isSnapshot(data)) throw new Error('risposta inattesa')
-        setSnapshot(data)
+        // Senza `history` la serie è quella che si ha già: si tiene.
+        if ('history' in data) historyAt.current = data.history ? data.historyAt : null
+        setSnapshot((prev) => ('history' in data ? data : { ...data, history: prev.history }))
+        setFetched(true)
         if (data.status === 'spento') stopped = true
         failures = data.status === 'ok' ? 0 : failures + 1
         if (data.retryAt) wait = Math.max(wait, Date.parse(data.retryAt) - Date.now())
@@ -103,7 +114,7 @@ function useEnergyPolling(initial: EnergySnapshot) {
     }
   }, [initial.status])
 
-  return { snapshot, loading }
+  return { snapshot, loading, fetched }
 }
 
 /** L'ora del client, rinfrescata ogni 5 s; null finché la pagina non è idratata. */
@@ -137,7 +148,7 @@ function StatusNotice({ snapshot }: { snapshot: EnergySnapshot }) {
 }
 
 export function EnergiaShell({ initial }: { initial: EnergySnapshot }) {
-  const { snapshot, loading } = useEnergyPolling(initial)
+  const { snapshot, loading, fetched } = useEnergyPolling(initial)
   const now = useNow()
   const { realtime, realtimeAt, details } = snapshot
   const stale = now !== null && realtimeAt !== null && now - Date.parse(realtimeAt) > STALE_MS
@@ -183,6 +194,21 @@ export function EnergiaShell({ initial }: { initial: EnergySnapshot }) {
                 <Skeleton className="mt-2 h-4 w-44" />
                 <Skeleton className="mt-5 h-24 rounded-[22px]" />
               </div>
+            )}
+          </Card>
+
+          <Card className="min-w-0 p-5 lg:col-span-2">
+            <h2 className="text-sm font-semibold">Ultime 6 ore</h2>
+            <p className="mt-1 mb-4 text-xs text-muted">Potenza minuto per minuto, da Power Control</p>
+            {snapshot.history?.points.length ? (
+              <PowerHistoryChart
+                history={snapshot.history}
+                live={realtime && realtimeAt ? { at: realtimeAt, watts: realtime.watts } : null}
+                limitKw={realtime?.limitKw ?? null}
+                stale={stale || snapshot.status !== 'ok'}
+              />
+            ) : (
+              <EmptyDetails loaded={fetched || snapshot.historyAt !== null} text="Fastweb non ha ancora la potenza delle ultime ore." />
             )}
           </Card>
 
@@ -235,7 +261,7 @@ export function EnergiaShell({ initial }: { initial: EnergySnapshot }) {
       )}
 
       <p className="text-xs leading-relaxed text-muted">
-        La potenza si aggiorna ogni 15 secondi mentre questa pagina è aperta, i consumi ogni mezz’ora.
+        La potenza si aggiorna ogni 15 secondi mentre questa pagina è aperta, il grafico delle 6 ore ogni minuto, i consumi ogni mezz’ora.
         {details?.plugOnline === true && ' La presa Power Control è collegata.'}
       </p>
     </div>

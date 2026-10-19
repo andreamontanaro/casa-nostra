@@ -18,6 +18,20 @@ export interface RealtimeReading {
   limitKw: number | null
 }
 
+/** Un minuto della serie delle ultime 6 ore: ora ISO e potenza in W. */
+export interface PowerPoint {
+  at: string
+  watts: number
+}
+
+/** La potenza delle ultime 6 ore, un punto al minuto (`consumptionLatest`). */
+export interface PowerHistory {
+  /** Dal più vecchio. */
+  points: PowerPoint[]
+  /** Il picco della finestra secondo Fastweb (`max`), in W; null se manca. */
+  peakWatts: number | null
+}
+
 /** Consumo di un giorno, in kWh. `date` è AAAA-MM-GG. */
 export interface DailyConsumption {
   date: string
@@ -72,8 +86,19 @@ export interface EnergySnapshot {
   realtimeAt: string | null
   details: EnergyDetails | null
   detailsAt: string | null
+  /**
+   * Le ultime 6 ore. Assente (non null) quando il client ha già la serie di
+   * `historyAt`: `/api/energia?storia=<historyAt>` non la rimanda uguale.
+   */
+  history?: PowerHistory | null
+  historyAt: string | null
   /** Dopo un captcha, un rifiuto o un errore: quando si riproverà (ISO). */
   retryAt: string | null
+}
+
+/** Uno snapshot senza letture: integrazione spenta, o configurazione/database da sistemare. */
+export function emptySnapshot(status: Extract<EnergyStatus, 'spento' | 'errore'>): EnergySnapshot {
+  return { status, realtime: null, realtimeAt: null, details: null, detailsAt: null, history: null, historyAt: null, retryAt: null }
 }
 
 /** Il contatore domestico standard: 3 kW. Vale quando Fastweb non dà `realtime_max`. */
@@ -282,4 +307,40 @@ export function parseDetails(raw: RawDetails): EnergyDetails {
     plugOnline: parsePlugStatus(raw.plugStatus),
     notices: parseNotices(raw.loadNotify),
   }
+}
+
+/** Più di così non servono: 6 ore sono 360 minuti, Fastweb ne manda qualcuno in più. */
+const MAX_POINTS = 480
+
+function readPoints(items: unknown[], at: (item: Record<string, unknown>) => unknown, watts: (item: Record<string, unknown>) => unknown): PowerPoint[] {
+  const byTime = new Map<string, PowerPoint>()
+  for (const item of items) {
+    if (!isRecord(item)) continue
+    const time = isoInstant(at(item))
+    const w = nonNegative(watts(item))
+    if (time && w !== null) byTime.set(time, { at: time, watts: Math.round(w) })
+  }
+  return [...byTime.values()].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).slice(-MAX_POINTS)
+}
+
+/**
+ * `consumptionLatest` (pagina «Consumo in tempo reale» di MyFastweb):
+ * `latest` è un oggetto con una chiave per minuto, `{ time, power: <W>, … }`,
+ * e `max` il picco della finestra in W. Si tengono ora e watt.
+ */
+export function parseLatest(data: unknown): PowerHistory | null {
+  if (!isRecord(data) || (!isRecord(data.latest) && !Array.isArray(data.latest))) return null
+  const items = Array.isArray(data.latest) ? data.latest : Object.values(data.latest)
+  const points = readPoints(items, (item) => item.time, (item) => item.power)
+  if (!points.length) return null
+  const peak = nonNegative(data.max)
+  return { points, peakWatts: peak === null ? null : Math.round(peak) }
+}
+
+/** La serie salvata in cache, ricontrollata come le altre letture. */
+export function readStoredHistory(value: unknown): PowerHistory | null {
+  if (!isRecord(value)) return null
+  const points = readPoints(list(value.points), (item) => item.at, (item) => item.watts)
+  if (!points.length) return null
+  return { points, peakWatts: nonNegative(value.peakWatts) }
 }

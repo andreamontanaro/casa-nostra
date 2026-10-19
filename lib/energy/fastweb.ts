@@ -35,6 +35,23 @@ export type PowerFormKey = keyof typeof POWER_FORMS
 export type FormFields = Record<string, string>
 export type PowerForms = Partial<Record<PowerFormKey, FormFields>>
 
+/** I dati che si chiedono ad `ajax/`: i form della pagina, più la serie delle ultime 6 ore. */
+export type PowerDataKey = PowerFormKey | 'latest'
+
+/**
+ * I campi da mandare per un dato. Il grafico delle ultime 6 ore sta in
+ * un'altra pagina («Consumo in tempo reale», `cruscotto/consumo-per-ore/`),
+ * con un form suo (`action=consumptionLatest`) che chiama lo stesso `ajax/`.
+ * Il token però è uno per sessione, uguale in tutti i form (verificato il
+ * 19/10/2026): i campi si ricavano da quello della potenza, senza caricare
+ * una pagina in più.
+ */
+export function fieldsFor(forms: PowerForms | null, key: PowerDataKey): FormFields | null {
+  if (key !== 'latest') return forms?.[key] ?? null
+  const token = forms?.realtime?.securityToken
+  return token ? { securityToken: token, action: 'consumptionLatest' } : null
+}
+
 /** I cookie di fastweb.it tra una richiesta e l'altra: fetch non li tiene da solo. */
 export class CookieJar {
   private cookies: Map<string, string>
