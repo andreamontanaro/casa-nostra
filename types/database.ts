@@ -870,7 +870,7 @@ export type Database = {
         | "trasporti"
         | "viaggi"
         | "altro"
-      split_rule: "fifty_fifty" | "sixty_forty" | "custom"
+      split_rule: "fifty_fifty" | "sixty_forty" | "custom" | "full_other"
       shopping_category:
         | "cibo"
         | "bevande"
@@ -1018,7 +1018,7 @@ export const Constants = {
         "viaggi",
         "altro",
       ],
-      split_rule: ["fifty_fifty", "sixty_forty", "custom"],
+      split_rule: ["fifty_fifty", "sixty_forty", "custom", "full_other"],
       shopping_category: [
         "cibo",
         "bevande",

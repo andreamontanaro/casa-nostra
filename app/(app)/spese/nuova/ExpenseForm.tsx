@@ -53,10 +53,12 @@ export function ExpenseForm({ profiles, currentUserId, suggestions = [], redirec
   }
   // Un suggerimento è "come l'ultima volta": descrizione, categoria e divisione
   // insieme. Una divisione personalizzata non si ricopia (la quota cambia ogni
-  // volta): resta il default della categoria.
+  // volta), e nemmeno «tutta a carico di»: il suggerimento non porta chi aveva
+  // pagato, e con un altro pagante finirebbe a carico della persona sbagliata.
+  // Resta il default della categoria.
   function pickSuggestion(suggestion: ExpenseSuggestion) {
     const next = withCategory({ ...draft, description: suggestion.description }, suggestion.category)
-    if (suggestion.splitRule !== 'custom') next.splitRule = suggestion.splitRule
+    if (suggestion.splitRule !== 'custom' && suggestion.splitRule !== 'full_other') next.splitRule = suggestion.splitRule
     setTouched(true); setDraft(next); saveDraft(currentUserId, next)
   }
   function restore(value: unknown) {

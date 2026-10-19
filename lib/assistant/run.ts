@@ -2,7 +2,7 @@ import { GoogleGenAI, type Content, type Part, type FunctionCall } from '@google
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { ACCEPTED_MIME, ATTACHMENTS_BUCKET } from '@/lib/attachments'
-import { CATEGORY_LABELS, SPLIT_LABELS, formatEur, todayISO } from '@/lib/fmt'
+import { CATEGORY_LABELS, formatEur, splitLabel, todayISO } from '@/lib/fmt'
 import {
   getExpenseAttachments,
   getOpenBalance,
@@ -370,6 +370,8 @@ async function createExpenseFromTool(
   if (!payer) {
     return { ok: false, error: 'Non riconosco chi ha pagato (paid_by non valido).' }
   }
+  // Una spesa «a carico di» va sempre a chi non ha pagato.
+  const chargedTo = profiles.find((p) => p.id !== payer.id)
 
   // Regola di divisione: usa quella passata se valida, altrimenti il default per categoria.
   let splitRule = String(a.split_rule ?? '') as SplitRule
@@ -439,6 +441,7 @@ async function createExpenseFromTool(
     category,
     splitRule,
     payerName: payer.display_name,
+    chargedToName: chargedTo?.display_name,
     expenseDate,
     balance: await getOpenBalance(db).catch(() => []),
   })
@@ -450,10 +453,9 @@ async function createExpenseFromTool(
   }
 
   const catLabel = CATEGORY_LABELS[category] ?? category
-  const splitLabel = SPLIT_LABELS[splitRule] ?? splitRule
   const summary =
     `Spesa creata: ${formatEur(amount)} — "${description}" (${catLabel}), ` +
-    `divisione ${splitLabel}, pagata da ${payer.display_name}, data ${expenseDate}.`
+    `divisione ${splitLabel(splitRule, chargedTo?.display_name)}, pagata da ${payer.display_name}, data ${expenseDate}.`
 
   return { ok: true, expenseId: inserted.id, summary }
 }
@@ -531,6 +533,7 @@ async function deleteExpenseFromTool(
     category: expense.category,
     splitRule: expense.split_rule,
     payerName: payer?.display_name ?? 'Qualcuno',
+    chargedToName: profiles.find((p) => p.id !== expense.paid_by)?.display_name,
     expenseDate: expense.expense_date,
     balance: await getOpenBalance(db).catch(() => []),
   })

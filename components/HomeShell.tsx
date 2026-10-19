@@ -89,6 +89,7 @@ export function HomeShell({
                       dateLabel={formatDateShort(expense.expense_date)}
                       returnHref="/"
                       contribution={contributions.get(expense.id)}
+                      profiles={profiles}
                     />
 
                   </motion.div>

@@ -3,9 +3,9 @@ import {
   CATEGORY_LABELS,
   SHOPPING_CATEGORY_LABELS,
   SHOPPING_URGENCY_LABELS,
-  SPLIT_LABELS,
   formatDate,
   formatEur,
+  splitLabel,
   todayISO,
 } from '@/lib/fmt'
 import {
@@ -74,7 +74,7 @@ export async function buildSystemInstruction(
     ? expenses
         .map((e) => {
           const cat = CATEGORY_LABELS[e.category] ?? e.category
-          const split = SPLIT_LABELS[e.split_rule] ?? e.split_rule
+          const split = splitLabel(e.split_rule, profiles.find((p) => p.id !== e.paid_by)?.display_name)
           const paidBy = e.paid_by_profile?.display_name ?? '?'
           const stato = e.settlement_id ? 'saldata' : 'aperta'
           const att = attachmentExpenseIds.has(e.id) ? ' 📎scontrino' : ''
@@ -146,6 +146,7 @@ export async function buildSystemInstruction(
     '- PRIMA di chiamare il tool, RIEPILOGA la spesa (importo, descrizione, categoria, chi ha pagato, divisione, data) e chiedi una conferma esplicita. Chiama create_expense SOLO dopo che l\'utente ha confermato (es. "sì", "ok", "conferma").',
     '- Categoria: scegli la più adatta tra le 7 disponibili; in dubbio usa "altro".',
     '- Divisione: NON passare split_rule a meno che l\'utente non lo chieda esplicitamente — il default è automatico (affitto = 50/50, tutto il resto = 60/40). Per una divisione personalizzata usa split_rule="custom" con custom_other_share.',
+    '- Spesa tutta a carico dell\'altra persona: quando chi ha pagato ha solo anticipato una spesa personale dell\'altra (es. "ho pagato io la farmacia di Fede, è tutta sua", "me la deve tutta") usa split_rule="full_other", con paid_by = chi ha pagato. L\'intero importo va SEMPRE a chi non ha pagato: nel riepilogo scrivi "a carico di <nome>". Se chi ha pagato e chi deve portare la spesa coincidono, la spesa non sposta il saldo: dillo invece di registrarla.',
     '- Data: default oggi; converti "ieri"/"l\'altro ieri"/"il primo del mese" in formato YYYY-MM-DD usando la DATA DI OGGI.',
     '- Dopo la creazione, conferma in modo naturale cosa hai registrato e includi SEMPRE un link markdown per aprirla/modificarla, nella forma [Apri la spesa](/spese/ID), usando l\'expense_id che il tool ti restituisce.',
     '',

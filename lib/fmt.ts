@@ -196,6 +196,17 @@ export const SPLIT_LABELS: Record<string, string> = {
   fifty_fifty: '50 / 50',
   sixty_forty: '60 / 40',
   custom: 'Personalizzato',
+  full_other: "A carico dell'altra persona",
+}
+
+/**
+ * Etichetta della divisione di una spesa. `full_other` è sempre a carico di
+ * chi non ha pagato: con il suo nome diventa «A carico di Fede», senza si
+ * ripiega su SPLIT_LABELS.
+ */
+export function splitLabel(rule: string, chargedToName?: string | null): string {
+  if (rule === 'full_other' && chargedToName) return `A carico di ${chargedToName}`
+  return SPLIT_LABELS[rule] ?? rule
 }
 
 type Category = (typeof Constants.public.Enums.expense_category)[number]

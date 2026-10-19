@@ -39,6 +39,8 @@ Le regole di business sono già codificate nel database, ma l'app deve rispettar
 
 **Default della regola di divisione all'inserimento.** Quando l'utente sceglie la categoria `affitto`, il default proposto è `fifty_fifty`; per ogni altra categoria il default è `sixty_forty`. Il default deve sempre essere modificabile dall'utente prima del salvataggio.
 
+**Spesa a carico di una persona.** Dal 19 ottobre 2026, su richiesta, esiste anche la regola `full_other`: l'intero importo va a chi **non** ha pagato (una spesa personale anticipata per l'altra persona, es. Andrea paga la farmacia di Fede). È sempre l'altra persona rispetto a `paid_by`: non c'è una colonna per sceglierla. Non è mai un default e i suggerimenti di descrizione non la ricopiano, perché non portano chi aveva pagato. Le quote le calcola `v_expense_shares`, come per le altre regole.
+
 **Calcolo del saldo.** Non calcolarlo lato client sommando le spese a mano. Esiste già la vista `v_user_open_balance` che fa tutto: per ogni utente restituisce `total_anticipated`, `total_owed` e `net_position`. Il saldo da mostrare in home è semplicemente il valore assoluto di uno dei due `net_position`, con l'indicazione di chi deve a chi (chi ha `net_position` positivo è in credito, l'altro gli deve soldi).
 
 **Conguaglio.** Non scrivere logica transazionale custom. Esiste la funzione RPC `register_settlement(p_notes text)` che in un'unica transazione crea la riga in `settlements` e marca tutte le spese aperte come saldate. Chiamala con `supabase.rpc('register_settlement', { p_notes: ... })`. Solleva un'eccezione se il saldo è zero, quindi gestisci quel caso a monte disabilitando il bottone.

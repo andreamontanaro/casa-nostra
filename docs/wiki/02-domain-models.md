@@ -21,6 +21,7 @@ Regola di suddivisione dell'importo → `docs/casa_nostra_schema.sql#L25-L30`:
 * `fifty_fifty`: Ripartizione esatta 50/50.
 * `sixty_forty`: Ripartizione 60/40. Il partner con il reddito maggiore paga il 60% dell'importo.
 * `custom`: Suddivisione personalizzata, espressa con quota fissa a carico del partner.
+* `full_other` (dal 19 ottobre 2026): l'intero importo è a carico di chi **non** ha pagato. È la spesa personale di una persona anticipata dall'altra (es. Andrea paga la farmacia di Fede): si registra com'è, pagata da chi l'ha pagata. Non c'è una colonna "a carico di": è sempre l'altra persona rispetto a `paid_by`, perché a carico di chi paga la spesa non sposterebbe il saldo. È una regola e non una cifra, quindi se si corregge l'importo la quota segue. Mai proposta di default, e un suggerimento di descrizione non la ricopia (non porta chi aveva pagato) → `docs/migrations/2026-10-19_spesa_a_carico.sql`.
 
 ### `shopping_category`
 Tipo di prodotto della lista della spesa → sezione 13 dello schema: `cibo`, `bevande`, `cura_casa`, `igiene_persona`, `farmacia`, `casalinghi`, `altro`. Deliberatamente distinta da `expense_category`: là si classifica una spesa (una riga di denaro), qui un prodotto da mettere nel carrello.

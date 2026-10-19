@@ -15,13 +15,13 @@ import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { ListRow } from '@/components/ui/ListRow'
-import { formatDate, formatDateTime, formatEur, CATEGORY_LABELS, SPLIT_LABELS } from '@/lib/fmt'
+import { formatDate, formatDateTime, formatEur, CATEGORY_LABELS, SPLIT_LABELS, splitLabel } from '@/lib/fmt'
 
-function splitLabel(expense: { split_rule: string; custom_other_share: number | null }) {
+function expenseSplitLabel(expense: { split_rule: string; custom_other_share: number | null }, chargedToName?: string) {
   if (expense.split_rule === 'custom' && expense.custom_other_share != null) {
     return `${SPLIT_LABELS['custom']} (${formatEur(expense.custom_other_share)})`
   }
-  return SPLIT_LABELS[expense.split_rule]
+  return splitLabel(expense.split_rule, chargedToName)
 }
 
 interface Props {
@@ -114,7 +114,7 @@ export default async function SpesaDetailPage({ params, searchParams }: Props) {
             title={<span className="font-normal text-muted">Divisione</span>}
             trailing={
               <span className="text-sm font-semibold text-foreground">
-                {splitLabel(expense)}
+                {expenseSplitLabel(expense, profiles.find((p) => p.id !== expense.paid_by)?.display_name)}
               </span>
             }
           />

@@ -1,4 +1,4 @@
-import { formatEur, CATEGORY_LABELS, SPLIT_LABELS } from '@/lib/fmt'
+import { formatEur, CATEGORY_LABELS, splitLabel } from '@/lib/fmt'
 import { Badge } from '@/components/ui/Badge'
 import { ListRow } from '@/components/ui/ListRow'
 import { CategoryIcon } from '@/components/CategoryIcon'
@@ -17,17 +17,20 @@ interface ExpenseRowProps {
    * `v_expense_shares`). Solo per le spese aperte: una saldata non pesa più.
    */
   contribution?: number
+  /** I due profili: servono a nominare chi porta una spesa «a carico di». */
+  profiles?: { id: string; display_name: string }[]
 }
 
-export function ExpenseRow({ expense, dateLabel, returnHref, contribution }: ExpenseRowProps) {
+export function ExpenseRow({ expense, dateLabel, returnHref, contribution, profiles }: ExpenseRowProps) {
   const isSettled = expense.settlement_id !== null
+  const chargedTo = profiles?.find((p) => p.id !== expense.paid_by)?.display_name
 
   return (
     <ListRow
       href={`/spese/${expense.id}${returnHref ? `?ritorno=${encodeURIComponent(returnHref)}` : ''}`}
       leading={<CategoryIcon category={expense.category} size="md" />}
       title={expense.description}
-      subtitle={`${expense.paid_by_profile?.display_name ?? '—'} · ${CATEGORY_LABELS[expense.category]} · ${SPLIT_LABELS[expense.split_rule]}`}
+      subtitle={`${expense.paid_by_profile?.display_name ?? '—'} · ${CATEGORY_LABELS[expense.category]} · ${splitLabel(expense.split_rule, chargedTo)}`}
       trailing={
         <div className="flex flex-col items-end gap-0.5">
           <span className="text-sm font-semibold tabular-nums text-foreground">

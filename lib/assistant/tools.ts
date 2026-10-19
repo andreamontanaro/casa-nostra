@@ -45,8 +45,9 @@ export const createExpenseTool = {
     'casa_arredo, trasporti, viaggi, altro. Scegli in base alla NATURA della spesa, non al contesto: ' +
     'un pranzo e\' "ristorazione" anche in vacanza, la benzina e\' "trasporti" anche in vacanza. ' +
     'Usa "altro" solo quando nessuna delle altre calza davvero. ' +
-    'split_rule (facoltativo) tra: fifty_fifty, sixty_forty, custom; se non lo specifichi viene scelto in automatico ' +
-    'in base alla categoria. expense_date facoltativo in formato YYYY-MM-DD (default: oggi); ' +
+    'split_rule (facoltativo) tra: fifty_fifty, sixty_forty, custom, full_other; se non lo specifichi viene scelto in automatico ' +
+    'in base alla categoria. full_other = l\'intero importo è a carico della persona che NON ha pagato ' +
+    '(una spesa personale dell\'altra persona, anticipata da chi ha pagato). expense_date facoltativo in formato YYYY-MM-DD (default: oggi); ' +
     'sono ammesse date future, servono per le bollette con addebito posticipato. ' +
     'paid_by deve essere l\'UUID esatto di una delle persone elencate in PERSONE.',
   parameters: {
@@ -77,7 +78,8 @@ export const createExpenseTool = {
       },
       split_rule: {
         type: Type.STRING,
-        description: 'Facoltativo: fifty_fifty | sixty_forty | custom.',
+        description:
+          'Facoltativo: fifty_fifty | sixty_forty | custom | full_other. full_other: tutto a carico di chi NON ha pagato.',
       },
       expense_date: {
         type: Type.STRING,

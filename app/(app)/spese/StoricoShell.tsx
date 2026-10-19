@@ -34,7 +34,7 @@ export function StoricoShell({
 
   return (
     <>
-      <SpeseFiltri expenses={expenses} settlements={settlements} contributions={contributions} onAddExpense={() => setSheetOpen(true)} />
+      <SpeseFiltri expenses={expenses} settlements={settlements} contributions={contributions} profiles={profiles} onAddExpense={() => setSheetOpen(true)} />
       <NuovaSpesaFab
         profiles={profiles}
         currentUserId={currentUserId}

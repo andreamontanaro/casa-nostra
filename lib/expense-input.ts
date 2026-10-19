@@ -14,6 +14,8 @@ export function previewExpenseShares(amount: number, rule: string, paidBy: strin
     ...profile,
     share: rule === 'custom'
       ? (profile.id === paidBy ? Math.round((amount - (custom ?? 0)) * 100) / 100 : custom ?? 0)
-      : Math.round(amount * (rule === 'fifty_fifty' ? .5 : profile.higher_income ? .6 : .4) * 100) / 100,
+      : rule === 'full_other'
+        ? (profile.id === paidBy ? 0 : amount)
+        : Math.round(amount * (rule === 'fifty_fifty' ? .5 : profile.higher_income ? .6 : .4) * 100) / 100,
   }))
 }

@@ -97,7 +97,7 @@ Dichiara a Gemini come inserire una spesa condivisa nel database → `lib/assist
   * `description` (`string`, Obbligatorio): Descrizione della spesa.
   * `category` (`string`, Obbligatorio): Una delle 7 categorie ammesse.
   * `paid_by` (`string`, Obbligatorio): L'UUID esatto dell'utente pagatore.
-  * `split_rule` (`string`, Opzionale): default calcolato in base alla categoria.
+  * `split_rule` (`string`, Opzionale): default calcolato in base alla categoria. `full_other` mette l'intero importo a carico di chi non ha pagato (spesa personale anticipata per l'altra persona).
   * `custom_other_share` (`number`, Condizionale): Quota dell'altro utente se split rule è custom.
   * `expense_date` (`string`, Opzionale): Data in formato `YYYY-MM-DD`.
   * `action` (`string`, Obbligatorio): Descrizione testuale dell'azione (es. "Sto aggiungendo la bolletta...").

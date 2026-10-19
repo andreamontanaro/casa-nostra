@@ -316,6 +316,7 @@ async function notifyExpenseChange(
       category: data.category,
       splitRule: data.splitRule,
       payerName: nameOf(data.paidBy),
+      chargedToName: profiles.find((p) => p.id !== data.paidBy)?.display_name,
       expenseDate: data.expenseDate,
       balance: balanceRes.data ?? [],
     }

@@ -34,7 +34,9 @@ CREATE TYPE expense_category AS ENUM (
 CREATE TYPE split_rule AS ENUM (
   'fifty_fifty',   -- 50/50: usata per l'affitto
   'sixty_forty',   -- 60/40: il profilo con higher_income=true paga il 60%
-  'custom'         -- importo fisso: custom_other_share indica la quota dell'altra persona
+  'custom',        -- importo fisso: custom_other_share indica la quota dell'altra persona
+  'full_other'     -- tutto a carico di chi NON ha pagato: una spesa personale anticipata
+                   -- per l'altra persona (docs/migrations/2026-10-19_spesa_a_carico.sql)
 );
 
 
@@ -201,6 +203,8 @@ SELECT
     WHEN e.split_rule = 'sixty_forty' AND NOT p.higher_income THEN e.amount * 0.4
     WHEN e.split_rule = 'custom' AND p.id <> e.paid_by        THEN e.custom_other_share
     WHEN e.split_rule = 'custom' AND p.id  = e.paid_by        THEN e.amount - e.custom_other_share
+    WHEN e.split_rule = 'full_other' AND p.id <> e.paid_by    THEN e.amount
+    WHEN e.split_rule = 'full_other' AND p.id  = e.paid_by    THEN 0
   END::numeric(10,2) AS user_share
 FROM public.expenses e
 CROSS JOIN public.profiles p;

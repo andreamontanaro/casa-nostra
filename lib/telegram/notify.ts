@@ -8,6 +8,7 @@ import {
   SPLIT_LABELS,
   formatDate,
   formatEur,
+  splitLabel,
 } from '@/lib/fmt'
 import { getTelegramConfig, isTelegramConfigured } from './config'
 import { escapeHtml } from './format'
@@ -47,6 +48,8 @@ export interface ExpenseNotification {
   category: string
   splitRule: string
   payerName: string
+  /** Chi non ha pagato: lo nomina una spesa «a carico di». */
+  chargedToName?: string
   expenseDate: string
   /** Righe di v_user_open_balance lette dopo la modifica. */
   balance: BalanceRow[]
@@ -73,7 +76,7 @@ function expenseMessage(
 ): string {
   const icon = CATEGORY_ICON[data.category] ?? '📦'
   const category = CATEGORY_LABELS[data.category] ?? data.category
-  const split = SPLIT_LABELS[data.splitRule] ?? data.splitRule
+  const split = splitLabel(data.splitRule, data.chargedToName)
 
   const lines = [
     `${emoji} <b>${escapeHtml(data.actorName)}</b> ${action}`,

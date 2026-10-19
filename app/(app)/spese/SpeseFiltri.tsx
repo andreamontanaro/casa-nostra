@@ -19,6 +19,7 @@ interface Props {
   settlements: SettlementWithNames[]
   /** Effetto sul saldo di chi guarda, per id delle spese aperte. */
   contributions: Record<string, number>
+  profiles: { id: string; display_name: string }[]
   onAddExpense?: () => void
 }
 
@@ -27,7 +28,7 @@ type Entry =
   | { kind: 'expense'; day: string; at: number; expense: Expense }
   | { kind: 'settlement'; day: string; at: number; settlement: SettlementWithNames }
 
-export function SpeseFiltri({ expenses, settlements, contributions, onAddExpense }: Props) {
+export function SpeseFiltri({ expenses, settlements, contributions, profiles, onAddExpense }: Props) {
   const params = useSearchParams()
   const status = ['aperte', 'saldate'].includes(params.get('stato') ?? '') ? params.get('stato')! : 'tutte'
   const category = Constants.public.Enums.expense_category.find((c) => c === params.get('cat')) ?? 'tutte'
@@ -155,7 +156,7 @@ export function SpeseFiltri({ expenses, settlements, contributions, onAddExpense
             ? <SettlementRow key={segment.settlement.id} settlement={segment.settlement} expenseCount={closedCount.get(segment.settlement.id) ?? 0}
               href={settlementFilter ? undefined : '/spese?conguaglio=' + segment.settlement.id} />
             : <Card key={segment.expenses[0].id} className="divide-y divide-border overflow-hidden">{segment.expenses.map((e) =>
-              <ExpenseRow key={e.id} expense={e} returnHref={returnHref} contribution={contributions[e.id]} />)}</Card>)}
+              <ExpenseRow key={e.id} expense={e} returnHref={returnHref} contribution={contributions[e.id]} profiles={profiles} />)}</Card>)}
           </div>
         </section>
       })}

@@ -81,6 +81,7 @@ Calcola la quota spettante a ciascun utente per ogni singola spesa inserita, app
 * **Regola 50/50 (`fifty_fifty`)**: La quota utente è pari al 50% dell'importo spesa.
 * **Regola 60/40 (`sixty_forty`)**: Il partner con `higher_income = true` riceve una quota del 60%; l'altro del 40%.
 * **Regola Personalizzata (`custom`)**: L'utente che non ha pagato riceve in addebito il valore presente in `custom_other_share`; l'utente che ha pagato riceve in addebito la differenza ($Importo - custom\_other\_share$).
+* **Regola A carico dell'altra persona (`full_other`)**: L'utente che non ha pagato riceve in addebito l'intero importo; l'utente che ha pagato riceve 0. Nel saldo, chi ha pagato risulta in credito dell'intero importo.
 
 ### 2. Vista saldi correnti (`v_user_open_balance`)
 Calcola la posizione netta di ciascun utente sommando i dati della vista quote limitatamente alle spese aperte (`settlement_id IS NULL`) → `docs/casa_nostra_schema.sql#L193-L211`:

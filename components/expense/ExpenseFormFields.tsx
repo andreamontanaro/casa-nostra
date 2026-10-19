@@ -19,11 +19,13 @@ type Category = (typeof Constants.public.Enums.expense_category)[number]
 type SplitRule = (typeof Constants.public.Enums.split_rule)[number]
 
 // Etichette compatte per il SegmentedControl divisione (SPLIT_LABELS.custom
-// = "Personalizzato" è troppo lungo per un segmento).
+// = "Personalizzato" è troppo lungo per un segmento). `full_other` nomina chi
+// non ha pagato: vedi chargedToLabel.
 const SPLIT_SEGMENT_LABELS: Record<SplitRule, string> = {
   fifty_fifty: '50/50',
   sixty_forty: '60/40',
   custom: 'Personalizza',
+  full_other: "Tutta a carico dell'altra persona",
 }
 
 function isoOffsetFromToday(days: number): string {
@@ -90,6 +92,12 @@ export function ExpenseFormFields({
   onExpenseDateChange,
 }: ExpenseFormFieldsProps) {
   const otherProfile = profiles.find((p) => p.id !== paidBy)
+  // Segue «Pagato da»: se paga l'altra persona, la spesa è a carico mio.
+  const chargedToLabel = !otherProfile
+    ? SPLIT_SEGMENT_LABELS.full_other
+    : otherProfile.id === currentUserId
+      ? 'Tutta a mio carico'
+      : `Tutta a carico di ${otherProfile.display_name}`
   const parsedAmount = parseEuroInput(amount) ?? NaN
   const parsedCustomShare = parseEuroInput(customOtherShare) ?? NaN
   const showCustomPreview =
@@ -194,9 +202,12 @@ export function ExpenseFormFields({
           disabled={disabled}
           value={splitRule}
           onChange={(v) => onSplitRuleChange(v as SplitRule)}
+          className="grid grid-cols-3"
           options={Constants.public.Enums.split_rule.map((rule) => ({
             value: rule,
-            label: SPLIT_SEGMENT_LABELS[rule],
+            label: rule === 'full_other' ? chargedToLabel : SPLIT_SEGMENT_LABELS[rule],
+            // Non divide: riga intera sotto le tre divisioni.
+            className: rule === 'full_other' ? 'col-span-3' : undefined,
           }))}
         />
         <input type="hidden" name="split_rule" value={splitRule} />
