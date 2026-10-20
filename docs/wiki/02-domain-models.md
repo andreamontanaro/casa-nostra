@@ -54,7 +54,7 @@ Rappresenta una transazione condivisa di acquisto → `docs/casa_nostra_schema.s
   * `split_rule` (`split_rule`): Regola di divisione.
   * `custom_other_share` (`numeric(10,2)`, Nullable): Quota a carico dell'altra persona. Obbligatoria se `split_rule` è `custom`, altrimenti deve essere nulla → `docs/casa_nostra_schema.sql#L91-L94`.
   * `paid_by` (`uuid`): Riferimento a `profiles(id)` dell'utente che ha anticipato il denaro.
-  * `expense_date` (`date`): Data della spesa (default: oggi).
+  * `expense_date` (`date`): Data della spesa (default: oggi). Può essere nel futuro: una bolletta si inserisce appena se ne conosce l'importo, con la data dell'addebito. Home e storico mostrano queste **spese future** in una sezione loro (`lib/upcoming-expenses.ts`), ma per il saldo e il conguaglio una spesa futura aperta conta come le altre: «aperta» dipende solo da `settlement_id`.
   * `settlement_id` (`uuid`, Nullable): Identificativo del conguaglio associato. Se valorizzato, la spesa è **saldata**; se nullo, la spesa è **aperta** e partecipa al saldo corrente → `docs/casa_nostra_schema.sql#L103-L104`.
 * **Invarianti**:
   * `custom_other_share` deve essere positivo e minore dell'importo totale della spesa (quest'ultimo controllo è delegato a livello applicativo in `createExpense` → `app/actions/expenses.ts#L52`).

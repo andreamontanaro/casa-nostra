@@ -2,13 +2,14 @@
 
 import { useDeferredValue, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { Search, X, ChevronLeft, ChevronRight, SlidersHorizontal, CalendarClock } from 'lucide-react'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { SettlementRow } from '@/components/SettlementRow'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
-import { formatDate, formatEur, CATEGORY_LABELS, romeDateKey, todayISO } from '@/lib/fmt'
+import { formatDate, formatDateShort, formatEur, CATEGORY_LABELS, romeDateKey, todayISO } from '@/lib/fmt'
+import { splitUpcoming } from '@/lib/upcoming-expenses'
 import { Constants } from '@/types/database'
 import type { Tables } from '@/types/database'
 import type { SettlementWithNames } from '@/lib/queries'
@@ -38,7 +39,8 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
   // L'URL resta la memoria dei filtri (ritorno dal dettaglio, link).
   const [query, setQuery] = useState(() => params.get('q') ?? '')
   const deferredQuery = useDeferredValue(query)
-  const currentMonth = todayISO().slice(0, 7)
+  const today = todayISO()
+  const currentMonth = today.slice(0, 7)
   const period = params.get('periodo')
   const legacyMonth = period === 'corrente' ? currentMonth : period === 'scorso'
     ? shiftMonth(currentMonth, -1) : ''
@@ -87,6 +89,9 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
       && (!needle || (s.notes ?? '').toLocaleLowerCase('it').includes(needle)
         || (needle.length >= 4 && 'conguaglio'.startsWith(needle)))
   })
+  // Le spese datate dopo oggi stanno in cima, in una sezione loro e dalla più
+  // vicina; i giorni sotto restano quelli già avvenuti.
+  const { upcoming, past } = splitUpcoming(filtered, today)
   const closedCount = new Map<string, number>()
   for (const e of expenses) {
     if (e.settlement_id) closedCount.set(e.settlement_id, (closedCount.get(e.settlement_id) ?? 0) + 1)
@@ -94,7 +99,7 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
   // Dentro un giorno conta l'ora: le spese inserite prima di un conguaglio
   // stanno sotto la sua riga, quelle inserite dopo sopra.
   const entries: Entry[] = [
-    ...filtered.map((expense): Entry => ({ kind: 'expense', day: expense.expense_date, at: Date.parse(expense.created_at), expense })),
+    ...past.map((expense): Entry => ({ kind: 'expense', day: expense.expense_date, at: Date.parse(expense.created_at), expense })),
     ...visibleSettlements.map((settlement): Entry => ({ kind: 'settlement', day: romeDateKey(settlement.settled_at), at: Date.parse(settlement.settled_at), settlement })),
   ].sort((a, b) => b.day.localeCompare(a.day) || b.at - a.at)
   const groups = new Map<string, Entry[]>()
@@ -144,9 +149,17 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
       {hasFilter && <Button variant="ghost" size="sm" onClick={reset}>Azzera filtri</Button>}
       {settlementFilter && <p className="w-full text-muted">Spese chiuse dal conguaglio del {formatDate(settlementFilter.settled_at)}.</p>}
     </div>
-    {entries.length === 0 ? <Card className="px-5 py-10 text-center"><p className="font-display text-2xl font-semibold">{expenses.length ? 'Nessuna corrispondenza' : 'La prima spesa, insieme.'}</p><p className="mt-3 text-sm text-muted">{expenses.length ? 'Prova un altro periodo o una categoria diversa.' : 'Aggiungi una spesa per iniziare a tenere i conti.'}</p>
+    {entries.length === 0 && upcoming.length === 0 ? <Card className="px-5 py-10 text-center"><p className="font-display text-2xl font-semibold">{expenses.length ? 'Nessuna corrispondenza' : 'La prima spesa, insieme.'}</p><p className="mt-3 text-sm text-muted">{expenses.length ? 'Prova un altro periodo o una categoria diversa.' : 'Aggiungi una spesa per iniziare a tenere i conti.'}</p>
       {!expenses.length && onAddExpense && <Button className="mt-5" onClick={onAddExpense}>Aggiungi spesa</Button>}</Card>
-      : Array.from(groups, ([date, items]) => {
+      : <>{upcoming.length > 0 && <section aria-labelledby="history-upcoming">
+        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 mb-2 flex justify-between gap-3 bg-background/95 px-1 py-3 text-xs font-semibold backdrop-blur-md">
+          <h2 id="history-upcoming" className="flex items-center gap-1.5"><CalendarClock className="size-3.5 text-accent" aria-hidden />Spese future</h2>
+          <span className="tabular-nums">{formatEur(upcoming.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100)}</span>
+        </div>
+        <Card className="divide-y divide-border overflow-hidden">{upcoming.map((e) =>
+          <ExpenseRow key={e.id} expense={e} dateLabel={formatDateShort(e.expense_date)} returnHref={returnHref} contribution={contributions[e.id]} profiles={profiles} />)}</Card>
+      </section>}
+      {Array.from(groups, ([date, items]) => {
         const dayExpenses = items.flatMap((item) => item.kind === 'expense' ? [item.expense] : [])
         return <section key={date}>
           <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 mb-2 flex justify-between gap-3 bg-background/95 px-1 py-3 text-xs font-semibold backdrop-blur-md">
@@ -159,7 +172,7 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
               <ExpenseRow key={e.id} expense={e} returnHref={returnHref} contribution={contributions[e.id]} profiles={profiles} />)}</Card>)}
           </div>
         </section>
-      })}
+      })}</>}
   </div>
 }
 

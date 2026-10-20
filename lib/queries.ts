@@ -37,14 +37,37 @@ export async function getCurrentUser() {
   return user
 }
 
-export async function getRecentExpenses(limit = 5) {
+/**
+ * Le ultime spese fino a oggi compreso (YYYY-MM-DD, fuso della casa): quelle
+ * datate dopo le legge `getUpcomingExpenses`, così una bolletta inserita in
+ * anticipo non toglie posto alle spese già avvenute.
+ */
+export async function getRecentExpenses(today: string, limit = 5) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('expenses')
     .select('*, paid_by_profile:profiles!expenses_paid_by_fkey(display_name)')
+    .lte('expense_date', today)
     .order('expense_date', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit)
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Le spese future (vedi `lib/upcoming-expenses.ts`), dalla più vicina: sono
+ * poche — di solito le bollette con la data di addebito — e si mostrano tutte.
+ */
+export async function getUpcomingExpenses(today: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*, paid_by_profile:profiles!expenses_paid_by_fkey(display_name)')
+    .gt('expense_date', today)
+    .order('expense_date', { ascending: true })
+    .order('created_at', { ascending: true })
 
   if (error) throw error
   return data
