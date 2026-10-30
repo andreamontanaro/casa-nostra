@@ -3,6 +3,7 @@ import {
   BarChart3,
   Home,
   List,
+  PieChart,
   Settings,
   ShoppingBasket,
   SprayCan,
@@ -55,6 +56,12 @@ export const NAV_PRIMARY: NavItem[] = [
 
 /** Schermate di consultazione e configurazione: sempre e solo nel menu. */
 export const NAV_SECONDARY: NavItem[] = [
+  {
+    href: '/saldo',
+    label: 'Dettagli del saldo',
+    description: 'Chi ha anticipato e quali categorie pesano',
+    icon: PieChart,
+  },
   {
     href: '/statistiche',
     label: 'Statistiche',

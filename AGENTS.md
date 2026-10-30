@@ -62,7 +62,7 @@ L'integrazione usa il pacchetto `@supabase/ssr`. I client sono in `lib/supabase/
 L'architettura del progetto è documentata dettagliatamente in `docs/wiki/01-architecture.md`. 
 
 L'applicazione segue la struttura standard di Next.js App Router:
-- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata), più i moduli `/lista`, `/faccende`, `/energia`, `/statistiche`, `/impostazioni`.
+- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata), più i moduli `/lista`, `/faccende`, `/energia`, `/saldo` (dettagli del saldo), `/statistiche`, `/impostazioni`.
 - **Mutazioni**: Implementate tramite Server Actions in `app/actions/`.
 - **Query**: Caricate nei Server Component tramite funzioni di utility in `lib/queries.ts` e `lib/queries-cars.ts`.
 - **Interattività**: Isolata nei Client Component (es. `HomeShell.tsx`, `ExpenseForm.tsx`).
@@ -97,7 +97,7 @@ Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* 
 
 Le quattro schermate del MVP, con una bottom navigation persistente che lega home, storico e conguaglio.
 
-La **home** mostra in alto il nome dell'app, poi una card prominente con il saldo corrente ("Tu devi X € a Y" oppure "Y ti deve X €", a seconda di chi guarda), sotto un riepilogo dei totali anticipati da ciascuno, poi le ultime spese (20 dal 30 ottobre 2026). FAB in basso a destra per aprire rapidamente "Nuova spesa". Scorrendo, l'anello del saldo si srotola in una barra incollata sotto la top bar, con la cifra a sinistra: il saldo resta sempre a vista (`components/BalanceStrip.tsx`, geometria pura in `lib/collapsing-balance.ts`; dettagli in `docs/wiki/08-patterns.md`).
+La **home** mostra in alto il nome dell'app, poi una card prominente con il saldo corrente ("Tu devi X € a Y" oppure "Y ti deve X €", a seconda di chi guarda), sotto l'anello una riga di azioni rapide (Nuova spesa, Regola saldo, Statistiche, Dettagli: dal 30 ottobre 2026, su richiesta; i totali anticipati da ciascuno e le categorie stanno in `/saldo`), poi le ultime spese (20 dal 30 ottobre 2026). FAB in basso a destra per aprire rapidamente "Nuova spesa". Scorrendo, l'anello del saldo si srotola in una barra incollata sotto la top bar, con la cifra a sinistra: il saldo resta sempre a vista (`components/BalanceStrip.tsx`, geometria pura in `lib/collapsing-balance.ts`; dettagli in `docs/wiki/08-patterns.md`).
 
 La schermata di **inserimento spesa** può essere a tutto schermo o modale dal basso. Campo importo grosso e prominente in cima, poi descrizione, categoria (chip o select), regola di divisione (due chip: 50/50 e 60/40, pre-selezionata in base alla categoria), pagato da (due chip con i nomi dei partner), data (default oggi). Bottone salva ben visibile in fondo.
 

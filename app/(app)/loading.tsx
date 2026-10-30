@@ -25,21 +25,16 @@ export default function HomeLoading() {
             <div className="min-w-0">
               <Skeleton className="h-4 w-28 rounded-md" />
               <Skeleton className="mt-2 h-3 w-24 rounded-md" />
-              <div className="mt-3 flex min-h-12 items-center">
-                <Skeleton className="h-4 w-28 rounded-md" />
+            </div>
+          </div>
+          {/* Azioni rapide: quattro cerchi con l'etichetta sotto. */}
+          <div className="grid grid-cols-4 gap-1 border-t border-border px-2 py-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex min-h-[4.75rem] flex-col items-center gap-1.5 pt-1">
+                <Skeleton className="size-11 rounded-full" />
+                <Skeleton className="h-3 w-14 rounded-md" />
               </div>
-            </div>
-          </div>
-          {/* Suggerimento «chi paga la prossima»: due righe di testo piccolo. */}
-          <div className="flex items-start gap-2 border-t border-border px-5 py-3">
-            <Skeleton className="mt-0.5 size-4 shrink-0 rounded-full" />
-            <div className="flex min-h-[39px] flex-1 flex-col justify-center gap-2">
-              <Skeleton className="h-3 w-full rounded-md" />
-              <Skeleton className="h-3 w-2/3 rounded-md" />
-            </div>
-          </div>
-          <div className="flex min-h-12 items-center border-t border-border px-5 py-3">
-            <Skeleton className="h-4 w-56 rounded-md" />
+            ))}
           </div>
         </Card>
 

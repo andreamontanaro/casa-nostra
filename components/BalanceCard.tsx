@@ -1,15 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowUpRight, Check, Lightbulb, Sparkles } from 'lucide-react'
+import { ArrowLeftRight, BarChart3, Check, PieChart, Plus, type LucideIcon } from 'lucide-react'
 import { SpendingRing } from '@/components/SpendingRing'
 import { AmountDisplay } from '@/components/ui/AmountDisplay'
-import { Avatar } from '@/components/ui/Avatar'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { CATEGORY_LABELS, formatEur } from '@/lib/fmt'
 import { categoryTotals } from '@/lib/spending'
-import { openAssistant } from '@/lib/assistant/ui'
 import type { OpenExpenseWithContribution } from '@/lib/queries'
 import type { Tables } from '@/types/database'
 
@@ -27,6 +23,8 @@ interface Props {
   headlineRef?: (el: HTMLElement | null) => void
   /** Riceve il riquadro dell'anello, che in home si srotola nella stessa barra. */
   ringRef?: React.Ref<HTMLDivElement>
+  /** Apre il modulo «Nuova spesa» della home; senza, l'azione porta a `/spese/nuova`. */
+  onNewExpense?: () => void
 }
 
 /** Classi della cifra al centro dell'anello: più è lunga, più è piccola. */
@@ -37,7 +35,7 @@ export function balanceAmountClass(amount: number) {
 /** Classi di «Siete in pari» al centro dell'anello. */
 export const BALANCE_EVEN_CLASS = 'font-display text-xl font-semibold'
 
-export function BalanceCard({ rows, currentUserId, expenses, reveal = false, headlineRef, ringRef }: Props) {
+export function BalanceCard({ rows, currentUserId, expenses, reveal = false, headlineRef, ringRef, onNewExpense }: Props) {
   const me = rows.find((r) => r.user_id === currentUserId)
   const other = rows.find((r) => r.user_id !== currentUserId)
   if (!me || !other) return (
@@ -61,38 +59,36 @@ export function BalanceCard({ rows, currentUserId, expenses, reveal = false, hea
               <p className="mt-2 max-w-full break-words text-sm font-medium">{net > 0 ? 'da' : 'a'} {otherName}</p></>
           )}
         </SpendingRing>
-        <div className="min-w-0"><h2 className="text-sm font-semibold">Il vostro saldo</h2><p className="mt-2 text-xs text-muted">{expenses.length} {expenses.length === 1 ? 'spesa aperta' : 'spese aperte'}</p>
-          {net !== 0 && <Link href="/conguaglio" className="mt-3 flex min-h-12 items-center gap-1 text-sm font-semibold text-accent">Regola saldo <ArrowUpRight className="size-4 shrink-0" aria-hidden /></Link>}
-        </div>
+        <div className="min-w-0"><h2 className="text-sm font-semibold">Il vostro saldo</h2><p className="mt-2 text-xs text-muted">{expenses.length} {expenses.length === 1 ? 'spesa aperta' : 'spese aperte'}</p></div>
       </div>
-      {net !== 0 && (
-        // «Chi paga la prossima»: chi deve soldi può rientrare pagando le
-        // spese seguenti invece di fare un bonifico. Legge solo il segno di
-        // `net_position`, non ricalcola niente.
-        <p className="flex items-start gap-2 border-t border-border px-5 py-3 text-xs leading-relaxed text-muted">
-          <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
-          <span>{net < 0 ? 'Se le prossime spese le paghi tu' : `Se le prossime spese le paga ${otherName}`}, il saldo si riequilibra senza bisogno di un bonifico.</span>
-        </p>
-      )}
-      <details className="border-t border-border">
-        <summary className="min-h-12 px-5 py-3 text-sm font-semibold">Categorie e dettagli del saldo</summary>
-        <div className="space-y-4 px-5 pb-5 text-sm">
-          <div className="space-y-3">
-            {[me, other].map((person) => <div key={person.user_id} className="flex items-center gap-3">
-              <Avatar name={person.display_name} /><div className="min-w-0 flex-1"><p className="font-semibold">{person.user_id === currentUserId ? 'Tu' : person.display_name}</p><p className="text-xs text-muted">Quota: {formatEur(person.total_owed ?? 0)}</p></div>
-              <div className="text-right"><p className="font-semibold tabular-nums">{formatEur(person.total_anticipated ?? 0)}</p><p className="text-xs text-muted">anticipati</p></div>
-            </div>)}
-          </div>
-          {categories.map((item) => (
-            <div key={item.category} className="border-t border-border pt-3">
-              <div className="flex justify-between gap-3"><Link className="text-accent underline underline-offset-4" href={`/spese?stato=aperte&cat=${item.category}`}>{CATEGORY_LABELS[item.category]}</Link><span className="font-semibold tabular-nums">{item.contribution > 0 ? '+' : ''}{formatEur(item.contribution)}</span></div>
-              <p className="mt-1 text-xs text-muted">{formatEur(item.total)} di spese · {item.contribution > 0 ? 'A tuo favore' : item.contribution < 0 ? 'A favore del partner' : 'Si compensa'}</p>
-              <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-surface-sunken"><span className={item.contribution >= 0 ? 'bg-accent' : 'bg-muted'} style={{ width: `${Math.max(2, Math.abs(item.contribution) / Math.max(1, ...categories.map((c) => Math.abs(c.contribution))) * 100)}%` }} /></div>
-            </div>
-          ))}
-          <Button variant="secondary" size="sm" className="w-full" onClick={() => openAssistant('Spiegami come si forma il saldo corrente e quali categorie incidono di più.')}><Sparkles className="size-4" aria-hidden />Chiedi all’assistente</Button>
-        </div>
-      </details>
+      <QuickActions onNewExpense={onNewExpense} />
     </Card>
+  )
+}
+
+const ACTION_CLASS = 'flex min-h-[4.75rem] min-w-0 flex-col items-center justify-start gap-1.5 rounded-2xl px-1 pt-1 text-center text-xs font-semibold leading-tight text-foreground transition-colors hover:bg-surface-raised active:bg-surface-raised'
+
+function ActionIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-muted text-accent-soft"><Icon className="size-5" aria-hidden /></span>
+}
+
+/**
+ * Azioni rapide sotto l'anello: nuova spesa, conguaglio, statistiche e i
+ * dettagli del saldo (`/saldo`). Il conguaglio c'è anche a saldo zero: la sua
+ * schermata spiega da sola che non c'è niente da regolare.
+ */
+function QuickActions({ onNewExpense }: { onNewExpense?: () => void }) {
+  const links: { href: string; label: string; icon: LucideIcon }[] = [
+    { href: '/conguaglio', label: 'Regola saldo', icon: ArrowLeftRight },
+    { href: '/statistiche', label: 'Statistiche', icon: BarChart3 },
+    { href: '/saldo', label: 'Dettagli', icon: PieChart },
+  ]
+  return (
+    <nav aria-label="Azioni rapide" className="grid grid-cols-4 gap-1 border-t border-border px-2 py-3">
+      {onNewExpense
+        ? <button type="button" onClick={onNewExpense} className={ACTION_CLASS}><ActionIcon icon={Plus} />Nuova spesa</button>
+        : <Link href="/spese/nuova" className={ACTION_CLASS}><ActionIcon icon={Plus} />Nuova spesa</Link>}
+      {links.map(({ href, label, icon }) => <Link key={href} href={href} className={ACTION_CLASS}><ActionIcon icon={icon} />{label}</Link>)}
+    </nav>
   )
 }

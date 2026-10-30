@@ -16,15 +16,17 @@ Aggiornamento del redesign approvato l’8 settembre 2026. Il vecchio modulo **C
 
 - Barra inferiore mobile: **Home, Storico, Lista, Faccende, Energia** (le ultime due dal 15 ottobre 2026, su richiesta). Cinque voci sono il massimo: a 320 px ognuna ha circa 60 px, quanto basta per la pillola e per «Faccende». Menu completo: anche Regola il saldo e Statistiche, più Impostazioni.
 - Desktop: navigazione laterale, area centrale più ampia e layout a colonne dove aiuta a leggere.
-- Assistente nell’header; una sola FAB per aggiungere spese in home. Su richiesta sono state rimosse la CTA superiore “Aggiungi spesa” e la scorciatoia dalla home alla lista.
-- Priorità ai movimenti: storico con pannello “Filtri e ricerca” inizialmente chiuso e totale compatto. Home con anello compatto e pannello “Categorie e dettagli del saldo” chiuso.
+- Assistente nell’header; FAB per aggiungere spese in home. Su richiesta sono state rimosse la CTA superiore “Aggiungi spesa” e la scorciatoia dalla home alla lista; dal 30 ottobre 2026, sempre su richiesta, «Nuova spesa» torna come prima delle azioni rapide della card del saldo (stesso modulo del FAB).
+- Priorità ai movimenti: storico con pannello “Filtri e ricerca” inizialmente chiuso e totale compatto. Home con anello compatto e azioni rapide; categorie e dettagli del saldo nella loro schermata (`/saldo`).
 - Nessun richiamo al vecchio modulo Casa. Voci e corrispondenza della rotta attiva in `lib/nav.ts`.
 
 ## Home e conguaglio
 
 `BalanceCard` legge il saldo ufficiale da `v_user_open_balance`. Il grafico `SpendingRing` usa le spese aperte: i settori sono proporzionali agli **importi lordi per categoria**, mentre il numero centrale è il **saldo netto**. I due dati non devono essere sommati o confusi. Le compensazioni mantengono visibili le categorie.
 
-Quando il saldo non è a zero, sotto l'anello c'è il suggerimento «chi paga la prossima» (l'idea è di Settle Up): chi deve soldi può rientrare pagando le spese seguenti invece di fare un bonifico. Legge solo il segno di `net_position`, non stima importi; sparisce quando si è in pari. Lo scheletro della home ha la sua riga, perché è il caso normale.
+**Azioni rapide** (dal 30 ottobre 2026, su richiesta). Sotto l'anello la card del saldo ha una riga di quattro azioni, un cerchio tonale (`--accent-muted`) con l'etichetta sotto: «Nuova spesa» (apre lo stesso modulo del FAB tramite `onNewExpense`; senza, porta a `/spese/nuova`), «Regola saldo» (`/conguaglio`, presente anche a saldo zero: la schermata dice da sola che non c'è niente da regolare), «Statistiche» e «Dettagli» (`/saldo`). Hanno preso il posto del link «Regola saldo» accanto all'anello, del suggerimento «chi paga la prossima» e del pannello «Categorie e dettagli del saldo». Lo scheletro della home ha la stessa riga.
+
+**Dettagli del saldo** (`/saldo`, `components/BalanceDetails.tsx`): anello grande con la legenda e le fette che portano allo storico filtrato, le spese aperte, il suggerimento «chi paga la prossima» (l'idea è di Settle Up: chi deve soldi può rientrare pagando le spese seguenti invece di fare un bonifico; legge solo il segno di `net_position`, non stima importi, sparisce quando si è in pari), chi ha anticipato quanto con la propria quota, il contributo di ogni categoria al saldo e «Chiedi all'assistente». Tutto da `v_user_open_balance` e dalle quote già calcolate. Nel menu tra le voci secondarie, non nella barra in basso.
 
 **Barra del saldo** (dal 30 ottobre 2026, su richiesta). Scorrendo la home il saldo non sparisce: l'anello si srotola in una barra orizzontale incollata sotto la top bar, come una barra di stato, e la cifra al centro vola alla sua sinistra, con «Devi dare a …» / «Devi ricevere da …» sotto. Tornando su fanno il viaggio inverso; un tocco sulla barra riporta in cima. Cose da sapere prima di metterci mano:
 
@@ -122,7 +124,7 @@ Importi totali e conguagli restano distinti. Barre mensili con tabella consultab
 
 ## Attesa e scheletri
 
-Ogni schermata privata ha il suo `loading.tsx`: `/`, `/spese`, `/spese/[id]`, `/spese/nuova`, `/lista`, `/faccende`, `/energia`, `/conguaglio`, `/statistiche`, `/impostazioni`.
+Ogni schermata privata ha il suo `loading.tsx`: `/`, `/spese`, `/spese/[id]`, `/spese/nuova`, `/lista`, `/faccende`, `/energia`, `/conguaglio`, `/saldo`, `/statistiche`, `/impostazioni`.
 
 - **Lo scheletro ricalca il layout fisso della pagina che sta caricando**, non una lista generica di barre: stesse classi del contenitore (padding, `gap`, `max-width`, griglie `xl:`), stessi elementi fermi (barra dei filtri chiusa, barra sticky del conguaglio, intestazioni dei gruppi) e stesso numero di righe atteso. Quando i dati arrivano non si sposta niente sotto il dito.
 - **Le altezze si fissano con `min-h-*` sul contenitore** — l'altezza vera viene dal box di testo o dal touch target da 44/48 px — e le barre dentro restano più sottili: sembrano testo, non blocchi pieni.

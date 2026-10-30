@@ -59,7 +59,7 @@ export function HomeShell({
       </header>
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.3fr]">
       <div className="min-w-0 reveal-up" style={revealDelay(1)}>
-        <BalanceCard rows={balanceRows} currentUserId={userId} expenses={openExpenses} reveal headlineRef={setBalanceHeadline} ringRef={balanceRing} />
+        <BalanceCard rows={balanceRows} currentUserId={userId} expenses={openExpenses} reveal headlineRef={setBalanceHeadline} ringRef={balanceRing} onNewExpense={() => setFormOpen(true)} />
       </div>
       <div className="flex min-w-0 flex-col gap-5">
 
