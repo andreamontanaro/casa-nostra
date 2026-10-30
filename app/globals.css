@@ -402,11 +402,21 @@ body {
 /* Bagliore dietro la hero del saldo in home: due ellissi nella tinta
    dell'accento, la più intensa dietro l'anello (a sinistra), che sfumano
    nello sfondo prima dei bordi, così non si vede dove finisce il riquadro.
-   Segue accento e tema da solo, perché legge --accent e --accent-muted. */
+   Segue accento e tema da solo, perché legge --accent e --accent-muted.
+   Respira piano: il picco è l'intensità approvata, poi cala e si stringe
+   appena, in 6 s. Solo opacity e transform, che non ridisegnano la pagina;
+   con «riduci movimento» la regola globale in fondo la ferma al picco. */
 .hero-glow {
   background:
     radial-gradient(48% 46% at 30% 52%, color-mix(in oklab, var(--accent) 5%, transparent), transparent),
     radial-gradient(75% 60% at 45% 45%, color-mix(in oklab, var(--accent-muted) 22%, transparent), transparent);
+  transform-origin: 30% 52%;
+  animation: hero-glow-pulse 6s ease-in-out infinite;
+}
+
+@keyframes hero-glow-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.96); }
 }
 
 /* Utility glass */

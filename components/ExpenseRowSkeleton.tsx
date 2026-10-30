@@ -19,7 +19,7 @@ export function ExpenseRowSkeleton({ index = 0 }: { index?: number }) {
         <div className="flex shrink-0 flex-col items-end gap-1">
           <Skeleton className="h-4 w-16 rounded-md" />
           <Skeleton className="h-3 w-10 rounded-md" />
-          {/* Stato o effetto sul saldo («+7,20 € per te»). */}
+          {/* Stato o effetto sul saldo (freccia e «7,20 €»). */}
           <Skeleton className="h-4 w-24 rounded-full" />
         </div>
       }

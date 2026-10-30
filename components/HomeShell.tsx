@@ -12,6 +12,7 @@ import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
 import { Card } from '@/components/ui/Card'
 import { formatDateShort, formatEur } from '@/lib/fmt'
 import { revealDelay } from '@/lib/motion'
+import { groupRecent } from '@/lib/recent-groups'
 import type { Tables } from '@/types/database'
 
 type Expense = Tables<'expenses'> & {
@@ -30,6 +31,8 @@ interface HomeShellProps {
   upcomingExpenses: Expense[]
   profiles: Profile[]
   suggestions: ExpenseSuggestion[]
+  /** Oggi nel fuso della casa (`todayISO()`): divide le ultime spese in gruppi. */
+  today: string
 }
 
 export function HomeShell({
@@ -40,6 +43,7 @@ export function HomeShell({
   upcomingExpenses,
   profiles,
   suggestions,
+  today,
 }: HomeShellProps) {
   const [formOpen, setFormOpen] = useState(false)
   const balanceRing = useRef<HTMLDivElement>(null)
@@ -95,7 +99,16 @@ export function HomeShell({
             </Card>
           </div>
         ) : (
-          <ExpenseCard expenses={recentExpenses} step={recentStep + 1} contributions={contributions} profiles={profiles} />
+          <div className="flex flex-col gap-4">
+            {groupRecent(recentExpenses, today).map((group, index) => (
+              <div key={group.key} role="group" aria-labelledby={`home-recent-${group.key}`}>
+                <h3 id={`home-recent-${group.key}`} className="mb-2 px-1 text-xs font-semibold text-muted reveal-up" style={revealDelay(recentStep + 1 + index * 0.5)}>
+                  {group.label}
+                </h3>
+                <ExpenseCard expenses={group.expenses} step={recentStep + 1 + index * 0.5} contributions={contributions} profiles={profiles} />
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
@@ -112,7 +125,11 @@ export function HomeShell({
   )
 }
 
-/** Le righe di una sezione della home, che entrano una dopo l'altra da `step`. */
+/**
+ * Le righe di una sezione della home, che entrano una dopo l'altra da `step`.
+ * Pannello pulito, su richiesta: superficie senza bordo, ombra né righe di
+ * divisione tra le spese.
+ */
 function ExpenseCard({ expenses, step, contributions, profiles }: {
   expenses: Expense[]
   step: number
@@ -120,7 +137,7 @@ function ExpenseCard({ expenses, step, contributions, profiles }: {
   profiles: Profile[]
 }) {
   return (
-    <Card className="divide-y divide-border overflow-hidden p-0 reveal-up" style={revealDelay(step)}>
+    <Card className="overflow-hidden border-0 p-0 shadow-none reveal-up" style={revealDelay(step)}>
       <AnimatePresence initial={false}>
         {expenses.map((expense, index) => (
           <motion.div

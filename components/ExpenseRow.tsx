@@ -1,4 +1,5 @@
 import { formatEur, CATEGORY_LABELS, splitLabel } from '@/lib/fmt'
+import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { ListRow } from '@/components/ui/ListRow'
 import { CategoryIcon } from '@/components/CategoryIcon'
@@ -51,21 +52,26 @@ export function ExpenseRow({ expense, dateLabel, returnHref, contribution, profi
 }
 
 /**
- * «+7,20 € per te» / «−4,80 € per te»: quanto la spesa sposta il saldo di chi
- * guarda. Aperta è lo stato di quasi tutte le righe recenti, quindi al posto
- * del badge di stato si mostra l'informazione che serve davvero. Il segno e
- * le parole portano il significato; il colore lo accompagna soltanto.
+ * Quanto la spesa sposta il saldo di chi guarda, come le chiamate in un
+ * registro: freccia in su a destra se è a tuo carico (soldi che escono),
+ * in giù a sinistra se è a tuo favore (soldi che entrano), e l'importo
+ * senza segno. Aperta è lo stato di quasi tutte le righe recenti, quindi al
+ * posto del badge di stato si mostra l'informazione che serve davvero. La
+ * direzione della freccia porta il significato, il colore lo accompagna, e
+ * chi usa uno screen reader sente la frase intera.
  */
 function ContributionBadge({ value }: { value: number }) {
   const amount = formatEur(Math.abs(value))
-  const visible = value > 0 ? `+${amount} per te` : value < 0 ? `−${amount} per te` : 'In pari'
   const spoken = value > 0
     ? `Aperta, ${amount} a tuo favore`
     : value < 0 ? `Aperta, ${amount} a tuo carico` : 'Aperta, nessun effetto sul saldo'
+  const Arrow = value > 0 ? ArrowDownLeft : ArrowUpRight
   return (
-    <Badge variant={value > 0 ? 'positive' : 'default'} className="tabular-nums whitespace-nowrap">
-      <span aria-hidden>{visible}</span>
+    <span className={`inline-flex items-center gap-0.5 whitespace-nowrap text-xs font-semibold tabular-nums ${value > 0 ? 'text-positive' : 'text-muted'}`}>
+      <span aria-hidden className="inline-flex items-center gap-0.5">
+        {value !== 0 && <Arrow className="size-3.5" strokeWidth={2.5} />}{value !== 0 ? amount : 'In pari'}
+      </span>
       <span className="sr-only">{spoken}</span>
-    </Badge>
+    </span>
   )
 }

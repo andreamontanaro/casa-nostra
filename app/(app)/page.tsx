@@ -41,6 +41,7 @@ export default async function HomePage() {
       upcomingExpenses={upcomingExpenses}
       profiles={profiles}
       suggestions={suggestions}
+      today={today}
     />
   )
 }
