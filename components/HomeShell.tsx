@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { CalendarClock } from 'lucide-react'
 import type { ExpenseSuggestion, OpenExpenseWithContribution } from '@/lib/queries'
 import { AnimatePresence, motion } from 'motion/react'
 import { BalanceCard } from '@/components/BalanceCard'
+import { BalanceStrip } from '@/components/BalanceStrip'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
 import { Card } from '@/components/ui/Card'
@@ -41,7 +42,9 @@ export function HomeShell({
   suggestions,
 }: HomeShellProps) {
   const [formOpen, setFormOpen] = useState(false)
-  const combined = recentExpenses.slice(0, 5)
+  const balanceRing = useRef<HTMLDivElement>(null)
+  const balanceHeadline = useRef<HTMLElement | null>(null)
+  const setBalanceHeadline = useCallback((el: HTMLElement | null) => { balanceHeadline.current = el }, [])
   // Le ultime spese sono quasi sempre aperte: il loro effetto sul saldo è
   // già stato calcolato per l'anello, basta ritrovarlo per id.
   const contributions = new Map(openExpenses.map((e) => [e.id, e.my_contribution]))
@@ -50,12 +53,13 @@ export function HomeShell({
   const recentStep = upcomingExpenses.length > 0 ? 3 : 2
   return (
     <div className="px-4 pt-4 pb-24 lg:pb-6">
+      <BalanceStrip rows={balanceRows} currentUserId={userId} expenses={openExpenses} headline={balanceHeadline} ring={balanceRing} />
       <header className="mb-4 px-1 reveal-up">
         <div><h1 className="font-display text-3xl font-semibold tracking-tight">Ciao, {profiles.find((p) => p.id === userId)?.display_name.split(' ')[0] ?? 'bentornato'}.</h1></div>
       </header>
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.3fr]">
       <div className="min-w-0 reveal-up" style={revealDelay(1)}>
-        <BalanceCard rows={balanceRows} currentUserId={userId} expenses={openExpenses} reveal />
+        <BalanceCard rows={balanceRows} currentUserId={userId} expenses={openExpenses} reveal headlineRef={setBalanceHeadline} ringRef={balanceRing} />
       </div>
       <div className="flex min-w-0 flex-col gap-5">
 
@@ -82,7 +86,7 @@ export function HomeShell({
           </Link>
         </div>
 
-        {combined.length === 0 ? (
+        {recentExpenses.length === 0 ? (
           <div className="reveal-up" style={revealDelay(recentStep + 1)}>
             <Card>
               <p className="px-4 py-8 text-center text-sm text-muted">
@@ -91,7 +95,7 @@ export function HomeShell({
             </Card>
           </div>
         ) : (
-          <ExpenseCard expenses={combined} step={recentStep + 1} contributions={contributions} profiles={profiles} />
+          <ExpenseCard expenses={recentExpenses} step={recentStep + 1} contributions={contributions} profiles={profiles} />
         )}
       </section>
 

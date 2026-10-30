@@ -6,7 +6,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { CATEGORY_LABELS, RING_OTHER, categoryHex, formatEur } from '@/lib/fmt'
 import { useDarkTheme } from '@/lib/use-dark-theme'
 import { cn } from '@/lib/utils'
-import { ringSegments, type CategoryTotal } from '@/lib/spending'
+import { ringArcs, ringSegments, type CategoryTotal } from '@/lib/spending'
 
 interface Props {
   categories: CategoryTotal[]
@@ -21,9 +21,15 @@ interface Props {
    * arriva per fare qualcosa — il conguaglio — non per essere accolti.
    */
   reveal?: boolean
+  /**
+   * Riceve il riquadro dell'anello: il disegno (primo figlio) e il centro
+   * (ultimo). La home li nasconde mentre l'anello si srotola nella barra
+   * del saldo (`components/BalanceStrip.tsx`).
+   */
+  frameRef?: React.Ref<HTMLDivElement>
 }
 
-export function SpendingRing({ categories: allCategories, children, label = 'Spese da regolare', categoryHref, compact = false, reveal = false }: Props) {
+export function SpendingRing({ categories: allCategories, children, label = 'Spese da regolare', categoryHref, compact = false, reveal = false, frameRef }: Props) {
   const dark = useDarkTheme()
   const id = useId()
   const [selected, setSelected] = useState<string | null>(null)
@@ -32,20 +38,16 @@ export function SpendingRing({ categories: allCategories, children, label = 'Spe
   const categories = ringSegments(allCategories)
   const total = categories.reduce((sum, item) => sum + Math.round(item.total * 100), 0) / 100
   const active = categories.find((item) => item.category === selected)
-  const segments = categories.map((item, index) => ({
-    ...item,
-    share: total > 0 ? item.total / total * 100 : 0,
-    offset: total > 0 ? categories.slice(0, index).reduce((sum, item) => sum + item.total, 0) / total * 100 : 0,
-  }))
+  const segments = ringArcs(categories)
 
   return (
     <div className="min-w-0">
-      <div className={cn("relative mx-auto aspect-square w-full", compact ? "max-w-[11.5rem]" : "max-w-[17rem]")}>
+      <div ref={frameRef} className={cn("relative mx-auto aspect-square w-full", compact ? "max-w-[11.5rem]" : "max-w-[17rem]")}>
         <svg viewBox="0 0 200 200" className="size-full -rotate-90" aria-labelledby={id}>
           <title id={id}>{`${label}: ${formatEur(total)}. La composizione delle spese è distinta dal saldo al centro. ${categories.map((c) => `${CATEGORY_LABELS[c.category]}: ${formatEur(c.total)}`).join('; ')}`}</title>
           <circle cx="100" cy="100" r="89" fill="none" stroke="var(--surface-sunken)" strokeWidth="11" />
           {segments.map((item) => {
-            const length = Math.max(0, item.share - (segments.length > 1 ? Math.min(1, item.share * .12) : 0))
+            const length = item.length
             // In `reveal` la lunghezza del tratto passa dalla custom property
             // animata da `.ring-draw`, e ogni fetta parte dove finisce la
             // precedente: il ritardo segue la posizione sull'anello, non

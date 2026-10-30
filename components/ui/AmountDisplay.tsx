@@ -17,6 +17,7 @@ const toneClass: Record<AmountTone, string> = {
 }
 
 interface AmountDisplayProps {
+  ref?: React.Ref<HTMLSpanElement>
   value: number
   size?: AmountSize
   tone?: AmountTone
@@ -26,6 +27,7 @@ interface AmountDisplayProps {
 }
 
 export function AmountDisplay({
+  ref,
   value,
   size = 'display',
   tone = 'neutral',
@@ -35,6 +37,7 @@ export function AmountDisplay({
   const sign = showSign && value > 0 ? '+' : ''
   return (
     <span
+      ref={ref}
       className={cn('tabular-nums', sizeClass[size], toneClass[tone], className)}
     >
       {sign}

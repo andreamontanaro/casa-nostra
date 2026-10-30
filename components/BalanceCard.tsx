@@ -19,9 +19,25 @@ interface Props {
   expenses: OpenExpenseWithContribution[]
   /** In home l'anello si disegna all'apertura della schermata. */
   reveal?: boolean
+  /**
+   * Riceve la scritta al centro dell'anello (la cifra, o «Siete in pari»):
+   * la home la fa volare nella barra del saldo quando si scorre
+   * (`components/BalanceStrip.tsx`).
+   */
+  headlineRef?: (el: HTMLElement | null) => void
+  /** Riceve il riquadro dell'anello, che in home si srotola nella stessa barra. */
+  ringRef?: React.Ref<HTMLDivElement>
 }
 
-export function BalanceCard({ rows, currentUserId, expenses, reveal = false }: Props) {
+/** Classi della cifra al centro dell'anello: più è lunga, più è piccola. */
+export function balanceAmountClass(amount: number) {
+  return `whitespace-nowrap ${amount >= 1000000 ? 'text-[.8rem]' : amount >= 10000 ? 'text-[1rem]' : amount >= 1000 ? 'text-[1.2rem]' : 'text-[1.65rem]'}`
+}
+
+/** Classi di «Siete in pari» al centro dell'anello. */
+export const BALANCE_EVEN_CLASS = 'font-display text-xl font-semibold'
+
+export function BalanceCard({ rows, currentUserId, expenses, reveal = false, headlineRef, ringRef }: Props) {
   const me = rows.find((r) => r.user_id === currentUserId)
   const other = rows.find((r) => r.user_id !== currentUserId)
   if (!me || !other) return (
@@ -35,13 +51,13 @@ export function BalanceCard({ rows, currentUserId, expenses, reveal = false }: P
   return (
     <Card className="overflow-hidden">
       <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-3 p-4">
-        <SpendingRing compact reveal={reveal} categories={categories}>
+        <SpendingRing compact reveal={reveal} categories={categories} frameRef={ringRef}>
           {net === 0 ? (
-            <><Check className="mb-1 size-5 text-accent" aria-hidden /><p className="font-display text-xl font-semibold">Siete in pari</p>
+            <><Check className="mb-1 size-5 text-accent" aria-hidden /><p ref={headlineRef} className={BALANCE_EVEN_CLASS}>Siete in pari</p>
               {expenses.length > 0 && <p className="mt-2 text-xs text-muted">Le spese si compensano</p>}</>
           ) : (
             <><p className="max-w-full text-sm text-muted">{net > 0 ? 'Devi ricevere' : 'Devi dare'}</p>
-              <AmountDisplay value={Math.abs(net)} className={`mt-1 max-w-full whitespace-nowrap ${Math.abs(net) >= 1000000 ? 'text-[.8rem]' : Math.abs(net) >= 10000 ? 'text-[1rem]' : Math.abs(net) >= 1000 ? 'text-[1.2rem]' : 'text-[1.65rem]'}`} />
+              <AmountDisplay ref={headlineRef} value={Math.abs(net)} className={`mt-1 max-w-full ${balanceAmountClass(Math.abs(net))}`} />
               <p className="mt-2 max-w-full break-words text-sm font-medium">{net > 0 ? 'da' : 'a'} {otherName}</p></>
           )}
         </SpendingRing>

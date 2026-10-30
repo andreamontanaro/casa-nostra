@@ -97,7 +97,7 @@ Il **menu hamburger** in alto a sinistra è la mappa dell'app: contiene *tutte* 
 
 Le quattro schermate del MVP, con una bottom navigation persistente che lega home, storico e conguaglio.
 
-La **home** mostra in alto il nome dell'app, poi una card prominente con il saldo corrente ("Tu devi X € a Y" oppure "Y ti deve X €", a seconda di chi guarda), sotto un riepilogo dei totali anticipati da ciascuno, poi le ultime 3-5 spese. FAB in basso a destra per aprire rapidamente "Nuova spesa".
+La **home** mostra in alto il nome dell'app, poi una card prominente con il saldo corrente ("Tu devi X € a Y" oppure "Y ti deve X €", a seconda di chi guarda), sotto un riepilogo dei totali anticipati da ciascuno, poi le ultime spese (20 dal 30 ottobre 2026). FAB in basso a destra per aprire rapidamente "Nuova spesa". Scorrendo, l'anello del saldo si srotola in una barra incollata sotto la top bar, con la cifra a sinistra: il saldo resta sempre a vista (`components/BalanceStrip.tsx`, geometria pura in `lib/collapsing-balance.ts`; dettagli in `docs/wiki/08-patterns.md`).
 
 La schermata di **inserimento spesa** può essere a tutto schermo o modale dal basso. Campo importo grosso e prominente in cima, poi descrizione, categoria (chip o select), regola di divisione (due chip: 50/50 e 60/40, pre-selezionata in base alla categoria), pagato da (due chip con i nomi dei partner), data (default oggi). Bottone salva ben visibile in fondo.
 

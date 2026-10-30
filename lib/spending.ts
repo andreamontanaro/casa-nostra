@@ -54,6 +54,36 @@ export function ringSegments(categories: readonly CategoryTotal[], max = 6): Cat
   ]
 }
 
+export interface RingArc extends CategoryTotal {
+  /** Quota del totale, in centesimi di giro (0–100). */
+  share: number
+  /** Dove inizia la fetta, in centesimi di giro dall'inizio. */
+  offset: number
+  /** Quanto è lunga disegnata: la quota meno un piccolo stacco dalla successiva. */
+  length: number
+}
+
+/**
+ * Le fette come tratti su un giro lungo 100 (`pathLength="100"`). Le usa
+ * l'anello, e la barra in cui l'anello si srotola scorrendo la home: stesse
+ * misure, così il passaggio dall'uno all'altra non fa scatti.
+ */
+export function ringArcs(categories: readonly CategoryTotal[]): RingArc[] {
+  const total = categories.reduce((sum, item) => sum + Math.round(item.total * 100), 0) / 100
+  let offset = 0
+  return categories.map((item) => {
+    const share = total > 0 ? item.total / total * 100 : 0
+    const arc = {
+      ...item,
+      share,
+      offset,
+      length: Math.max(0, share - (categories.length > 1 ? Math.min(1, share * .12) : 0)),
+    }
+    offset += share
+    return arc
+  })
+}
+
 // ------------------------------------------------------------
 // Effetto di una spesa sul saldo di chi guarda
 // ------------------------------------------------------------

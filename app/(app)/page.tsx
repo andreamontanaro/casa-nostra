@@ -11,6 +11,9 @@ import {
 import { HomeShell } from '@/components/HomeShell'
 import { todayISO } from '@/lib/fmt'
 
+/** Quante spese passate mostra la home: abbastanza da scorrerle senza aprire lo storico. */
+const RECENT_EXPENSES = 20
+
 export default async function HomePage() {
   const today = todayISO()
   // Tutte in parallelo: le spese aperte non aspettano l'utente, il contributo
@@ -19,7 +22,7 @@ export default async function HomePage() {
     await Promise.all([
       getCurrentUser(),
       getOpenBalance(),
-      getRecentExpenses(today, 5),
+      getRecentExpenses(today, RECENT_EXPENSES),
       getUpcomingExpenses(today),
       getProfiles(),
       getFrequentDescriptions(5),
