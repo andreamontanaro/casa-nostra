@@ -46,9 +46,12 @@ export function BalanceCard({ rows, currentUserId, expenses, reveal = false, hea
   const categories = categoryTotals(expenses)
   const otherName = other.display_name?.split(' ')[0] ?? 'il partner'
 
+  // Hero senza card: sta direttamente sullo sfondo, con un bagliore tenue
+  // nella tinta dell'accento dietro l'anello (`.hero-glow` in globals.css).
   return (
-    <Card className="overflow-hidden">
-      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-3 p-4">
+    <section aria-label="Saldo" className="relative isolate">
+      <div aria-hidden className="hero-glow pointer-events-none absolute -inset-x-4 -top-24 -bottom-6 -z-10" />
+      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-3 px-1 py-2">
         <SpendingRing compact reveal={reveal} categories={categories} frameRef={ringRef}>
           {net === 0 ? (
             <><Check className="mb-1 size-5 text-accent" aria-hidden /><p ref={headlineRef} className={BALANCE_EVEN_CLASS}>Siete in pari</p>
@@ -62,11 +65,11 @@ export function BalanceCard({ rows, currentUserId, expenses, reveal = false, hea
         <div className="min-w-0"><h2 className="text-sm font-semibold">Il vostro saldo</h2><p className="mt-2 text-xs text-muted">{expenses.length} {expenses.length === 1 ? 'spesa aperta' : 'spese aperte'}</p></div>
       </div>
       <QuickActions onNewExpense={onNewExpense} />
-    </Card>
+    </section>
   )
 }
 
-const ACTION_CLASS = 'flex min-h-[4.75rem] min-w-0 flex-col items-center justify-start gap-1.5 rounded-2xl px-1 pt-1 text-center text-xs font-semibold leading-tight text-foreground transition-colors hover:bg-surface-raised active:bg-surface-raised'
+const ACTION_CLASS = 'flex min-h-[4.75rem] min-w-0 flex-col items-center justify-start gap-1.5 rounded-2xl px-1 pt-1 text-center text-xs font-semibold leading-tight text-foreground transition-colors hover:bg-foreground/5 active:bg-foreground/5'
 
 function ActionIcon({ icon: Icon }: { icon: LucideIcon }) {
   return <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-muted text-accent-soft"><Icon className="size-5" aria-hidden /></span>
@@ -84,7 +87,7 @@ function QuickActions({ onNewExpense }: { onNewExpense?: () => void }) {
     { href: '/saldo', label: 'Dettagli', icon: PieChart },
   ]
   return (
-    <nav aria-label="Azioni rapide" className="grid grid-cols-4 gap-1 border-t border-border px-2 py-3">
+    <nav aria-label="Azioni rapide" className="mt-2 grid grid-cols-4 gap-1">
       {onNewExpense
         ? <button type="button" onClick={onNewExpense} className={ACTION_CLASS}><ActionIcon icon={Plus} />Nuova spesa</button>
         : <Link href="/spese/nuova" className={ACTION_CLASS}><ActionIcon icon={Plus} />Nuova spesa</Link>}

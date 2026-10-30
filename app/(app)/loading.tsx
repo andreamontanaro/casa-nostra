@@ -18,9 +18,10 @@ export default function HomeLoading() {
       </header>
 
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.3fr]">
-        {/* Card del saldo: anello a sinistra, riepilogo a destra. */}
-        <Card className="overflow-hidden">
-          <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-3 p-4">
+        {/* Hero del saldo, senza card: anello a sinistra, riepilogo a destra. */}
+        <div className="relative isolate">
+          <div aria-hidden className="hero-glow pointer-events-none absolute -inset-x-4 -top-24 -bottom-6 -z-10" />
+          <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-3 px-1 py-2">
             <SpendingRingSkeleton compact />
             <div className="min-w-0">
               <Skeleton className="h-4 w-28 rounded-md" />
@@ -28,7 +29,7 @@ export default function HomeLoading() {
             </div>
           </div>
           {/* Azioni rapide: quattro cerchi con l'etichetta sotto. */}
-          <div className="grid grid-cols-4 gap-1 border-t border-border px-2 py-3">
+          <div className="mt-2 grid grid-cols-4 gap-1">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="flex min-h-[4.75rem] flex-col items-center gap-1.5 pt-1">
                 <Skeleton className="size-11 rounded-full" />
@@ -36,7 +37,7 @@ export default function HomeLoading() {
               </div>
             ))}
           </div>
-        </Card>
+        </div>
 
         <div className="flex min-w-0 flex-col gap-5">
           <section>

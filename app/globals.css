@@ -399,6 +399,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Bagliore dietro la hero del saldo in home: due ellissi nella tinta
+   dell'accento, la più intensa dietro l'anello (a sinistra), che sfumano
+   nello sfondo prima dei bordi, così non si vede dove finisce il riquadro.
+   Segue accento e tema da solo, perché legge --accent e --accent-muted. */
+.hero-glow {
+  background:
+    radial-gradient(48% 46% at 30% 52%, color-mix(in oklab, var(--accent) 5%, transparent), transparent),
+    radial-gradient(75% 60% at 45% 45%, color-mix(in oklab, var(--accent-muted) 22%, transparent), transparent);
+}
+
 /* Utility glass */
 .glass {
   background: var(--glass-bg);
