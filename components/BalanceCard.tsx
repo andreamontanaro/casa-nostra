@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeftRight, BarChart3, Check, PieChart, Plus, type LucideIcon } from 'lucide-react'
+import { ArrowLeftRight, BarChart3, Check, PieChart, Plus, Receipt, type LucideIcon } from 'lucide-react'
 import { SpendingRing } from '@/components/SpendingRing'
 import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { Card } from '@/components/ui/Card'
@@ -51,7 +51,7 @@ export function BalanceCard({ rows, currentUserId, expenses, reveal = false, hea
   return (
     <section aria-label="Saldo" className="relative isolate">
       <div aria-hidden className="hero-glow pointer-events-none absolute -inset-x-4 -top-24 -bottom-6 -z-10" />
-      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-3 px-1 py-2">
+      <div className="px-1 py-2">
         <SpendingRing compact reveal={reveal} categories={categories} frameRef={ringRef}>
           {net === 0 ? (
             <><Check className="mb-1 size-5 text-accent" aria-hidden /><p ref={headlineRef} className={BALANCE_EVEN_CLASS}>Siete in pari</p>
@@ -59,10 +59,14 @@ export function BalanceCard({ rows, currentUserId, expenses, reveal = false, hea
           ) : (
             <><p className="max-w-full text-sm text-muted">{net > 0 ? 'Devi ricevere' : 'Devi dare'}</p>
               <AmountDisplay ref={headlineRef} value={Math.abs(net)} className={`mt-1 max-w-full ${balanceAmountClass(Math.abs(net))}`} />
-              <p className="mt-2 max-w-full break-words text-sm font-medium">{net > 0 ? 'da' : 'a'} {otherName}</p></>
+              <p className="mt-2 max-w-full break-words text-sm font-medium">{net > 0 ? 'da' : 'a'} {otherName}</p>
+              {/* Quante spese aperte formano il saldo: solo il numero con l'icona. */}
+              <p className="mt-1.5 flex items-center gap-1 text-xs tabular-nums text-muted">
+                <Receipt className="size-3.5" aria-hidden />{expenses.length}
+                <span className="sr-only">{expenses.length === 1 ? 'spesa aperta' : 'spese aperte'}</span>
+              </p></>
           )}
         </SpendingRing>
-        <div className="min-w-0"><h2 className="text-sm font-semibold">Il vostro saldo</h2><p className="mt-2 text-xs text-muted">{expenses.length} {expenses.length === 1 ? 'spesa aperta' : 'spese aperte'}</p></div>
       </div>
       <QuickActions onNewExpense={onNewExpense} />
     </section>

@@ -18,15 +18,11 @@ export default function HomeLoading() {
       </header>
 
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.3fr]">
-        {/* Hero del saldo, senza card: anello a sinistra, riepilogo a destra. */}
+        {/* Hero del saldo, senza card: l'anello centrato. */}
         <div className="relative isolate">
           <div aria-hidden className="hero-glow pointer-events-none absolute -inset-x-4 -top-24 -bottom-6 -z-10" />
-          <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-center gap-3 px-1 py-2">
+          <div className="px-1 py-2">
             <SpendingRingSkeleton compact />
-            <div className="min-w-0">
-              <Skeleton className="h-4 w-28 rounded-md" />
-              <Skeleton className="mt-2 h-3 w-24 rounded-md" />
-            </div>
           </div>
           {/* Azioni rapide: quattro cerchi con l'etichetta sotto. */}
           <div className="mt-2 grid grid-cols-4 gap-1">
