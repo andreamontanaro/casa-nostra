@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/Card'
 import { Skeleton, SkeletonPage, SkeletonSegmented } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 // Altezze fisse (in percentuale dei 176px del grafico): un istogramma di
 // barre tutte uguali non si legge come un grafico, e valori casuali
@@ -9,7 +10,10 @@ const BAR_HEIGHTS = [38, 52, 44, 67, 58, 81, 49, 72, 61, 90, 55, 43]
 export default function StatisticheLoading() {
   return (
     <SkeletonPage className="space-y-5 px-4 pb-8 pt-6" label="Caricamento delle statistiche">
-      <Skeleton className="h-9 w-44 rounded-lg" />
+      <header className="flex items-center gap-3">
+        <Skeleton className="h-9 w-44 rounded-lg" />
+        <HeaderActions className="ml-auto" />
+      </header>
 
       <SkeletonSegmented segments={4} activeIndex={1} />
 

@@ -88,12 +88,12 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
   return (
     <>
       {showIndicator && (
-        // Parte da sotto la barra in alto (`AppHeader`, alta 4rem), non da
-        // sotto il bordo dello schermo: dietro la barra non si vedeva.
+        // Parte da sotto la barra di stato, non dal bordo dello schermo:
+        // dietro la tacca non si vedrebbe.
         <div
           aria-hidden
           className="pointer-events-none fixed inset-x-0 top-0 z-30 flex justify-center"
-          style={{ paddingTop: `calc(env(safe-area-inset-top) + 4rem + ${offset * 0.5}px)` }}
+          style={{ paddingTop: `calc(env(safe-area-inset-top) + 0.5rem + ${offset * 0.5}px)` }}
         >
           <motion.div
             initial={false}

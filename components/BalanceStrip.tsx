@@ -24,7 +24,7 @@ interface Props {
 /**
  * Il saldo resta sempre a vista in home. Scorrendo verso il basso l'anello
  * delle categorie si srotola in una barra orizzontale, come una barra di
- * stato, incollata sotto la top bar, e la cifra al suo centro vola alla
+ * stato, incollata in cima allo schermo, e la cifra al suo centro vola alla
  * sinistra della barra. Tornando su fanno il viaggio inverso; un tocco sulla
  * barra riporta in cima, dove c'è la card intera.
  *
@@ -128,8 +128,8 @@ export function BalanceStrip({ rows, currentUserId, expenses, headline, ring }: 
 
   return (
     <>
-      {/* Alta zero: sta incollata sotto la top bar senza spostare la pagina. */}
-      <div className="pointer-events-none sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 -mx-4 h-0">
+      {/* Alta zero: sta incollata in cima, sotto la barra di stato, senza spostare la pagina. */}
+      <div className="pointer-events-none sticky top-[env(safe-area-inset-top)] z-30 -mx-4 h-0">
         <button
           ref={strip}
           type="button"

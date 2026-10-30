@@ -1,6 +1,7 @@
 import { SpendingRingSkeleton } from '@/components/SpendingRingSkeleton'
 import { Card } from '@/components/ui/Card'
 import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /** Riga di una spesa da includere: checkbox, icona, importo e contributo. */
 function SelectableExpenseSkeleton({ titleClassName }: { titleClassName: string }) {
@@ -33,9 +34,12 @@ function SelectableExpenseSkeleton({ titleClassName }: { titleClassName: string 
 export default function ConguaglioLoading() {
   return (
     <SkeletonPage className="flex flex-col gap-5 px-4 pt-6" label="Caricamento del conguaglio">
-      <header className="px-1">
-        <Skeleton className="mb-1 h-5 w-60 rounded-md" />
-        <Skeleton className="h-9 w-52 rounded-lg" />
+      <header className="flex items-start gap-3 px-1">
+        <div className="min-w-0 flex-1">
+          <Skeleton className="mb-1 h-5 w-60 max-w-full rounded-md" />
+          <Skeleton className="h-9 w-52 max-w-full rounded-lg" />
+        </div>
+        <HeaderActions />
       </header>
 
       <div className="grid items-start gap-6 xl:grid-cols-[1fr_1.15fr]">

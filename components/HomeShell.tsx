@@ -7,6 +7,7 @@ import type { ExpenseSuggestion, OpenExpenseWithContribution } from '@/lib/queri
 import { AnimatePresence, motion } from 'motion/react'
 import { BalanceCard } from '@/components/BalanceCard'
 import { BalanceStrip } from '@/components/BalanceStrip'
+import { HeaderActions } from '@/components/HeaderActions'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
 import { Card } from '@/components/ui/Card'
@@ -58,8 +59,9 @@ export function HomeShell({
   return (
     <div className="px-4 pt-4 pb-24 lg:pb-6">
       <BalanceStrip rows={balanceRows} currentUserId={userId} expenses={openExpenses} headline={balanceHeadline} ring={balanceRing} />
-      <header className="mb-4 px-1 reveal-up">
-        <div><h1 className="font-display text-3xl font-semibold tracking-tight">Ciao, {profiles.find((p) => p.id === userId)?.display_name.split(' ')[0] ?? 'bentornato'}.</h1></div>
+      <header className="mb-4 flex items-center gap-3 px-1 reveal-up">
+        <h1 className="min-w-0 flex-1 font-display text-3xl font-semibold tracking-tight">Ciao, {profiles.find((p) => p.id === userId)?.display_name.split(' ')[0] ?? 'bentornato'}.</h1>
+        <HeaderActions />
       </header>
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.3fr]">
       <div className="min-w-0 reveal-up" style={revealDelay(1)}>

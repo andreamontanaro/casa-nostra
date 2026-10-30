@@ -1,4 +1,5 @@
 import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /**
  * Scheletro delle faccende: due bottiglie con la geometria di `ChoreBottle`
@@ -9,8 +10,9 @@ import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
 export default function FaccendeLoading() {
   return (
     <SkeletonPage className="flex flex-col gap-6 px-4 pt-6 pb-24 lg:pb-8" label="Caricamento delle faccende">
-      <header className="px-1">
-        <Skeleton className="h-9 w-52 rounded-lg" />
+      <header className="flex items-center gap-3 px-1">
+        <Skeleton className="h-9 w-52 max-w-full rounded-lg" />
+        <HeaderActions className="ml-auto" />
       </header>
 
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">

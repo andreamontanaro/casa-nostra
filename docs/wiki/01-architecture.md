@@ -62,7 +62,7 @@ La struttura del progetto segue la convenzione standard di Next.js:
 * `components/` → `components/`: Componenti React riutilizzabili.
   * `ui/` → `components/ui/`: Elementi UI di base (Card, Button, Dialog, ecc.).
 * `lib/` → `lib/`: Utility di formattazione, funzioni di calcolo e client Supabase.
-  * `nav.ts` → `lib/nav.ts`: Unica definizione delle destinazioni dell'app. Il menu dell'header le elenca tutte, la barra in basso ne mostra un sottoinsieme (`BOTTOM_NAV_HREFS`): tenerle in un file solo evita che le due navigazioni divergano quando arriva una schermata nuova.
+  * `nav.ts` → `lib/nav.ts`: Unica definizione delle destinazioni dell'app. Il menu (`components/AppMenu.tsx`, aperto dal cerchio con l'iniziale di `HeaderActions`) le elenca tutte, la barra in basso ne mostra un sottoinsieme (`BOTTOM_NAV_HREFS`): tenerle in un file solo evita che le due navigazioni divergano quando arriva una schermata nuova.
   * `supabase/` → `lib/supabase/`: Inizializzazione dei client Supabase per browser, server e service role.
   * `assistant/` → `lib/assistant/`: Motore condiviso dell'assistente IA (tool, system instruction, ciclo di tool calling), usato sia dalla chat nell'app sia dal bot Telegram.
   * `shopping/` → `lib/shopping/`: Logica di dominio della lista della spesa (aggiunta, spunta, controllo scontrino con Gemini) e costanti del bucket degli scontrini. È condivisa da Server Action, assistente e webhook Telegram: accetta sempre un client Supabase esplicito.
@@ -98,9 +98,9 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/lista` → `app/(app)/lista/page.tsx`: Lista della spesa — cosa manca in casa, raggruppato per tipo di prodotto, con controllo dello scontrino → `app/(app)/lista/ShoppingShell.tsx`.
 * `/faccende` → `app/(app)/faccende/page.tsx`: Faccende domestiche — le due bottiglie affiancate con il messaggio della parità e i giorni scorsi → `app/(app)/faccende/FaccendeShell.tsx`. Nel menu e nella barra in basso (etichetta «Faccende»).
 * `/energia` → `app/(app)/energia/page.tsx`: Energia — la potenza di adesso come una batteria che si riempie verso il limite del contatore, i consumi degli ultimi 7 giorni, per apparecchio, lo stato della presa e gli avvisi di distacco → `app/(app)/energia/EnergiaShell.tsx`. Il primo disegno usa l'ultima lettura salvata; poi la pagina chiede `/api/energia` ogni 15 s finché è visibile. Nel menu e nella barra in basso.
-* `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio. Raggiungibile dal menu dell'header e dall'azione rapida «Regola saldo» in home, non dalla bottom nav (è l'azione più rara: vedi `08-patterns.md`).
+* `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio. Raggiungibile dal menu e dall'azione rapida «Regola saldo» in home, non dalla bottom nav (è l'azione più rara: vedi `08-patterns.md`).
 * `/saldo` → `app/(app)/saldo/page.tsx`: Dettagli del saldo — anello grande, chi ha anticipato, contributo di ogni categoria, «chi paga la prossima» → `components/BalanceDetails.tsx`. Raggiungibile dall'azione rapida «Dettagli» in home e dal menu (voci secondarie).
-* `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu dell'header e dall'azione rapida «Statistiche» in home (non dalla bottom nav: vedi `08-patterns.md`).
+* `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu e dall'azione rapida «Statistiche» in home (non dalla bottom nav: vedi `08-patterns.md`).
 * `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password, collegamento dell'account Telegram).
 
 ---

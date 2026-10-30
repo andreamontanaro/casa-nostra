@@ -36,6 +36,7 @@ import { CHORE_PRESET_GROUPS, type CustomChorePreset } from '@/lib/chores/preset
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import type { ChoreEntry, ChoreHint } from '@/lib/queries'
+import { HeaderActions } from '@/components/HeaderActions'
 
 const DAY_LABEL = new Intl.DateTimeFormat('it-IT', {
   weekday: 'long',
@@ -348,7 +349,10 @@ export function FaccendeShell({
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-24 lg:pb-8">
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-1">
-        <h1 className="font-display text-3xl font-semibold text-foreground">Faccende di casa</h1>
+        <div className="flex w-full items-center gap-3">
+          <h1 className="min-w-0 flex-1 font-display text-3xl font-semibold text-foreground">Faccende di casa</h1>
+          <HeaderActions />
+        </div>
         {/* Sempre a destra, anche quando va a capo: il bottone dei sensori gli sta a sinistra. */}
         <div className="relative ml-auto">
           {/* In posizione assoluta: quando compare non sposta niente. */}
@@ -363,7 +367,7 @@ export function FaccendeShell({
           scorrono i giorni scorsi, e tutto il resto a destra. Le bottiglie hanno una
           larghezza massima: allargate, la spalla disegnata in SVG si deformerebbe. */}
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
-        <div className="flex flex-col gap-3 lg:sticky lg:top-24">
+        <div className="flex flex-col gap-3 lg:sticky lg:top-6">
           {view === '3d' ? (
             <ChoreBottles3D
               bottles={bottles}

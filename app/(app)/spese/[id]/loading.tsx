@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/Card'
 import { Skeleton, SkeletonIconButton, SkeletonPage } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /** Riga "voce → valore" della card di dettaglio, alta come una `ListRow`. */
 function DetailRowSkeleton({ label, value }: { label: string; value: string }) {
@@ -23,6 +24,7 @@ export default function SpesaDetailLoading() {
       <header className="flex items-center gap-3 px-4 pt-6 pb-4">
         <SkeletonIconButton />
         <Skeleton className="h-7 w-40 rounded-md" />
+        <HeaderActions className="ml-auto" />
       </header>
 
       <section className="px-4 pb-5">

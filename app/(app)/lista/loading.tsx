@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/Card'
 import { Skeleton, SkeletonChip, SkeletonPage } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /**
  * Riga della lista: il checkbox da 44px a sinistra e il bottone elimina a
@@ -54,9 +55,12 @@ export default function ListaLoading() {
       className="flex flex-col gap-6 px-4 pt-6 pb-24"
       label="Caricamento della lista della spesa"
     >
-      <header className="flex flex-wrap items-baseline justify-between gap-2 px-1">
-        <Skeleton className="h-9 w-48 rounded-lg" />
-        <Skeleton className="h-4 w-20 rounded-md" />
+      <header className="flex items-start gap-3 px-1">
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-9 w-48 max-w-full rounded-lg" />
+          <Skeleton className="mt-1 h-4 w-20 rounded-md" />
+        </div>
+        <HeaderActions />
       </header>
 
       {/* Barra rapida: campo e bottone "+" hanno l'altezza di quelli veri. */}

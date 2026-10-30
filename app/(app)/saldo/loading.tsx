@@ -1,6 +1,7 @@
 import { SpendingRingSkeleton } from '@/components/SpendingRingSkeleton'
 import { Card } from '@/components/ui/Card'
 import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /**
  * Scheletro dei dettagli del saldo: anello grande a sinistra, le due persone
@@ -9,9 +10,12 @@ import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
 export default function SaldoLoading() {
   return (
     <SkeletonPage className="flex flex-col gap-5 px-4 pt-6 pb-24 lg:pb-6" label="Caricamento dei dettagli del saldo">
-      <header className="px-1">
-        <Skeleton className="mb-1 h-5 w-52 rounded-md" />
-        <Skeleton className="h-9 w-60 rounded-lg" />
+      <header className="flex items-start gap-3 px-1">
+        <div className="min-w-0 flex-1">
+          <Skeleton className="mb-1 h-5 w-52 max-w-full rounded-md" />
+          <Skeleton className="h-9 w-60 max-w-full rounded-lg" />
+        </div>
+        <HeaderActions />
       </header>
 
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.15fr]">

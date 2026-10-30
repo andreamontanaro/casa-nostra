@@ -1,6 +1,6 @@
 /**
- * Il saldo della home che, scorrendo, si comprime nella barra sotto la top
- * bar (`components/BalanceStrip.tsx`): l'anello delle categorie si srotola in
+ * Il saldo della home che, scorrendo, si comprime nella barra in cima allo
+ * schermo (`components/BalanceStrip.tsx`): l'anello delle categorie si srotola in
  * una barra orizzontale e la cifra vola alla sua sinistra. Qui c'è solo la
  * geometria, pura e testata (`tests/collapsing-balance.test.mjs`): il
  * componente legge i rettangoli dal DOM e scrive tracciati e trasformazioni.

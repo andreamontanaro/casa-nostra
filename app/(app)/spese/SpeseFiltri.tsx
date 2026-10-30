@@ -152,7 +152,7 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
     {entries.length === 0 && upcoming.length === 0 ? <Card className="px-5 py-10 text-center"><p className="font-display text-2xl font-semibold">{expenses.length ? 'Nessuna corrispondenza' : 'La prima spesa, insieme.'}</p><p className="mt-3 text-sm text-muted">{expenses.length ? 'Prova un altro periodo o una categoria diversa.' : 'Aggiungi una spesa per iniziare a tenere i conti.'}</p>
       {!expenses.length && onAddExpense && <Button className="mt-5" onClick={onAddExpense}>Aggiungi spesa</Button>}</Card>
       : <>{upcoming.length > 0 && <section aria-labelledby="history-upcoming">
-        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 mb-2 flex justify-between gap-3 bg-background/95 px-1 py-3 text-xs font-semibold backdrop-blur-md">
+        <div className="sticky top-[env(safe-area-inset-top)] z-10 mb-2 flex justify-between gap-3 bg-background/95 px-1 py-3 text-xs font-semibold backdrop-blur-md">
           <h2 id="history-upcoming" className="flex items-center gap-1.5"><CalendarClock className="size-3.5 text-accent" aria-hidden />Spese future</h2>
           <span className="tabular-nums">{formatEur(upcoming.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100)}</span>
         </div>
@@ -162,7 +162,7 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
       {Array.from(groups, ([date, items]) => {
         const dayExpenses = items.flatMap((item) => item.kind === 'expense' ? [item.expense] : [])
         return <section key={date}>
-          <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 mb-2 flex justify-between gap-3 bg-background/95 px-1 py-3 text-xs font-semibold backdrop-blur-md">
+          <div className="sticky top-[env(safe-area-inset-top)] z-10 mb-2 flex justify-between gap-3 bg-background/95 px-1 py-3 text-xs font-semibold backdrop-blur-md">
             <h2>{formatDate(date)}</h2>{dayExpenses.length > 0 && <span className="tabular-nums">{formatEur(dayExpenses.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100)}</span>}
           </div>
           <div className="space-y-2">{segments(items).map((segment) => segment.kind === 'settlement'

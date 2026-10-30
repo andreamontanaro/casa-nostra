@@ -20,7 +20,7 @@ export interface NavItem {
 }
 
 /**
- * Tutte le destinazioni dell'app, in un posto solo: il menu dell'header le
+ * Tutte le destinazioni dell'app, in un posto solo: il menu (`AppMenu`) le
  * elenca per intero, la barra in basso ne mostra un sottoinsieme. Tenerle in
  * un unico file evita che le due navigazioni divergano quando si aggiunge una
  * schermata.

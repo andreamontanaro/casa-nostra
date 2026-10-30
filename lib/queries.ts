@@ -38,6 +38,22 @@ export async function getCurrentUser() {
 }
 
 /**
+ * Il nome di chi guarda, per l'iniziale sul bottone del menu
+ * (`HeaderActions`). Non fallisce mai: senza nome il bottone mostra l'icona.
+ */
+export async function getMyDisplayName(): Promise<string | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+    const supabase = await createClient()
+    const { data } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle()
+    return data?.display_name ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Le ultime spese fino a oggi compreso (YYYY-MM-DD, fuso della casa): quelle
  * datate dopo le legge `getUpcomingExpenses`, così una bolletta inserita in
  * anticipo non toglie posto alle spese già avvenute.

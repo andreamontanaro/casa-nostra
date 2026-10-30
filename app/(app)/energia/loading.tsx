@@ -1,4 +1,5 @@
 import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /**
  * Scheletro di Energia: titolo, la card della batteria a tutta larghezza
@@ -9,9 +10,12 @@ import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
 export default function EnergiaLoading() {
   return (
     <SkeletonPage className="space-y-5 px-4 pt-6 pb-24 lg:pb-8" label="Caricamento dei consumi">
-      <header>
-        <Skeleton className="h-9 w-36 rounded-lg" />
-        <Skeleton className="mt-2 h-4 w-40" />
+      <header className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-9 w-36 rounded-lg" />
+          <Skeleton className="mt-2 h-4 w-40" />
+        </div>
+        <HeaderActions />
       </header>
 
       <div className="grid items-start gap-5 lg:grid-cols-2">

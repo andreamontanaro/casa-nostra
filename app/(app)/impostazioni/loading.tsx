@@ -5,6 +5,7 @@ import {
   SkeletonPage,
   SkeletonSegmented,
 } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -35,7 +36,10 @@ export default function ImpostazioniLoading() {
       className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-6 pb-8"
       label="Caricamento delle impostazioni"
     >
-      <Skeleton className="h-9 w-48 rounded-lg" />
+      <header className="flex items-center gap-3">
+        <Skeleton className="h-9 w-48 rounded-lg" />
+        <HeaderActions className="ml-auto" />
+      </header>
 
       <Section title="w-16">
         <div className="flex flex-col gap-4">

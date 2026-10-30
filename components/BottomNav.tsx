@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * Accesso rapido alle cinque schermate che si aprono più volte al giorno.
- * L'elenco completo delle sezioni sta nel menu dell'header: la barra riflette
+ * L'elenco completo delle sezioni sta nel menu (`AppMenu`): la barra riflette
  * la frequenza d'uso, non la mappa dell'app — quindi non cresce da sola
  * quando arriva un modulo nuovo. Voci e ordine in `lib/nav.ts`.
  */

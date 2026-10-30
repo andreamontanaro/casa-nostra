@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { ListRow } from '@/components/ui/ListRow'
 import { formatDate, formatDateTime, formatEur, CATEGORY_LABELS, SPLIT_LABELS, splitLabel } from '@/lib/fmt'
+import { HeaderActions } from '@/components/HeaderActions'
 
 function expenseSplitLabel(expense: { split_rule: string; custom_other_share: number | null }, chargedToName?: string) {
   if (expense.split_rule === 'custom' && expense.custom_other_share != null) {
@@ -65,9 +66,10 @@ export default async function SpesaDetailPage({ params, searchParams }: Props) {
         >
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="text-lg font-semibold leading-tight text-foreground">
+        <h1 className="min-w-0 flex-1 text-lg font-semibold leading-tight text-foreground">
           Dettaglio spesa
         </h1>
+        <HeaderActions />
       </header>
 
       {/* Hero recap */}

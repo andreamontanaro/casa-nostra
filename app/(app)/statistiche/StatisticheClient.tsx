@@ -10,6 +10,7 @@ import { formatDate, formatEur, CATEGORY_LABELS, categoryHex } from '@/lib/fmt'
 import { useDarkTheme } from '@/lib/use-dark-theme'
 import type { Tables } from '@/types/database'
 import { type Period, deltaPercent, getPeriodRange, getPreviousPeriodRange, groupExpensesByCategory, groupExpensesByMonth, inRange, sumAmounts, rangeLabel, historyRangeQuery } from './period'
+import { HeaderActions } from '@/components/HeaderActions'
 
 type Settlement = Tables<'settlements'> & { from_user: { display_name: string } | null; to_user: { display_name: string } | null }
 export function StatisticheClient({ expenses, settlements }: { expenses: Tables<'expenses'>[]; settlements: Settlement[] }) {
@@ -34,7 +35,10 @@ export function StatisticheClient({ expenses, settlements }: { expenses: Tables<
   }
 
   return <div className="space-y-5 px-4 pb-8 pt-6">
-    <h1 className="font-display text-3xl font-semibold">Statistiche</h1>
+    <header className="flex items-center gap-3">
+      <h1 className="min-w-0 flex-1 font-display text-3xl font-semibold">Statistiche</h1>
+      <HeaderActions />
+    </header>
     <SegmentedControl groupId="stats-period" label="Periodo delle statistiche" value={period} onChange={(value) => setPeriod(value as Period)}
       options={[{ value: 'month', label: 'Mese' }, { value: '3months', label: '3 mesi' }, { value: 'year', label: 'Anno' }, { value: 'all', label: 'Tutto' }]} />
     <Card className="p-5">

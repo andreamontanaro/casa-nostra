@@ -30,6 +30,7 @@ import {
   restoreItemAction,
 } from '@/app/actions/shopping'
 import type { ShoppingItem, ShoppingLastCheck, ShoppingMissingItem } from '@/lib/queries'
+import { HeaderActions } from '@/components/HeaderActions'
 
 interface ShoppingShellProps {
   openItems: ShoppingItem[]
@@ -219,13 +220,16 @@ export function ShoppingShell({
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-24">
-      <header className="flex flex-wrap items-baseline justify-between gap-2 px-1">
-        <h1 className="font-display text-3xl font-semibold text-foreground">La vostra lista</h1>
-        <span className="text-sm text-muted">
-          {visibleItems.length === 0
-            ? 'Non manca niente'
-            : `${visibleItems.length} ${visibleItems.length === 1 ? 'articolo' : 'articoli'}`}
-        </span>
+      <header className="flex items-start gap-3 px-1">
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-3xl font-semibold text-foreground">La vostra lista</h1>
+          <p className="text-sm text-muted">
+            {visibleItems.length === 0
+              ? 'Non manca niente'
+              : `${visibleItems.length} ${visibleItems.length === 1 ? 'articolo' : 'articoli'}`}
+          </p>
+        </div>
+        <HeaderActions />
       </header>
 
       <form onSubmit={quickAdd} aria-busy={quickPending > 0 || undefined} className="flex items-center gap-2 rounded-3xl border border-border bg-surface p-2">

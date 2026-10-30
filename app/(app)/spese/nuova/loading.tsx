@@ -6,6 +6,7 @@ import {
   SkeletonPage,
   SkeletonSegmented,
 } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /** Etichetta `text-label` sopra un gruppo di controlli. */
 function FieldLabel({ className }: { className: string }) {
@@ -28,6 +29,7 @@ export default function NuovaSpesaLoading() {
       <header className="flex items-center gap-3 px-4 pb-2 pt-6">
         <SkeletonIconButton />
         <Skeleton className="h-9 w-44 rounded-lg" />
+        <HeaderActions className="ml-auto" />
       </header>
 
       <div className="flex flex-col gap-5 px-4 pt-4 pb-6">

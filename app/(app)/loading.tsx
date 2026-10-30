@@ -2,6 +2,7 @@ import { ExpenseRowsSkeleton } from '@/components/ExpenseRowSkeleton'
 import { SpendingRingSkeleton } from '@/components/SpendingRingSkeleton'
 import { Card } from '@/components/ui/Card'
 import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /**
  * Scheletro della home: stesse classi di `HomeShell` — saluto, griglia che su
@@ -13,8 +14,9 @@ import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
 export default function HomeLoading() {
   return (
     <SkeletonPage className="px-4 pt-4 pb-24 lg:pb-6" label="Caricamento della home">
-      <header className="mb-4 px-1">
-        <Skeleton className="h-9 w-56 rounded-lg" />
+      <header className="mb-4 flex items-center gap-3 px-1">
+        <Skeleton className="h-9 w-56 max-w-full rounded-lg" />
+        <HeaderActions className="ml-auto" />
       </header>
 
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_1.3fr]">

@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { formatDateTime } from '@/lib/fmt'
 import type { EnergySnapshot, EnergyStatus, LoadNotice } from '@/lib/energy/readings'
 import { cn } from '@/lib/utils'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /** Ogni quanto si chiede la potenza, a pagina aperta e visibile. */
 const POLL_MS = 15_000
@@ -157,9 +158,12 @@ export function EnergiaShell({ initial }: { initial: EnergySnapshot }) {
   return (
     <div className="space-y-5 px-4 pt-6 pb-24 lg:pb-8">
       <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <div>
-          <h1 className="font-display text-3xl font-semibold">Energia</h1>
-          <p className="text-sm text-muted">Fastweb Power Control</p>
+        <div className="flex w-full items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-3xl font-semibold">Energia</h1>
+            <p className="text-sm text-muted">Fastweb Power Control</p>
+          </div>
+          <HeaderActions />
         </div>
         {realtimeAt && now !== null && (
           <p className="flex min-h-6 items-center gap-2 text-xs text-muted" aria-live="off">

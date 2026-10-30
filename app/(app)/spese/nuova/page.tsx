@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getProfiles, getCurrentUser, getFrequentDescriptions } from '@/lib/queries'
 import { createClient } from '@/lib/supabase/server'
 import { ExpenseForm, type ExpenseDraft } from './ExpenseForm'
+import { HeaderActions } from '@/components/HeaderActions'
 
 export default async function NuovaSpesaPage({ searchParams }: { searchParams: Promise<{ scontrino?: string }> }) {
   const [user, profiles, suggestions, params] = await Promise.all([
@@ -30,7 +31,8 @@ export default async function NuovaSpesaPage({ searchParams }: { searchParams: P
     <div className="mx-auto flex w-full max-w-2xl flex-col">
       <header className="flex items-center gap-3 px-4 pb-2 pt-6">
         <Link href={sourceReceiptId ? '/lista' : '/'} className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-raised" aria-label="Torna indietro"><ArrowLeft className="size-5" /></Link>
-        <h1 className="font-display text-3xl font-semibold">Nuova spesa</h1>
+        <h1 className="min-w-0 flex-1 font-display text-3xl font-semibold">Nuova spesa</h1>
+        <HeaderActions />
       </header>
       {sourceReceiptId && <p className="mx-4 mt-3 rounded-2xl bg-accent-muted p-4 text-sm">Ho preparato i dati dello scontrino. Controlla importo, categoria e pagante: la spesa verrà registrata e la foto allegata quando premi “Salva spesa”.</p>}
       {receiptError ? <p role="alert" className="m-4 rounded-2xl bg-surface p-4">Non riesco a recuperare lo scontrino. <Link href="/lista" className="text-accent underline">Torna alla lista</Link> oppure <Link href="/spese/nuova" className="text-accent underline">inserisci la spesa a mano</Link>.</p> :

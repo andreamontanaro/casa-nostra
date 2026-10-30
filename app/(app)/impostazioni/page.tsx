@@ -8,6 +8,7 @@ import { ProfileForm } from './ProfileForm'
 import { PasswordForm } from './PasswordForm'
 import { TelegramForm } from './TelegramForm'
 import { LogoutButton } from './LogoutButton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 export default async function ImpostazioniPage() {
   const supabase = await createClient()
@@ -22,7 +23,10 @@ export default async function ImpostazioniPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 pt-6 pb-8">
-      <h1 className="font-display text-3xl font-semibold tracking-tight">Impostazioni</h1>
+      <header className="flex items-center gap-3">
+        <h1 className="min-w-0 flex-1 font-display text-3xl font-semibold tracking-tight">Impostazioni</h1>
+        <HeaderActions />
+      </header>
 
       <Section title="Profilo">
         <ProfileForm

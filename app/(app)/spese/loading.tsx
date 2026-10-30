@@ -1,6 +1,7 @@
 import { ExpenseRowsSkeleton } from '@/components/ExpenseRowSkeleton'
 import { Card } from '@/components/ui/Card'
 import { Skeleton, SkeletonPage } from '@/components/ui/Skeleton'
+import { HeaderActions } from '@/components/HeaderActions'
 
 /** Un giorno dello storico: intestazione con data e totale, poi le righe. */
 function DayGroupSkeleton({ rows }: { rows: number }) {
@@ -28,7 +29,10 @@ export default function SpeseLoading() {
       className="flex flex-col gap-4 px-4 pt-6 pb-4"
       label="Caricamento dello storico spese"
     >
-      <Skeleton className="h-9 w-52 rounded-lg" />
+      <header className="flex items-center gap-3">
+        <Skeleton className="h-9 w-52 max-w-full rounded-lg" />
+        <HeaderActions className="ml-auto" />
+      </header>
 
       <div className="space-y-3 pb-24">
         <div className="rounded-2xl border border-border bg-surface">
