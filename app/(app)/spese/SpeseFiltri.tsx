@@ -117,12 +117,12 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
   const returnHref = '/spese' + (returnParams.toString() ? '?' + returnParams.toString() : '')
 
   return <div className="space-y-3 pb-24">
-    <details className="group rounded-2xl border border-border bg-surface">
+    <details className="group rounded-2xl bg-surface">
       <summary className="flex min-h-13 cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
         <SlidersHorizontal className="size-4 text-accent" aria-hidden />
         <span>Filtri e ricerca{hasFilter ? ' · attivi' : ''}</span><span className="ml-auto text-muted group-open:hidden">Apri</span><span className="ml-auto hidden text-muted group-open:inline">Chiudi</span>
       </summary>
-      <div className="space-y-4 border-t border-border p-4 sm:p-5">
+      <div className="space-y-4 p-4 pt-0 sm:p-5 sm:pt-0">
       {(from || until) && <p className="text-sm text-muted">Periodo dalle statistiche: {from ? formatDate(from) : "inizio storico"} – {until ? formatDate(until) : "oggi"}. Scegli un mese per cambiarlo.</p>}
       <div className="flex items-center gap-2">
         <button type="button" aria-label="Mese precedente" className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-surface-raised" onClick={() => update('mese', shiftMonth(month || currentMonth, -1))}><ChevronLeft className="size-5" aria-hidden /></button>
@@ -156,7 +156,7 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
           <h2 id="history-upcoming" className="flex items-center gap-1.5"><CalendarClock className="size-3.5 text-accent" aria-hidden />Spese future</h2>
           <span className="tabular-nums">{formatEur(upcoming.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100)}</span>
         </div>
-        <Card className="divide-y divide-border overflow-hidden">{upcoming.map((e) =>
+        <Card className="overflow-hidden">{upcoming.map((e) =>
           <ExpenseRow key={e.id} expense={e} dateLabel={formatDateShort(e.expense_date)} returnHref={returnHref} contribution={contributions[e.id]} profiles={profiles} />)}</Card>
       </section>}
       {Array.from(groups, ([date, items]) => {
@@ -168,7 +168,7 @@ export function SpeseFiltri({ expenses, settlements, contributions, profiles, on
           <div className="space-y-2">{segments(items).map((segment) => segment.kind === 'settlement'
             ? <SettlementRow key={segment.settlement.id} settlement={segment.settlement} expenseCount={closedCount.get(segment.settlement.id) ?? 0}
               href={settlementFilter ? undefined : '/spese?conguaglio=' + segment.settlement.id} />
-            : <Card key={segment.expenses[0].id} className="divide-y divide-border overflow-hidden">{segment.expenses.map((e) =>
+            : <Card key={segment.expenses[0].id} className="overflow-hidden">{segment.expenses.map((e) =>
               <ExpenseRow key={e.id} expense={e} returnHref={returnHref} contribution={contributions[e.id]} profiles={profiles} />)}</Card>)}
           </div>
         </section>

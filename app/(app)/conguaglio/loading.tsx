@@ -64,7 +64,7 @@ export default function ConguaglioLoading() {
           <div className="mb-4 px-1">
             <Skeleton className="h-5 w-11/12 rounded-md" />
           </div>
-          <Card className="divide-y divide-border overflow-hidden">
+          <Card className="overflow-hidden">
             {['w-1/2', 'w-2/3', 'w-5/12', 'w-7/12'].map((width) => (
               <SelectableExpenseSkeleton key={width} titleClassName={width} />
             ))}

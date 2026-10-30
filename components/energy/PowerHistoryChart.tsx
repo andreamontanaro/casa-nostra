@@ -201,7 +201,7 @@ export function PowerHistoryChart({
         </div>
       </div>
 
-      <details className="mt-4 border-t border-border">
+      <details className="mt-4">
         <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold">Mezz’ora per mezz’ora</summary>
         <table className="w-full text-sm">
           <caption className="sr-only">Potenza media e di picco per mezz’ora nelle ultime 6 ore</caption>
@@ -214,7 +214,7 @@ export function PowerHistoryChart({
           </thead>
           <tbody>
             {halfHourRows(points).map((row) => (
-              <tr key={row.from} className="border-t border-border">
+              <tr key={row.from}>
                 <td className="py-2 tabular-nums">{formatTime(row.from)}</td>
                 <td className="py-2 text-right tabular-nums">{formatPower(row.averageWatts)}</td>
                 <td className="py-2 text-right tabular-nums">{formatPower(row.peakWatts)}</td>

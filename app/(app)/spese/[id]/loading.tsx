@@ -40,7 +40,7 @@ export default function SpesaDetailLoading() {
       </section>
 
       <div className="px-4 pb-5">
-        <Card className="divide-y divide-border overflow-hidden p-0">
+        <Card className="overflow-hidden p-0">
           <DetailRowSkeleton label="w-24" value="w-28" />
           <DetailRowSkeleton label="w-20" value="w-24" />
           <DetailRowSkeleton label="w-20" value="w-16" />

@@ -12,6 +12,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   ref?: React.Ref<HTMLDivElement>
   // Superficie della card. `raised`/`sunken` sostituiscono i vari
   // `bg-surface/86 backdrop-blur` sparsi: le card ora sono opache.
+  // Dentro un foglio o un dialogo, che sono già `bg-surface`, serve `raised`.
   tone?: CardTone
 }
 
@@ -26,7 +27,9 @@ export function Card({
     <div
       ref={ref}
       className={cn(
-        'rounded-3xl border border-border shadow-card',
+        // Pulita, come i pannelli della home (dal 30 ottobre 2026): niente
+        // bordo né ombra, si stacca dallo sfondo solo con la superficie.
+        'rounded-3xl',
         toneClass[tone],
         className,
       )}

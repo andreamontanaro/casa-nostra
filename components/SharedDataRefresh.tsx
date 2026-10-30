@@ -79,5 +79,5 @@ export function SharedDataRefresh() {
       document.removeEventListener('visibilitychange', check)
     }
   }, [router])
-  return online ? null : <div role="status" className="mx-4 mt-3 flex items-center gap-2 rounded-2xl border border-border bg-surface p-3 text-sm"><WifiOff className="size-4 shrink-0 text-muted" aria-hidden />Sei offline. I dati si aggiorneranno al ritorno della connessione.</div>
+  return online ? null : <div role="status" className="mx-4 mt-3 flex items-center gap-2 rounded-2xl bg-surface p-3 text-sm"><WifiOff className="size-4 shrink-0 text-muted" aria-hidden />Sei offline. I dati si aggiorneranno al ritorno della connessione.</div>
 }

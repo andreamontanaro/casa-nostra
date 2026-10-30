@@ -139,7 +139,7 @@ function ExpenseCard({ expenses, step, contributions, profiles }: {
   profiles: Profile[]
 }) {
   return (
-    <Card className="overflow-hidden border-0 p-0 shadow-none reveal-up" style={revealDelay(step)}>
+    <Card className="overflow-hidden p-0 reveal-up" style={revealDelay(step)}>
       <AnimatePresence initial={false}>
         {expenses.map((expense, index) => (
           <motion.div

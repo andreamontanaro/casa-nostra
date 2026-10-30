@@ -48,7 +48,7 @@ export default function StatisticheLoading() {
               </div>
             ))}
           </div>
-          <div className="mt-4 flex min-h-12 items-center border-t border-border">
+          <div className="mt-4 flex min-h-12 items-center">
             <Skeleton className="h-4 w-56 rounded-md" />
           </div>
         </Card>
@@ -89,7 +89,7 @@ export default function StatisticheLoading() {
             </div>
           ))}
         </div>
-        <div className="mt-4 flex flex-col divide-y divide-border">
+        <div className="mt-4 flex flex-col">
           {['w-40', 'w-48', 'w-36'].map((width) => (
             <div key={width} className="flex items-center justify-between gap-3 py-4">
               <div className="min-w-0">

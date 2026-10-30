@@ -29,12 +29,12 @@ function CategoryGroupSkeleton({ items }: { items: { name: string; quantity?: bo
   return (
     <section>
       <Card className="overflow-hidden p-0">
-        <div className="flex min-h-10 items-center gap-2 border-b border-border bg-surface-sunken/60 px-4 py-2">
+        <div className="flex min-h-10 items-center gap-2 bg-surface-sunken/60 px-4 py-2">
           <Skeleton className="size-4 shrink-0 rounded-md" />
           <Skeleton className="h-3 w-24 rounded-md" />
           <Skeleton className="ml-auto h-3 w-4 rounded-md" />
         </div>
-        <div className="divide-y divide-border">
+        <div>
           {items.map((item, i) => (
             <ItemRowSkeleton key={i} nameClassName={item.name} quantity={item.quantity} />
           ))}
@@ -64,7 +64,7 @@ export default function ListaLoading() {
       </header>
 
       {/* Barra rapida: campo e bottone "+" hanno l'altezza di quelli veri. */}
-      <div className="flex items-center gap-2 rounded-3xl border border-border bg-surface p-2">
+      <div className="flex items-center gap-2 rounded-3xl bg-surface p-2">
         <div className="flex min-h-12 flex-1 items-center px-3">
           <Skeleton className="h-4 w-44 rounded-md" />
         </div>
@@ -97,7 +97,7 @@ export default function ListaLoading() {
       </div>
 
       {/* "Comprati di recente": chiuso, come lo trova chi apre la pagina. */}
-      <div className="rounded-3xl border border-border bg-surface p-4">
+      <div className="rounded-3xl bg-surface p-4">
         <div className="flex min-h-11 items-center">
           <Skeleton className="h-4 w-56 rounded-md" />
         </div>

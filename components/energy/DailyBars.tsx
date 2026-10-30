@@ -79,7 +79,7 @@ export function DailyBars({
         })}
       </div>
 
-      <details className="mt-4 border-t border-border">
+      <details className="mt-4">
         <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold">Consumo giorno per giorno</summary>
         <table className="w-full text-sm">
           <caption className="sr-only">Consumo di elettricità per giorno</caption>
@@ -91,7 +91,7 @@ export function DailyBars({
           </thead>
           <tbody>
             {[...days].reverse().map((day) => (
-              <tr key={day.date} className="border-t border-border">
+              <tr key={day.date}>
                 <td className="py-2">{formatDate(day.date)}</td>
                 <td className="py-2 text-right tabular-nums">{formatKwh(day.kwh)}</td>
               </tr>

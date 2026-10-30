@@ -59,10 +59,10 @@ export function StatisticheClient({ expenses, settlements }: { expenses: Tables<
             <span className="text-[11px] text-muted">{month.label}</span>
           </div>)}
         </div>
-        <details className="mt-4 border-t border-border">
+        <details className="mt-4">
           <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold">Valori mensili e movimenti</summary>
           <table className="w-full text-sm"><caption className="sr-only">Spese mensili negli ultimi dodici mesi</caption><thead><tr className="text-left text-xs text-muted"><th scope="col">Mese</th><th scope="col" className="text-right">Totale</th></tr></thead>
-            <tbody>{months.map((month) => <tr key={month.monthKey} className="border-t border-border"><th scope="row" className="text-left font-normal"><Link className="flex min-h-11 items-center text-accent underline underline-offset-4" href={'/spese?mese=' + month.monthKey}>{month.label} {month.year}</Link></th><td className="text-right tabular-nums">{formatEur(month.total)}</td></tr>)}</tbody></table>
+            <tbody>{months.map((month) => <tr key={month.monthKey}><th scope="row" className="text-left font-normal"><Link className="flex min-h-11 items-center text-accent underline underline-offset-4" href={'/spese?mese=' + month.monthKey}>{month.label} {month.year}</Link></th><td className="text-right tabular-nums">{formatEur(month.total)}</td></tr>)}</tbody></table>
         </details>
       </Card>
 
@@ -88,7 +88,7 @@ export function StatisticheClient({ expenses, settlements }: { expenses: Tables<
           <div key={label} className="flex items-center justify-between gap-3 sm:block"><p className="text-xs text-muted">{label}</p><p className="font-display text-xl font-semibold tabular-nums">{value}</p></div>)}
       </div>
       {transfers.length === 0 ? <p className="py-5 text-sm text-muted">Nessun conguaglio nel periodo.</p> :
-        <ul className="mt-4 divide-y divide-border">{transfers.map((s) => <li key={s.id} className="flex items-center justify-between gap-3 py-4">
+        <ul className="mt-4">{transfers.map((s) => <li key={s.id} className="flex items-center justify-between gap-3 py-4">
           <div className="min-w-0"><p className="flex flex-wrap items-center gap-1 text-sm font-medium">{s.from_user?.display_name ?? '—'}<ArrowRight className="size-4 shrink-0 text-muted" aria-label="ha versato a" />{s.to_user?.display_name ?? '—'}</p><p className="mt-1 break-words text-xs text-muted">{formatDate(s.settled_at)}{s.notes ? ' · ' + s.notes : ''}</p></div>
           <p className="shrink-0 text-sm font-semibold tabular-nums">{formatEur(s.amount)}</p>
         </li>)}</ul>}

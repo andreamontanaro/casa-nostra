@@ -65,7 +65,7 @@ export function BalanceDetails({ rows, currentUserId, expenses }: Props) {
       <div className="flex min-w-0 flex-col gap-4">
         <section aria-labelledby="saldo-persone">
           <h2 id="saldo-persone" className="mb-3 px-1 text-base font-semibold">Chi ha anticipato</h2>
-          <Card className="divide-y divide-border overflow-hidden text-sm">
+          <Card className="overflow-hidden text-sm">
             {[me, other].map((person) => <div key={person.user_id} className="flex items-center gap-3 px-4 py-3">
               <Avatar name={person.display_name} /><div className="min-w-0 flex-1"><p className="font-semibold">{person.user_id === currentUserId ? 'Tu' : person.display_name}</p><p className="text-xs text-muted">Quota: {formatEur(person.total_owed ?? 0)}</p></div>
               <div className="text-right"><p className="font-semibold tabular-nums">{formatEur(person.total_anticipated ?? 0)}</p><p className="text-xs text-muted">anticipati</p></div>
@@ -78,7 +78,7 @@ export function BalanceDetails({ rows, currentUserId, expenses }: Props) {
           {categories.length === 0 ? (
             <Card><p className="px-4 py-8 text-center text-sm text-muted">Nessuna spesa aperta.</p></Card>
           ) : (
-            <Card className="divide-y divide-border overflow-hidden text-sm">
+            <Card className="overflow-hidden text-sm">
               {categories.map((item) => (
                 <div key={item.category} className="px-4 py-3">
                   <div className="flex justify-between gap-3"><Link className="text-accent underline underline-offset-4" href={`/spese?stato=aperte&cat=${item.category}`}>{CATEGORY_LABELS[item.category]}</Link><span className="font-semibold tabular-nums">{item.contribution > 0 ? '+' : ''}{formatEur(item.contribution)}</span></div>

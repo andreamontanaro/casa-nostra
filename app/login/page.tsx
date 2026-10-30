@@ -11,7 +11,7 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-muted">Accedi per gestire le spese</p>
         </div>
 
-        <div className="rounded-3xl border border-border bg-surface p-6 shadow-card">
+        <div className="rounded-3xl bg-surface p-6">
           <LoginForm />
         </div>
       </div>

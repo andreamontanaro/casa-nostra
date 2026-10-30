@@ -19,7 +19,7 @@ export default function EnergiaLoading() {
       </header>
 
       <div className="grid items-start gap-5 lg:grid-cols-2">
-        <div className="rounded-3xl border border-border bg-surface p-5 lg:col-span-2">
+        <div className="rounded-3xl bg-surface p-5 lg:col-span-2">
           <Skeleton className="mb-3 h-4 w-40" />
           <Skeleton className="h-9 w-32 rounded-lg" />
           <Skeleton className="mt-2 h-4 w-44" />
@@ -27,14 +27,14 @@ export default function EnergiaLoading() {
           <Skeleton className="mt-2 h-3 w-full" />
           <Skeleton className="mt-4 h-4 w-52" />
         </div>
-        <div className="rounded-3xl border border-border bg-surface p-5 lg:col-span-2">
+        <div className="rounded-3xl bg-surface p-5 lg:col-span-2">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="mt-2 mb-4 h-3 w-48" />
           <Skeleton className="h-8 w-full" />
           <Skeleton className="mt-5 h-44 rounded-2xl" />
         </div>
         {[0, 1].map((card) => (
-          <div key={card} className="rounded-3xl border border-border bg-surface p-5">
+          <div key={card} className="rounded-3xl bg-surface p-5">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="mt-4 h-40 rounded-2xl" />
           </div>

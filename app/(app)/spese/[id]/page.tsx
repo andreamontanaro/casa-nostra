@@ -95,7 +95,7 @@ export default async function SpesaDetailPage({ params, searchParams }: Props) {
 
       {/* Transaction detail */}
       <div className="px-4 pb-5">
-        <Card className="divide-y divide-border overflow-hidden p-0">
+        <Card className="overflow-hidden p-0">
           <ListRow
             title={<span className="font-normal text-muted">Pagato da</span>}
             trailing={

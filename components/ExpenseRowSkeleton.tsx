@@ -27,7 +27,7 @@ export function ExpenseRowSkeleton({ index = 0 }: { index?: number }) {
   )
 }
 
-/** Le righe dentro una `Card` con `divide-y`: home e storico le usano uguali. */
+/** Le righe dentro una `Card`, senza divisori: home e storico le usano uguali. */
 export function ExpenseRowsSkeleton({ rows }: { rows: number }) {
   return (
     <>

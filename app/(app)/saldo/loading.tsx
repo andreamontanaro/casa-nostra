@@ -27,7 +27,7 @@ export default function SaldoLoading() {
         <div className="flex min-w-0 flex-col gap-4">
           <section>
             <Skeleton className="mb-3 ml-1 h-5 w-36 rounded-md" />
-            <Card className="divide-y divide-border overflow-hidden">
+            <Card className="overflow-hidden">
               {[0, 1].map((i) => (
                 <div key={i} className="flex items-center gap-3 px-4 py-3">
                   <Skeleton className="size-10 shrink-0 rounded-full" />
@@ -39,7 +39,7 @@ export default function SaldoLoading() {
           </section>
           <section>
             <Skeleton className="mb-3 ml-1 h-5 w-28 rounded-md" />
-            <Card className="divide-y divide-border overflow-hidden">
+            <Card className="overflow-hidden">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="px-4 py-3">
                   <div className="flex justify-between"><Skeleton className="h-4 w-24 rounded-md" /><Skeleton className="h-4 w-16 rounded-md" /></div>

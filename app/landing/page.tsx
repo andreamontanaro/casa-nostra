@@ -212,7 +212,7 @@ export default function LandingPage() {
             {steps.map(({ n, title, body }) => (
               <li
                 key={n}
-                className="flex gap-4 rounded-2xl border border-border bg-surface p-5 shadow-soft"
+                className="flex gap-4 rounded-2xl bg-surface p-5"
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-accent-foreground">
                   {n}
@@ -232,7 +232,7 @@ export default function LandingPage() {
         <h2 className="text-center text-2xl font-bold tracking-tight">Tutto quello che serve</h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {features.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="flex gap-4 rounded-2xl border border-border bg-surface p-5 shadow-soft">
+            <div key={title} className="flex gap-4 rounded-2xl bg-surface p-5">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-muted text-accent">
                 <Icon className="size-5" strokeWidth={2} />
               </div>

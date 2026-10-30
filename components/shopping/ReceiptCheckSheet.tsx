@@ -150,7 +150,7 @@ export function ReceiptCheckSheet({ open, onOpenChange, sharedFile }: ReceiptChe
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
       <div className="flex flex-col gap-4 px-4 pb-4 pt-1">
         {working && (
-          <Card role="status" className="flex items-center gap-3 px-4 py-6">
+          <Card tone="raised" role="status" className="flex items-center gap-3 px-4 py-6">
             <Spinner size="sm" />
             <span className="text-sm text-muted">
               {phase === 'uploading' ? '1 di 2 · Caricamento della foto…' : '2 di 2 · Lettura e confronto con la lista…'}
@@ -166,14 +166,14 @@ export function ReceiptCheckSheet({ open, onOpenChange, sharedFile }: ReceiptChe
         )}
 
         {result && !result.ok && (
-          <Card className="px-4 py-4">
+          <Card tone="raised" className="px-4 py-4">
             <p className="text-sm text-destructive">{result.error}</p>
           </Card>
         )}
 
         {result?.ok && (
           <>
-            <Card className="flex flex-col gap-1 px-4 py-4">
+            <Card tone="raised" className="flex flex-col gap-1 px-4 py-4">
               <span className="text-sm font-semibold text-foreground">
                 {result.storeName ?? 'Scontrino controllato'}
               </span>
@@ -239,7 +239,7 @@ function ResultGroup({
       {items.length === 0 ? (
         <p className="px-1 text-sm text-muted">{empty}</p>
       ) : (
-        <Card className="divide-y divide-border overflow-hidden p-0">
+        <Card tone="raised" className="overflow-hidden p-0">
           {items.map((item) => (
             <div key={item.key} className="flex items-baseline gap-2 px-4 py-2.5">
               <span

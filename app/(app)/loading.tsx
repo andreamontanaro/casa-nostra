@@ -45,7 +45,7 @@ export default function HomeLoading() {
                 <Skeleton className="h-4 w-20 rounded-md" />
               </div>
             </div>
-            <Card className="overflow-hidden border-0 p-0 shadow-none">
+            <Card className="overflow-hidden p-0">
               <ExpenseRowsSkeleton rows={5} />
             </Card>
           </section>

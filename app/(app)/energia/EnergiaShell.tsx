@@ -141,7 +141,7 @@ function StatusNotice({ snapshot }: { snapshot: EnergySnapshot }) {
   }[snapshot.status]
   if (!notice) return null
   return (
-    <div role="status" className="flex items-start gap-3 rounded-2xl border border-border bg-surface p-4 text-sm">
+    <div role="status" className="flex items-start gap-3 rounded-2xl bg-surface p-4 text-sm">
       <notice.Icon className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
       <p>{notice.text}</p>
     </div>
@@ -244,7 +244,7 @@ export function EnergiaShell({ initial }: { initial: EnergySnapshot }) {
               <>
                 <NoticeList notices={details.notices.slice(0, VISIBLE_NOTICES)} className="mt-2" />
                 {details.notices.length > VISIBLE_NOTICES && (
-                  <details className="border-t border-border">
+                  <details>
                     <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold">
                       {details.notices.length - VISIBLE_NOTICES === 1 ? 'Un altro avviso' : `Altri ${details.notices.length - VISIBLE_NOTICES} avvisi`}
                     </summary>
@@ -274,7 +274,7 @@ export function EnergiaShell({ initial }: { initial: EnergySnapshot }) {
 
 function NoticeList({ notices, className }: { notices: LoadNotice[]; className?: string }) {
   return (
-    <ul className={cn('divide-y divide-border', className)}>
+    <ul className={className}>
       {notices.map((notice, i) => {
         // Un'interruzione della rete non dipende da casa; il resto sì.
         const Icon = notice.type === 'provider_disconnection' ? ZapOff : TriangleAlert

@@ -11,7 +11,7 @@ function DayGroupSkeleton({ rows }: { rows: number }) {
         <Skeleton className="h-4 w-32 rounded-md" />
         <Skeleton className="h-4 w-16 rounded-md" />
       </div>
-      <Card className="divide-y divide-border overflow-hidden">
+      <Card className="overflow-hidden">
         <ExpenseRowsSkeleton rows={rows} />
       </Card>
     </section>
@@ -35,7 +35,7 @@ export default function SpeseLoading() {
       </header>
 
       <div className="space-y-3 pb-24">
-        <div className="rounded-2xl border border-border bg-surface">
+        <div className="rounded-2xl bg-surface">
           <div className="flex min-h-13 items-center gap-3 px-4 py-3">
             <Skeleton className="size-4 shrink-0 rounded-md" />
             <Skeleton className="h-4 w-36 rounded-md" />

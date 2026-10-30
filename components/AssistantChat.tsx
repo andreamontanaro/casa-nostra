@@ -211,7 +211,7 @@ export function AssistantChat() {
           </div>)}
         </div>
         {loading && <div role="status" className="flex items-center gap-2 px-1 text-sm text-muted"><Spinner size="sm" />{action ?? 'Sto preparando la risposta…'}</div>}
-        {failure && <p role="alert" className="rounded-2xl border border-border bg-surface p-4 text-sm">{failure}</p>}
+        {failure && <p role="alert" className="rounded-2xl bg-surface-raised p-4 text-sm">{failure}</p>}
         {messages.length > 0 && <Button variant="ghost" size="sm" disabled={loading} onClick={() => { setMessages([]); setFailure(null) }}>Nuova conversazione</Button>}
         <div ref={scrollRef} />
       </div>

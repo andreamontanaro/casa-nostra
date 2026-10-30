@@ -101,7 +101,7 @@ export function ConguaglioClient({ expenses, otherUserName, telegramEnabled, off
           </div>
           <p className="mb-4 px-1 text-sm text-muted">Il contributo indica quanto ogni spesa è a tuo favore o a favore del partner.</p>
           {expenses.length === 0 ? <Card className="p-6 text-center"><p className="text-muted">Non ci sono spese aperte.</p><Link href="/" className="mt-4 inline-flex min-h-11 items-center gap-2 font-semibold text-accent"><ArrowLeft className="size-4" aria-hidden />Torna alla home</Link></Card>
-            : <Card className="divide-y divide-border overflow-hidden">
+            : <Card className="overflow-hidden">
               {expenses.map((e) => <label key={e.id} className="flex cursor-pointer items-start gap-2 py-4 pr-4 pl-1">
                 <Checkbox checked={!excluded.has(e.id)} onChange={() => toggle(e.id)} disabled={isPending} aria-label={`Includi ${e.description}`} />
                 <div className="pt-1"><CategoryIcon category={e.category} /></div>

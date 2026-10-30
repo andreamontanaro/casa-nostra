@@ -232,7 +232,7 @@ export function ShoppingShell({
         <HeaderActions />
       </header>
 
-      <form onSubmit={quickAdd} aria-busy={quickPending > 0 || undefined} className="flex items-center gap-2 rounded-3xl border border-border bg-surface p-2">
+      <form onSubmit={quickAdd} aria-busy={quickPending > 0 || undefined} className="flex items-center gap-2 rounded-3xl bg-surface p-2">
         <input ref={quickInput} aria-label="Prodotto da aggiungere" placeholder="Cosa serve? Es. x2 mele" value={quickName} onChange={(e) => setQuickName(e.target.value)}
           className="min-h-12 min-w-0 flex-1 rounded-2xl bg-transparent px-3 text-base" enterKeyHint="send" />
         <Button type="submit" aria-label="Aggiungi prodotto" disabled={!quickName.trim()} className="shrink-0 px-4">
@@ -241,7 +241,7 @@ export function ShoppingShell({
       </form>
 
       {missingSinceCheck.length > 0 && lastCheck && (
-        <Card className="flex flex-col gap-2 border-border bg-accent-muted/50 px-4 py-4">
+        <Card className="flex flex-col gap-2 bg-accent-muted/50 px-4 py-4">
           <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <ShoppingBasket className="size-4 text-accent" />
             Da prendere la prossima volta
@@ -302,14 +302,14 @@ export function ShoppingShell({
           {grouped.map(([category, items]) => (
             <section key={category}>
               <Card className="overflow-hidden p-0">
-                <div className="flex items-center gap-2 border-b border-border bg-surface-sunken/60 px-4 py-2">
+                <div className="flex items-center gap-2 bg-surface-sunken/60 px-4 py-2">
                   <span aria-hidden>{SHOPPING_CATEGORY_ICON[category]}</span>
                   <span className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted">
                     {SHOPPING_CATEGORY_LABELS[category]}
                   </span>
                   <span className="text-xs text-muted">{items.length}</span>
                 </div>
-                <div className="divide-y divide-border">
+                <div>
                   <AnimatePresence initial={false}>
                     {items.map((item) => (
                       <motion.div
@@ -343,7 +343,7 @@ export function ShoppingShell({
       )}
 
       {boughtItems.length > 0 && (
-        <details className="rounded-3xl border border-border bg-surface p-4"><summary className="min-h-11 font-semibold">Comprati di recente ({boughtItems.length})</summary>
+        <details className="rounded-3xl bg-surface p-4"><summary className="min-h-11 font-semibold">Comprati di recente ({boughtItems.length})</summary>
         <section className="mt-3">
           <div className="mb-3 flex items-center justify-between px-1">
             <h2 className="text-label font-semibold uppercase tracking-wide text-muted">
@@ -357,7 +357,7 @@ export function ShoppingShell({
               Svuota
             </button>
           </div>
-          <Card className="divide-y divide-border overflow-hidden p-0">
+          <Card className="overflow-hidden p-0">
             {boughtItems.map((item) => (
               <ShoppingItemRow
                 key={item.id}
