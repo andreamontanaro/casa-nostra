@@ -103,10 +103,14 @@
 /* ─── Accenti alternativi ───────────────────────────────────────
    Scelti dall'utente (`AccentPicker`, elenco in `lib/theme.ts`) e applicati
    con `data-accent` su <html>; senza attributo resta la menta di :root.
-   Cambiano solo la famiglia primary — primario, testo sul primario,
-   contenitore, testo sul contenitore — e il bagliore del FAB: superfici
-   crema, testi, bordi e `--positive` (il verde del "a tuo favore", che è un
-   significato e non un tema) restano quelli di sempre.
+   Cambiano la famiglia primary — primario, testo sul primario,
+   contenitore, testo sul contenitore — il bagliore del FAB e, appena, lo
+   sfondo: in chiaro `--background` (e il vetro di header e barra, che ci sta
+   sopra) prende la tinta dell'accento alla luminosità della crema; in scuro,
+   dove sfondo, superfici e bordi sono tutti velati di menta, il velo passa
+   alla tinta dell'accento con la stessa luminosità e la stessa saturazione
+   (OKLCH). Superfici chiare, testi e `--positive` (il verde del "a tuo
+   favore", che è un significato e non un tema) restano quelli di sempre.
 
    Ogni blocco ridefinisce sia i valori chiari sia le sorgenti --dk-*, così i
    due blocchi dark sotto continuano a funzionare senza sapere nulla degli
@@ -115,14 +119,26 @@
    più specifiche, che quindi possono stare in qualunque punto.
 
    Contrasti (WCAG): primario su crema ≥ 5,4:1, testo sul primario ≥ 5,8:1,
-   testo sul contenitore ≥ 8:1; in dark primario sul fondo ≥ 9,5:1. */
+   testo sul contenitore ≥ 8:1; in dark primario sul fondo ≥ 9,5:1 (contro
+   lo sfondo del proprio accento: lo verifica `tests/theme.test.mjs`). */
 
 :root:where([data-accent="oceano"]) {
+  --background: #f0f6fd;
+  --glass-bg: rgb(240 246 253 / 0.88);
+
   --accent: #25618f;
   --accent-foreground: #fffdf8;
   --accent-muted: #dbe8f3;
   --accent-soft: #173f60;
   --shadow-fab: 0 4px 12px rgb(37 97 143 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+
+  --dk-background: #141a1f;
+  --dk-surface: #1e272f;
+  --dk-surface-raised: #273440;
+  --dk-surface-sunken: #171f26;
+  --dk-border: #354453;
+  --dk-border-strong: #617587;
+  --dk-glass-bg: rgb(20 26 31 / 0.88);
 
   --dk-accent: #9fc7ec;
   --dk-accent-foreground: #11304b;
@@ -132,11 +148,22 @@
 }
 
 :root:where([data-accent="lavanda"]) {
+  --background: #f6f4fc;
+  --glass-bg: rgb(246 244 252 / 0.88);
+
   --accent: #68509a;
   --accent-foreground: #fffdf8;
   --accent-muted: #e9e2f4;
   --accent-soft: #44306d;
   --shadow-fab: 0 4px 12px rgb(104 80 154 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+
+  --dk-background: #1a171e;
+  --dk-surface: #27232e;
+  --dk-surface-raised: #342f3f;
+  --dk-surface-sunken: #1f1c26;
+  --dk-border: #453f52;
+  --dk-border-strong: #756e85;
+  --dk-glass-bg: rgb(26 23 30 / 0.88);
 
   --dk-accent: #c9b6ef;
   --dk-accent-foreground: #2f2152;
@@ -146,11 +173,22 @@
 }
 
 :root:where([data-accent="lampone"]) {
+  --background: #fcf2f5;
+  --glass-bg: rgb(252 242 245 / 0.88);
+
   --accent: #a3345d;
   --accent-foreground: #fffdf8;
   --accent-muted: #f7dfe6;
   --accent-soft: #6e1c3b;
   --shadow-fab: 0 4px 12px rgb(163 52 93 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+
+  --dk-background: #1e1619;
+  --dk-surface: #2e2226;
+  --dk-surface-raised: #3f2c32;
+  --dk-surface-sunken: #261a1e;
+  --dk-border: #513c43;
+  --dk-border-strong: #856972;
+  --dk-glass-bg: rgb(30 22 25 / 0.88);
 
   --dk-accent: #f3aec5;
   --dk-accent-foreground: #4e1229;
@@ -160,11 +198,22 @@
 }
 
 :root:where([data-accent="ambra"]) {
+  --background: #faf4ed;
+  --glass-bg: rgb(250 244 237 / 0.88);
+
   --accent: #8a5a00;
   --accent-foreground: #fffdf8;
   --accent-muted: #f5e6c8;
   --accent-soft: #5a3a00;
   --shadow-fab: 0 4px 12px rgb(138 90 0 / 0.3), 0 1px 2px rgb(15 28 26 / 0.1);
+
+  --dk-background: #1c1812;
+  --dk-surface: #2a251a;
+  --dk-surface-raised: #393122;
+  --dk-surface-sunken: #221d14;
+  --dk-border: #4b412f;
+  --dk-border-strong: #7d7159;
+  --dk-glass-bg: rgb(28 24 18 / 0.88);
 
   --dk-accent: #eec36a;
   --dk-accent-foreground: #3d2900;

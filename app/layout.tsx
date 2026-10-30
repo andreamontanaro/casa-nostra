@@ -55,9 +55,13 @@ export const viewport: Viewport = {
 
 // Tema e accento scelti si applicano prima del primo paint, niente lampo di
 // menta chiara. Gli accenti validi vengono da `lib/theme.ts`: un valore
-// sconosciuto in localStorage (accento rimosso) ricade sulla menta.
-const ALT_ACCENTS = JSON.stringify(ACCENTS.map((a) => a.id).filter((id) => id !== DEFAULT_ACCENT))
-const themeInitScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){d.setAttribute('data-theme',t);}var a=localStorage.getItem('${ACCENT_STORAGE_KEY}');if(${ALT_ACCENTS}.indexOf(a)>=0){d.setAttribute('data-accent',a);}}catch(e){}})();`
+// sconosciuto in localStorage (accento rimosso) ricade sulla menta. Con un
+// accento diverso dalla menta si tinge anche la barra di sistema (come
+// `syncThemeColor`), di nuovo a DOMContentLoaded se i meta arrivano dopo.
+const ALT_ACCENTS = JSON.stringify(Object.fromEntries(
+  ACCENTS.filter((a) => a.id !== DEFAULT_ACCENT).map((a) => [a.id, [a.bgLight, a.bgDark]]),
+))
+const themeInitScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){d.setAttribute('data-theme',t);}var a=localStorage.getItem('${ACCENT_STORAGE_KEY}');var c=${ALT_ACCENTS};if(c.hasOwnProperty(a)){d.setAttribute('data-accent',a);var f=function(){var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++){m[i].content=c[a][m[i].media.indexOf('dark')>=0?1:0];}};f();document.addEventListener('DOMContentLoaded',f);}}catch(e){}})();`
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

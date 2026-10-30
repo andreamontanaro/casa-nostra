@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 import { Check } from 'lucide-react'
-import { ACCENTS, ACCENT_STORAGE_KEY, DEFAULT_ACCENT, isAccent, type Accent } from '@/lib/theme'
+import { ACCENTS, ACCENT_STORAGE_KEY, DEFAULT_ACCENT, isAccent, syncThemeColor, type Accent } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
 function readAccent(): Accent {
@@ -13,6 +13,7 @@ function readAccent(): Accent {
 function applyAccent(accent: Accent) {
   if (accent === DEFAULT_ACCENT) document.documentElement.removeAttribute('data-accent')
   else document.documentElement.setAttribute('data-accent', accent)
+  syncThemeColor(accent)
 }
 
 function subscribe(callback: () => void) {

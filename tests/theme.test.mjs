@@ -58,16 +58,43 @@ test('i campioni del selettore sono i colori veri dell’accento', () => {
   }
 })
 
-test('ogni accento regge il contrasto AA su crema e su fondo scuro', () => {
-  const base = block(':root')
+/** Le variabili del tema con l'accento attivo: il suo blocco sopra :root. */
+function resolved(id) {
+  return { ...block(':root'), ...palette(id) }
+}
+
+test('la barra di sistema ha lo sfondo vero dell’accento', () => {
+  for (const { id, bgLight, bgDark } of ACCENTS) {
+    const v = resolved(id)
+    assert.equal(v['--background'], bgLight, `${id} chiaro`)
+    assert.equal(v['--dk-background'], bgDark, `${id} scuro`)
+  }
+})
+
+test('lo sfondo tinto è tenue e il vetro di header e barra combacia', () => {
+  const hex = (rgb) => '#' + rgb.match(/rgb\((\d+) (\d+) (\d+) \//).slice(1).map((n) => Number(n).toString(16).padStart(2, '0')).join('')
   for (const { id } of ACCENTS) {
-    const v = palette(id)
-    assert.ok(contrast(v['--accent'], base['--background']) >= 4.5, `${id}: primario su crema`)
-    assert.ok(contrast(v['--accent'], base['--surface-raised']) >= 4.5, `${id}: primario su superficie`)
+    const v = resolved(id)
+    assert.equal(hex(v['--glass-bg']), v['--background'], `${id}: vetro chiaro`)
+    assert.equal(hex(v['--dk-glass-bg']), v['--dk-background'], `${id}: vetro scuro`)
+    // Tenue: lo sfondo chiaro resta quasi bianco, quello scuro quasi nero.
+    assert.ok(luminance(v['--background']) > 0.85, `${id}: sfondo chiaro troppo carico`)
+    assert.ok(luminance(v['--dk-background']) < 0.015, `${id}: sfondo scuro troppo chiaro`)
+  }
+})
+
+test('ogni accento regge il contrasto AA sul proprio sfondo, chiaro e scuro', () => {
+  for (const { id } of ACCENTS) {
+    const v = resolved(id)
+    assert.ok(contrast(v['--accent'], v['--background']) >= 4.5, `${id}: primario sullo sfondo`)
+    assert.ok(contrast(v['--accent'], v['--surface-raised']) >= 4.5, `${id}: primario su superficie`)
+    assert.ok(contrast(v['--muted'], v['--background']) >= 4.5, `${id}: testo secondario sullo sfondo`)
     assert.ok(contrast(v['--accent-foreground'], v['--accent']) >= 4.5, `${id}: testo sul primario`)
     assert.ok(contrast(v['--accent-soft'], v['--accent-muted']) >= 4.5, `${id}: testo sul contenitore`)
-    assert.ok(contrast(v['--dk-accent'], base['--dk-background']) >= 4.5, `${id}: primario sul fondo scuro`)
-    assert.ok(contrast(v['--dk-accent'], base['--dk-surface-raised']) >= 4.5, `${id}: primario su superficie scura`)
+    assert.ok(contrast(v['--dk-accent'], v['--dk-background']) >= 4.5, `${id}: primario sul fondo scuro`)
+    assert.ok(contrast(v['--dk-accent'], v['--dk-surface-raised']) >= 4.5, `${id}: primario su superficie scura`)
+    assert.ok(contrast(v['--dk-muted'], v['--dk-surface-raised']) >= 4.5, `${id}: testo secondario su superficie scura`)
+    assert.ok(contrast(v['--dk-foreground'], v['--dk-surface-raised']) >= 7, `${id}: testo su superficie scura`)
     assert.ok(contrast(v['--dk-accent-foreground'], v['--dk-accent']) >= 4.5, `${id}: testo sul primario scuro`)
     assert.ok(contrast(v['--dk-accent-soft'], v['--dk-accent-muted']) >= 4.5, `${id}: testo sul contenitore scuro`)
   }
