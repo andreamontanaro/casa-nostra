@@ -64,7 +64,10 @@ export async function POST(request: Request) {
           onShoppingChanged: () => write(REFRESH_SENTINEL),
         })
         controller.close()
-      } catch {
+      } catch (e) {
+        // Senza questa riga l'errore sparisce: l'utente vede solo l'avviso
+        // generico e nei log di Vercel non resta niente da cui risalire.
+        console.error('[assistant] errore nella conversazione:', e)
         write('\n\n⚠️ Si è verificato un errore con l\'assistente. Riprova tra poco.')
         controller.close()
       }
