@@ -128,7 +128,7 @@ export default function LandingPage() {
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" className="size-7" />
+            <img src="/icon-192.png" alt="" className="size-7 rounded-lg" />
             <span className="text-base font-semibold tracking-tight">Casa Nostra</span>
           </div>
           <CtaLink href="/login" size="sm">
@@ -349,7 +349,7 @@ export default function LandingPage() {
         <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-1 px-4 py-8 text-center">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" className="size-5" />
+            <img src="/icon-192.png" alt="" className="size-5 rounded-md" />
             <span className="text-sm font-semibold">Casa Nostra</span>
           </div>
           <p className="text-xs text-muted">Gestione spese condivise</p>

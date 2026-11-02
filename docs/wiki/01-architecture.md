@@ -70,8 +70,8 @@ La struttura del progetto segue la convenzione standard di Next.js:
   * `energy/` → `lib/energy/`: Modulo Energia, solo lato server tranne `readings.ts`. `fastweb.ts` è il client delle chiamate interne di MyFastweb (cookie a mano, redirect manuali, lettura dei form); `crypto.ts` cifra la sessione salvata; `service.ts` decide quando riusare la cache, quando rinnovare i token e quando rifare il login, con un client Supabase esplicito (il service role); `readings.ts` sono i tipi e le funzioni pure (letture ripulite, fasce della batteria) che usa anche la schermata. Verificati da `tests/energy.test.mjs`, che controlla anche che nessun componente client importi i moduli lato server.
   * `telegram/` → `lib/telegram/`: Configurazione, client dell'API Bot, formattazione dei messaggi, memoria conversazionale e testi delle notifiche.
 * `types/` → `types/`: Tipi TypeScript generati dal DB e costanti dell'applicazione.
-* `public/` → `public/`: Manifest dell'app installata (`manifest.webmanifest`), icone SVG e PNG, e `sw.js`, il service worker che riceve gli scontrini condivisi da altre app (vedi `06-configuration.md`).
-* `scripts/` → `scripts/`: Script da riga di comando: configurazione del bot Telegram e generazione delle icone PNG (`generate-icons.mjs`).
+* `public/` → `public/`: Manifest dell'app installata (`manifest.webmanifest`), icone PNG, immagini di avvio per iPhone (`splash/`), e `sw.js`, il service worker che riceve gli scontrini condivisi da altre app (vedi `06-configuration.md`).
+* `scripts/` → `scripts/`: Script da riga di comando: configurazione del bot Telegram e generazione di icone PNG e schermata di avvio (`generate-icons.mjs`, dall'immagine `icon-source.webp`).
 * `docs/` → `docs/`: Documentazione di progetto (schema SQL, log delle modifiche, requisiti).
 
 ---

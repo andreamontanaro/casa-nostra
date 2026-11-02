@@ -4,7 +4,9 @@ import NextTopLoader from 'nextjs-toploader'
 import { Toaster } from '@/lib/toast'
 import { MotionProvider } from '@/components/MotionProvider'
 import { KeyboardInsets } from '@/components/KeyboardInsets'
+import { AppSplash, SPLASH_SCRIPT } from '@/components/AppSplash'
 import { ACCENTS, ACCENT_STORAGE_KEY, DEFAULT_ACCENT, THEME_COLOR_DARK, THEME_COLOR_LIGHT } from '@/lib/theme'
+import splash from '@/lib/splash-screens.json'
 import './globals.css'
 
 // Font locali: nessuna richiesta esterna durante build o navigazione.
@@ -29,12 +31,22 @@ const fraunces = localFont({
 export const metadata: Metadata = {
   title: 'Casa Nostra',
   description: 'Gestione spese condivise',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Casa Nostra' },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Casa Nostra',
+    // Senza un'immagine per le misure esatte dello schermo, iOS avvia l'app
+    // su uno schermo vuoto finché non arriva la pagina.
+    startupImage: splash.screens.map(({ width, height, ratio }) => ({
+      url: `/splash/${width}x${height}@${ratio}x.png`,
+      media: `(device-width: ${width}px) and (device-height: ${height}px) and (-webkit-device-pixel-ratio: ${ratio}) and (orientation: portrait)`,
+    })),
+  },
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/icon.svg',
-    // iOS non usa un apple-touch-icon SVG: serve un PNG pieno, senza
-    // trasparenza (generato da scripts/generate-icons.mjs).
+    icon: { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    // iOS vuole un PNG pieno, senza trasparenza (generato da
+    // scripts/generate-icons.mjs).
     apple: { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
   },
 }
@@ -71,8 +83,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="it" className={`h-full ${manrope.variable} ${fraunces.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: SPLASH_SCRIPT }} />
       </head>
       <body className="min-h-full bg-background text-foreground antialiased">
+        <AppSplash />
         <NextTopLoader color="var(--accent)" showSpinner={false} height={2} />
         <KeyboardInsets />
         <MotionProvider>{children}</MotionProvider>

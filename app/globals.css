@@ -544,6 +544,43 @@ dialog::backdrop {
   animation-delay: var(--ring-delay, 0ms);
 }
 
+/* Schermata di avvio dell'app installata (components/AppSplash.tsx). Spenta
+   di serie: la accende lo script nell'<head> con data-splash="on", e con
+   "off" svanisce. L'icona sta esattamente al centro, come nell'immagine di
+   avvio di iOS; l'indicatore è sotto, fuori dal flusso, per non spostarla. */
+.app-splash {
+  display: none;
+}
+html[data-splash] .app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* visibility resta "visible" per tutta la transizione: sparisce alla fine. */
+  transition: opacity 0.3s ease-out, visibility 0.3s;
+}
+html[data-splash="off"] .app-splash {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.app-splash-spinner {
+  position: absolute;
+  top: calc(50% + 64px + 2.5rem);
+  left: calc(50% - 0.875rem);
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  border: 3px solid rgb(176 249 208 / 0.18);
+  border-top-color: #b0f9d0;
+  animation: splash-spin 0.8s linear infinite;
+}
+@keyframes splash-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Identità menta e crema, accessibilità e shell adattiva. */
 .font-display { font-variation-settings: "SOFT" 100, "WONK" 1; font-optical-sizing: auto; }
 @layer base { :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; } }
