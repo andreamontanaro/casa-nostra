@@ -88,6 +88,17 @@ Questa pagina riassume le scelte tecnologiche e architetturali principali effett
 
 ---
 
+## Abbonamenti
+
+### La sveglia su Supabase (`pg_cron`), il lavoro nell'app
+* **Contesto**: gli addebiti devono registrarsi da soli a un'ora scelta dai due, che si può cambiare dall'app. Vercel Cron sul piano Hobby gira al massimo una volta al giorno, a un orario fisso in UTC (che con l'ora legale si sposta) e con un'ora di tolleranza.
+* **Scelta**: `pg_cron` di Supabase chiama ogni ora `/api/cron/abbonamenti` con `pg_net`; la rotta guarda l'ora scelta sul database e lavora solo da lì in poi → BLOCCO 2 di `docs/migrations/2026-11-05_abbonamenti.sql`.
+* **Motivazione**: l'ora resta un dato dell'app, non della configurazione del deploy, ed è puntuale. Il lavoro sta in TypeScript, non in SQL, perché deve comporre i messaggi Telegram con lo stesso codice delle altre notifiche; le date stanno in un modulo puro e testato. Da quell'ora ogni chiamata rifà il giro, quindi un'esecuzione saltata la recupera quella dopo.
+
+### Spese vere, registro a parte
+* **Scelta**: il cron crea righe normali in `expenses` e tiene il legame in `subscription_charges`, senza colonne nuove su `expenses`.
+* **Motivazione**: saldo, conguaglio, storico, statistiche e assistente le trattano già bene, senza eccezioni. Il registro con `UNIQUE (subscription_id, due_on)` è il lucchetto contro i doppioni (come `update_id` per Telegram) e ricorda anche le spese eliminate a mano, che così non tornano.
+
 ## Faccende
 
 ### Vista 3D a scelta, caricata solo su richiesta

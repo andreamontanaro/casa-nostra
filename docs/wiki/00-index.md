@@ -21,6 +21,8 @@ Il modulo **Faccende domestiche** (`/faccende`) tiene traccia di chi fa cosa in 
 
 Il modulo **Energia** (`/energia`) mostra la potenza che la casa sta assorbendo in questo momento, come una batteria che si riempie verso il massimo sopportabile dal contatore, più i consumi degli ultimi 7 giorni, la ripartizione per apparecchio, lo stato della presa e gli avvisi di distacco. I dati vengono da **Fastweb Power Control** attraverso le chiamate interne di MyFastweb (Fastweb non ha API pubbliche), con una sessione riusata e conservata cifrata sul database. Si spegne togliendo le credenziali, come Telegram.
 
+Il modulo **Abbonamenti** (`/abbonamenti`, dal 5 novembre 2026) tiene le spese ricorrenti, come Internet di casa ogni 8 del mese: ognuno è lo stampo di una spesa (importo, categoria, divisione, chi paga) più una cadenza (un giorno del mese, ogni 1, 2, 3, 6 o 12 mesi). Il giorno dell'addebito, all'ora scelta, la spesa si registra da sola nello storico e il gruppo Telegram riceve una notifica con il saldo; 3 giorni prima arriva un promemoria. A svegliare l'app ogni ora è `pg_cron` di Supabase, che chiama `/api/cron/abbonamenti`; senza `CRON_SECRET` il modulo resta un elenco e nessuna spesa si registra da sola.
+
 ---
 
 ## Indice della Wiki

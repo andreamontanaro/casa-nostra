@@ -683,6 +683,135 @@ export type Database = {
           },
         ]
       }
+      subscription_charges: {
+        Row: {
+          charged_at: string | null
+          created_at: string
+          due_on: string
+          expense_id: string | null
+          id: string
+          reminded_at: string | null
+          subscription_id: string
+        }
+        Insert: {
+          charged_at?: string | null
+          created_at?: string
+          due_on: string
+          expense_id?: string | null
+          id?: string
+          reminded_at?: string | null
+          subscription_id: string
+        }
+        Update: {
+          charged_at?: string | null
+          created_at?: string
+          due_on?: string
+          expense_id?: string | null
+          id?: string
+          reminded_at?: string | null
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_charges_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_charges_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_settings: {
+        Row: {
+          id: number
+          notify_hour: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          notify_hour?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          notify_hour?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          active: boolean
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          charge_day: number
+          created_at: string
+          created_by: string
+          custom_other_share: number | null
+          description: string
+          id: string
+          interval_months: number
+          paid_by: string
+          split_rule: Database["public"]["Enums"]["split_rule"]
+          start_month: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          charge_day: number
+          created_at?: string
+          created_by: string
+          custom_other_share?: number | null
+          description: string
+          id?: string
+          interval_months?: number
+          paid_by: string
+          split_rule: Database["public"]["Enums"]["split_rule"]
+          start_month: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          charge_day?: number
+          created_at?: string
+          created_by?: string
+          custom_other_share?: number | null
+          description?: string
+          id?: string
+          interval_months?: number
+          paid_by?: string
+          split_rule?: Database["public"]["Enums"]["split_rule"]
+          start_month?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telegram_messages: {
         Row: {
           chat_id: number

@@ -85,6 +85,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/api/sync` → `app/api/sync/route.ts`: Impronta dei dati condivisi per l'aggiornamento automatico delle pagine (richiede sessione, vedi `04-api-surface.md`).
 * `/api/energia` → `app/api/energia/route.ts`: Potenza istantanea e consumi da Fastweb Power Control per la schermata Energia (richiede sessione; legge e scrive la sessione MyFastweb con il service role, vedi `04-api-surface.md`).
 * `/api/telegram/webhook` → `app/api/telegram/webhook/route.ts`: Riceve gli update del bot Telegram; si autentica con il secret condiviso, non con la sessione.
+* `/api/cron/abbonamenti` → `app/api/cron/abbonamenti/route.ts`: Sveglia oraria degli abbonamenti, chiamata da `pg_cron` di Supabase; si autentica con `CRON_SECRET`, non con la sessione (vedi `04-api-surface.md`).
 * `/condividi` → `app/condividi/route.ts`: `action` del `share_target` del manifest. Di norma il POST con la foto non arriva mai qui: lo intercetta il service worker `public/sw.js` (scope `/condividi`), che parcheggia il file nella Cache Storage e manda a `/lista?condiviso=1`. La Route Handler risponde solo quando il worker non è ancora attivo, rimandando alla lista con un messaggio (`?condiviso=non-pronto`).
 
 ### Rotte Pubbliche
@@ -101,6 +102,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 * `/conguaglio` → `app/(app)/conguaglio/page.tsx`: Schermata di riepilogo e registrazione del conguaglio. Raggiungibile dal menu e dall'azione rapida «Regola saldo» in home, non dalla bottom nav (è l'azione più rara: vedi `08-patterns.md`).
 * `/saldo` → `app/(app)/saldo/page.tsx`: Dettagli del saldo — anello grande, chi ha anticipato, contributo di ogni categoria, «chi paga la prossima» → `components/BalanceDetails.tsx`. Raggiungibile dall'azione rapida «Dettagli» in home e dal menu (voci secondarie).
 * `/statistiche` → `app/(app)/statistiche/page.tsx`: Grafici sull'andamento delle spese di casa. Raggiungibile dal menu e dall'azione rapida «Statistiche» in home (non dalla bottom nav: vedi `08-patterns.md`).
+* `/abbonamenti` → `app/(app)/abbonamenti/page.tsx`: Abbonamenti ricorrenti — totale al mese, ora di addebiti e promemoria, l'elenco con il prossimo addebito; un tocco apre il foglio di modifica (sospendi, elimina) → `app/(app)/abbonamenti/AbbonamentiShell.tsx`. Solo nel menu (voci secondarie).
 * `/impostazioni` → `app/(app)/impostazioni/page.tsx`: Gestione del profilo utente (display name, cambio password, collegamento dell'account Telegram).
 
 ---
@@ -110,7 +112,7 @@ L'applicazione definisce rotte pubbliche e rotte private.
 A causa dell'utilizzo di **Next.js 16**, il file standard `middleware.ts` è deprecato e sostituito da `proxy.ts` nella root del progetto → `proxy.ts`.
 
 La funzione `proxy(request)` intercetta tutte le richieste HTTP corrispondenti al matcher ed esegue i seguenti passaggi di sicurezza:
-0. **Esclusione del webhook Telegram**: le richieste su `/api/telegram/*` proseguono senza controlli, perché arrivano dai server di Telegram e non hanno cookie di sessione: verrebbero altrimenti redirette a `/landing`. Quel percorso si autentica da solo con il secret condiviso → `proxy.ts`.
+0. **Esclusione del webhook Telegram e del cron**: le richieste su `/api/telegram/*` e `/api/cron/*` proseguono senza controlli, perché arrivano dai server di Telegram o da `pg_cron` di Supabase e non hanno cookie di sessione: verrebbero altrimenti redirette a `/landing`. Quei percorsi si autenticano da soli con il secret condiviso (`TELEGRAM_WEBHOOK_SECRET`, `CRON_SECRET`) → `proxy.ts`.
 1. **Refresh della Sessione**: Recupera la sessione utente tramite `supabase.auth.getUser()` ed aggiorna i cookie di sessione per mantenere l'autenticazione attiva → `proxy.ts#L26`.
 2. **Controllo Autenticazione & Redirect**:
    * Se l'utente **non è autenticato** e richiede una risorsa privata (qualsiasi rotta tranne `/landing` e `/login`), viene reindirizzato a `/landing` → `proxy.ts#L33`.

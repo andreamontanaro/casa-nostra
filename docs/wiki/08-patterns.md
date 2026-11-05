@@ -117,6 +117,14 @@ La schermata `/energia` (15 ottobre 2026) parte da una domanda sola: quanto poss
 - **Aggiornamento.** `EnergiaShell` chiede `/api/energia` ogni 15 s solo a pagina visibile e in rete, una richiesta alla volta, e subito al ritorno nella pagina. Se Fastweb non risponde l'attesa raddoppia fino a 5 minuti; dopo un captcha o un rifiuto aspetta l'ora indicata dal server, e una riga neutra in cima dice cosa succede e quando riprova. Il primo disegno arriva dal server con l'ultima lettura salvata, senza aspettare Fastweb.
 - **Su desktop** la batteria e le 6 ore occupano tutta la larghezza, le card dei 7 giorni e degli apparecchi si affiancano.
 
+## Abbonamenti
+
+La schermata `/abbonamenti` (5 novembre 2026) sta nel menu, fra le voci secondarie: si apre quando si aggiunge o si corregge un abbonamento, non tutti i giorni.
+
+- **In cima** una riga che dice cosa succede (la spesa arriva da sola, Telegram lo sa, promemoria 3 giorni prima), poi il **totale al mese** degli attivi (un annuale pesa un dodicesimo) e la card dell'**ora di addebiti e promemoria**, un `<select>` nativo da 00:00 a 23:00 che salva da solo con un toast. Senza Telegram, sotto, una riga dice che le spese si registrano comunque ma senza avvisi.
+- **L'elenco**: righe `ListRow` con icona della categoria, nome, cadenza in parole («Ogni mese, il giorno 8 · 50 / 50 · paga Andrea») e a destra importo e prossimo addebito («domani», «fra 3 giorni» entro la settimana, poi la data corta). I sospesi in fondo, attenuati, con «Sospeso».
+- **Il foglio** (`Sheet` a tutta altezza, come la nuova spesa): importo grande, nome, categorie a griglia, divisione con l'anteprima delle quote, «Addebito su», frequenza (Mensile, Bimestrale, Trimestrale, Semestrale, Annuale) e la data del prossimo addebito, con sotto la cadenza in parole e l'ora. In modifica, in fondo, «Sospendi»/«Riattiva» ed «Elimina» (con `Dialog`: le spese già registrate restano).
+
 ## Assistente
 
 Sheet Radix con focus contenuto, chiusura da tastiera e textarea. I pulsanti contestuali aprono un messaggio modificabile; non lo inviano automaticamente. Un solo invio attivo fino alla chiusura dello stream. Errori di rete conservano il testo e ricordano di verificare eventuali operazioni confermate.

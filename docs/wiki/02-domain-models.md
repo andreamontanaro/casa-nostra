@@ -169,3 +169,19 @@ Sessione MyFastweb e ultime letture del modulo Energia → `docs/migrations/2026
 * **Cache**: `realtime` (`{ watts, limitKw }`) con `realtime_at`, `details` (giorni, totali dei 7 giorni e dei 7 prima, apparecchi, presa, avvisi) con `details_at`, `history` (la potenza delle ultime 6 ore, `{ points: [{ at, watts }], peakWatts }`, un punto al minuto; colonne aggiunte da `docs/migrations/2026-10-19_energia_storico.sql`) con `history_at`. Solo dati già ripuliti da `lib/energy/readings.ts`: mai i dati dell'intestatario che Fastweb manda insieme (`realtime_sin`).
 * **RLS attiva senza policy** e privilegi revocati ad `anon` e `authenticated`: la legge e la scrive solo il service role.
 
+### 13. Abbonamento (`subscriptions`)
+Lo stampo di una spesa ricorrente → `docs/migrations/2026-11-05_abbonamenti.sql`, sezione 16 dello schema.
+* **Spesa**: `description` (1-80 caratteri), `amount`, `category` (default `abbonamento`), `split_rule` e `custom_other_share` con lo stesso vincolo di coerenza di `expenses` (in più la quota personalizzata deve stare sotto l'importo), `paid_by` (di chi è la carta: diventa `paid_by` e `created_by` della spesa).
+* **Cadenza**: `charge_day` (1-31), `interval_months` (1, 2, 3, 6, 12) e `start_month` (sempre il primo del mese). L'addebito k-esimo cade nel mese `start_month + k · interval_months`, il giorno `charge_day` o l'ultimo del mese se è più corto (il 31 a febbraio è il 28, poi si torna al 31). Le date le calcola `lib/subscriptions/schedule.ts`, testato. Nel form si sceglie il **prossimo addebito**: da quella data nascono `charge_day` e `start_month`.
+* **`active`**: sospeso, niente spese né promemoria. Riattivandolo `start_month` si sposta al prossimo addebito: i mesi di pausa non si recuperano.
+* **RLS**: accesso completo per i due utenti autorizzati, come le spese.
+
+### 14. Registro degli addebiti (`subscription_charges`)
+Una riga per abbonamento e data di addebito (`due_on`), creata dal primo dei due eventi.
+* `reminded_at`: promemoria preso in carico; `charged_at`: spesa presa in carico; `expense_id`: la spesa creata (`ON DELETE SET NULL`: se la si elimina dallo storico l'addebito resta registrato e non viene ricreato).
+* **Idempotenza**: `UNIQUE (subscription_id, due_on)` più un `UPDATE … WHERE charged_at IS NULL` (o `reminded_at`) come presa in carico: due esecuzioni del cron in parallelo non creano due spese (vedi `03-services.md`).
+* **RLS**: solo lettura per i due utenti; lo scrive il cron con il service role. Eliminando l'abbonamento le righe se ne vanno (`CASCADE`), le spese restano.
+
+### 15. Impostazioni degli abbonamenti (`subscription_settings`)
+Riga unica (`id = 1`): `notify_hour` (0-23, default 9), l'ora Europe/Rome da cui il cron registra gli addebiti del giorno e manda i promemoria, la stessa per tutti gli abbonamenti. I due utenti la leggono e la cambiano dalla schermata.
+

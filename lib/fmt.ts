@@ -72,6 +72,18 @@ export function formatDateTime(iso: string) {
   return `${DATE_LONG.format(date)} alle ${TIME.format(date)}`
 }
 
+const WEEKDAY_DATE = new Intl.DateTimeFormat('it-IT', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'Europe/Rome',
+})
+
+/** «sabato 8 novembre», nel fuso orario della casa. */
+export function formatWeekdayDate(dateStr: string) {
+  return WEEKDAY_DATE.format(new Date(dateStr))
+}
+
 export function formatDateShort(dateStr: string) {
   return DATE_SHORT.format(new Date(dateStr))
 }

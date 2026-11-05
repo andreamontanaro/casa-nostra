@@ -62,7 +62,7 @@ L'integrazione usa il pacchetto `@supabase/ssr`. I client sono in `lib/supabase/
 L'architettura del progetto è documentata dettagliatamente in `docs/wiki/01-architecture.md`. 
 
 L'applicazione segue la struttura standard di Next.js App Router:
-- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata), più i moduli `/lista`, `/faccende`, `/energia`, `/saldo` (dettagli del saldo), `/statistiche`, `/impostazioni`.
+- **Routing**: `/login` (pubblica), `/landing` (pubblica), `/` (privata), `/spese` (storico privata), `/conguaglio` (conguaglio privata), più i moduli `/lista`, `/faccende`, `/energia`, `/abbonamenti`, `/saldo` (dettagli del saldo), `/statistiche`, `/impostazioni`.
 - **Mutazioni**: Implementate tramite Server Actions in `app/actions/`.
 - **Query**: Caricate nei Server Component tramite funzioni di utility in `lib/queries.ts` e `lib/queries-cars.ts`.
 - **Interattività**: Isolata nei Client Component (es. `HomeShell.tsx`, `ExpenseForm.tsx`).
@@ -112,7 +112,7 @@ Queste sono scritte come lista apposta perché sono il tipo di errore che è fac
 - Non ricalcolare il saldo lato client: usa `v_user_open_balance`
 - Non scrivere logica custom per il conguaglio: chiama la RPC `register_settlement`
 - Non creare una pagina di signup pubblica: i due utenti sono gestiti manualmente
-- Non aggiungere funzionalità fuori scope MVP (export CSV, budget mensili, spese ricorrenti automatiche): la sezione 8 dei requisiti le elenca esplicitamente come evoluzioni future. Grafici e statistiche sono stati realizzati su richiesta esplicita; il redesign del settembre 2026 include l’anello per categorie. Le notifiche e le foto degli scontrini erano in quell'elenco ma sono state realizzate su richiesta esplicita: vedi "Integrazione Telegram" qui sotto. Stesso discorso per la lista della spesa: vedi "Lista della spesa" più sotto
+- Non aggiungere funzionalità fuori scope MVP (export CSV, budget mensili): la sezione 8 dei requisiti le elenca esplicitamente come evoluzioni future. Le spese ricorrenti automatiche erano in quell'elenco ma sono state realizzate su richiesta esplicita il 5 novembre 2026: vedi "Abbonamenti ricorrenti" più sotto. Grafici e statistiche sono stati realizzati su richiesta esplicita; il redesign del settembre 2026 include l’anello per categorie. Le notifiche e le foto degli scontrini erano in quell'elenco ma sono state realizzate su richiesta esplicita: vedi "Integrazione Telegram" qui sotto. Stesso discorso per la lista della spesa: vedi "Lista della spesa" più sotto
 - Non modificare lo schema SQL senza aggiornare anche `casa_nostra_schema.sql`
 - Non duplicare le policy RLS con controlli client-side come se fossero sicurezza: la sicurezza è in DB
 
@@ -131,7 +131,7 @@ Un bot Telegram opzionale collega l'app al gruppo dei due conviventi. Fa due cos
 Cose da sapere prima di metterci mano:
 
 - **Il motore dell'assistente è condiviso**: sta in `lib/assistant/` (tool, system instruction, ciclo di tool calling) e accetta un client Supabase esplicito. `app/api/assistant/route.ts` e `app/api/telegram/webhook/route.ts` sono due gusci sottili sopra `runAssistant`. Se aggiungi un tool o cambi il prompt, lo fai una volta sola lì — non duplicare la logica in un canale solo.
-- **Il webhook non ha sessione**: usa il client service role (`lib/supabase/service.ts`), che bypassa RLS. L'autorizzazione la fanno il secret dell'update e il collegamento `profiles.telegram_user_id`. Non usare quel client altrove (l'unica altra eccezione è il modulo Energia, sotto) e non esporre mai `SUPABASE_SERVICE_ROLE_KEY` al browser.
+- **Il webhook non ha sessione**: usa il client service role (`lib/supabase/service.ts`), che bypassa RLS. L'autorizzazione la fanno il secret dell'update e il collegamento `profiles.telegram_user_id`. Non usare quel client altrove (le uniche altre eccezioni sono il modulo Energia e il cron degli abbonamenti, sotto) e non esporre mai `SUPABASE_SERVICE_ROLE_KEY` al browser.
 - **Le notifiche non stanno nel percorso critico**: si preparano nella Server Action e si inviano con `after()`. Non aggiungere `await` su Telegram prima di rispondere all'utente (l'unica eccezione voluta è `requestSettlementOnTelegram`, dove l'esito serve per il toast).
 - **L'integrazione è spegnibile**: senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` tutto il codice Telegram esce subito e l'app si comporta come prima. Mantieni questa proprietà.
 - **Configurazione e troubleshooting**: `docs/telegram-setup.md`. Schema: sezione 10 di `casa_nostra_schema.sql` e `docs/migrations/2026-09-03_telegram.sql`.
@@ -175,6 +175,17 @@ Il modulo `/energia` (dal 15 ottobre 2026) mostra la potenza di adesso come una 
 - **Si legge solo a pagina aperta.** Polling ogni 15 s a pagina visibile, nessun cron e nessuna notifica: avvisi su Telegram per la soglia superata sarebbero un'evoluzione, da chiedere prima.
 - **Spegnibile**: senza `FASTWEB_USERNAME` e `FASTWEB_PASSWORD` tutto esce subito e la schermata dice che il collegamento non è configurato. Attivazione in `docs/wiki/06-configuration.md`.
 - **Se Fastweb cambia formato** si correggono i parser in `lib/energy/readings.ts` e i loro test (`tests/energy.test.mjs`, con risposte che hanno la forma vera); la modalità diagnostica usata per scriverli (`/api/energia?forma=1`, mai in produzione: la forma delle risposte senza dati personali) è nel commit `4364c98` e si può rimettere per il tempo di una prova su un'anteprima.
+
+## Abbonamenti ricorrenti
+
+Il modulo `/abbonamenti` (dal 5 novembre 2026, su richiesta: «Internet a casa, ogni 8 del mese, 45 €, 50/50») registra da solo le spese che si ripetono. Documentazione nella wiki (02, 03, 04, 06, 08, 09); qui le cose da sapere prima di metterci mano:
+
+- **Un abbonamento è lo stampo di una spesa più una cadenza**: un giorno del mese (`charge_day`), ogni 1, 2, 3, 6 o 12 mesi, dal mese di `start_month`. Il 29-31 nei mesi corti diventa l'ultimo giorno del mese. Le date le calcola solo `lib/subscriptions/schedule.ts` (puro, testato in `tests/subscriptions.test.mjs`): non rifare i conti altrove. Una frequenza nuova va aggiunta lì e nel vincolo della tabella insieme (lo verifica il test).
+- **La spesa creata è una spesa normale**, con la data dell'addebito, `paid_by` e `created_by` = chi paga, la divisione dell'abbonamento: entra nel saldo e nel conguaglio come le altre, si modifica e si elimina dallo storico. Eliminare o sospendere un abbonamento non tocca le spese già create.
+- **Niente doppioni, mai**: `subscription_charges` con `UNIQUE (subscription_id, due_on)` e la presa in carico (`UPDATE … WHERE charged_at IS NULL`) sono il lucchetto. Non creare spese da abbonamento senza passare da `runSubscriptionJobs` in `lib/subscriptions/service.ts`. Una spesa eliminata a mano non torna (il registro la ricorda).
+- **Tutto su Telegram, per scelta** (era stato chiesto WhatsApp per l'addebito; si è scelto di non aggiungere un canale): all'ora scelta il messaggio dell'addebito con il saldo, 3 giorni prima il promemoria. L'ora è **una sola per tutti** (`subscription_settings.notify_hour`). Le Server Action degli abbonamenti non notificano: creare o correggere un abbonamento non muove soldi.
+- **La sveglia è `pg_cron` di Supabase**, ogni ora, verso `/api/cron/abbonamenti` (Vercel Hobby non permette cron orari). La rotta è esclusa da `proxy.ts` e si autentica con `CRON_SECRET`; solo dopo crea il client service role (la terza eccezione, dopo webhook ed Energia). Prima dell'ora scelta non fa niente; dopo, ogni chiamata è idempotente.
+- **Spegnibile**: senza `CRON_SECRET` la rotta risponde 503 e la schermata resta un elenco; senza Telegram le spese si registrano comunque, senza avvisi. Attivazione in `docs/wiki/06-configuration.md`.
 
 ## Workflow di fine sessione
 

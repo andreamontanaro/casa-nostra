@@ -167,6 +167,18 @@ Lo usa `SharedDataRefresh` per decidere se ricaricare la pagina: cinque query da
 
 ---
 
+## Endpoint `/api/cron/abbonamenti`
+
+La sveglia oraria degli abbonamenti → `app/api/cron/abbonamenti/route.ts`.
+
+* **Metodo**: `GET`, chiamato da `pg_cron` di Supabase con `pg_net` al minuto 2 di ogni ora (job `casa-nostra-abbonamenti`, BLOCCO 2 di `docs/migrations/2026-11-05_abbonamenti.sql`). Funziona anche con Vercel Cron, che manda lo stesso header, ma sul piano Hobby Vercel accetta solo un cron al giorno: per questo la sveglia sta su Supabase.
+* **Runtime**: Node.js — `maxDuration = 30`.
+* **Esclusione dall'autenticazione**: `proxy.ts` lascia passare `/api/cron/*`.
+* **Protezione**: header `Authorization: Bearer <CRON_SECRET>`, confrontato a tempo costante. Senza `CRON_SECRET` risponde `503` e non fa niente (modulo spento); con un secret sbagliato `401`. Il client service role si crea solo dopo il controllo.
+* **Risposta**: `{ status: 'early', today, hour, notifyHour }` prima dell'ora scelta, altrimenti `{ status: 'ok', today, charged, reminded, failed }` (solo conteggi). `500` se il database non risponde.
+
+---
+
 ## Endpoint `/api/telegram/webhook`
 
 Riceve gli aggiornamenti del bot Telegram: notifiche in uscita a parte, è il punto d'ingresso dell'assistente nel gruppo dei due conviventi.

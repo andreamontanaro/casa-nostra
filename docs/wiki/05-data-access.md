@@ -18,7 +18,7 @@ Utilizzato nei Server Component, nelle Server Actions e nelle API Route Handlers
 * **Refresh dei Cookie**: La logica di scrittura dei cookie (`setAll`) è avvolta in un blocco `try-catch` → `lib/supabase/server.ts#L17-L24`. Se il client viene invocato durante il rendering di un Server Component (fase in cui Next.js vieta la scrittura degli header), l'errore viene ignorato. Il refresh effettivo dei cookie di sessione è delegato a monte al middleware `proxy.ts`.
 
 ### 3. Client Service Role (`service.ts`)
-Utilizzato **esclusivamente** dal webhook Telegram e dal modulo Energia → `lib/supabase/service.ts`:
+Utilizzato **esclusivamente** dal webhook Telegram, dal modulo Energia e dal cron degli abbonamenti (`/api/cron/abbonamenti`, dopo il controllo di `CRON_SECRET`: crea le spese senza una sessione) → `lib/supabase/service.ts`:
 * Inizializza il client con `SUPABASE_SERVICE_ROLE_KEY` e senza persistenza di sessione: gli update di Telegram arrivano senza cookie, quindi non esiste una sessione da cui derivare i permessi.
 * Questa chiave **bypassa RLS**: l'autorizzazione, in quel percorso, la fa il webhook verificando il secret dell'update e il collegamento `profiles.telegram_user_id`.
 * Le funzioni di `lib/queries.ts` accettano un parametro opzionale `db` proprio per essere riusate con questo client (omesso, usano il client di sessione con RLS attiva).

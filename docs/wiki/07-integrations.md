@@ -73,6 +73,7 @@ Le Server Action che modificano lo stato compongono un messaggio HTML e ne accod
 * Conguaglio registrato → `app/actions/settlement.ts`
 * Richiesta di conguaglio (solo promemoria, nessuna scrittura sul DB) → `app/actions/telegram.ts`
 * Spesa creata dall'assistente → `lib/assistant/run.ts`
+* Abbonamenti: addebito registrato in automatico e promemoria 3 giorni prima → `lib/subscriptions/service.ts`. Partono dal cron orario, non da una Server Action: niente `after()`, l'invio è atteso dalla rotta.
 
 Ogni notifica include il saldo aggiornato, letto da `v_user_open_balance` e mai ricalcolato a mano → `lib/balance.ts`.
 

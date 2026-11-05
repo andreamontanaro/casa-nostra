@@ -4,6 +4,7 @@ import {
   Home,
   List,
   PieChart,
+  Repeat,
   Settings,
   ShoppingBasket,
   SprayCan,
@@ -61,6 +62,12 @@ export const NAV_SECONDARY: NavItem[] = [
     label: 'Dettagli del saldo',
     description: 'Chi ha anticipato e quali categorie pesano',
     icon: PieChart,
+  },
+  {
+    href: '/abbonamenti',
+    label: 'Abbonamenti',
+    description: 'Spese ricorrenti che si registrano da sole',
+    icon: Repeat,
   },
   {
     href: '/statistiche',

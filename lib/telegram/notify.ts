@@ -8,6 +8,7 @@ import {
   SPLIT_LABELS,
   formatDate,
   formatEur,
+  formatWeekdayDate,
   splitLabel,
 } from '@/lib/fmt'
 import { getTelegramConfig, isTelegramConfigured } from './config'
@@ -365,4 +366,75 @@ export function shoppingListMessage(
   const link = appLink('/lista', 'Apri la lista della spesa')
   if (link) lines.push(link)
   return lines.join('\n').trim()
+}
+
+// ------------------------------------------------------------
+// Abbonamenti ricorrenti
+// ------------------------------------------------------------
+
+export interface SubscriptionNotice {
+  expenseId?: string
+  amount: number
+  description: string
+  category: string
+  splitRule: string
+  payerName: string
+  /** Chi non paga: lo nomina un abbonamento «a carico di». */
+  chargedToName?: string
+  /** Giorno dell'addebito, YYYY-MM-DD. */
+  dueOn: string
+}
+
+function subscriptionHeadline(item: SubscriptionNotice): string {
+  const icon = CATEGORY_ICON[item.category] ?? '📦'
+  return `${icon} <b>${formatEur(item.amount)}</b> — ${escapeHtml(item.description)}`
+}
+
+/**
+ * Le spese registrate dal cron il giorno dell'addebito, in un messaggio solo
+ * anche quando sono più d'una, con il saldo aggiornato.
+ */
+export function subscriptionChargesMessage(items: SubscriptionNotice[], balance: BalanceRow[]): string {
+  const title =
+    items.length === 1
+      ? '🔁 <b>Addebito registrato in automatico</b>'
+      : `🔁 <b>${items.length} addebiti registrati in automatico</b>`
+  const lines = [title]
+  for (const item of items) {
+    const category = CATEGORY_LABELS[item.category] ?? item.category
+    lines.push(
+      '',
+      subscriptionHeadline(item),
+      `<i>${escapeHtml(category)} · ${escapeHtml(splitLabel(item.splitRule, item.chargedToName))} · pagata da ${escapeHtml(
+        item.payerName,
+      )} · ${formatDate(item.dueOn)}</i>`,
+    )
+  }
+  lines.push('', balanceLine(balance))
+
+  const single = items.length === 1 ? items[0].expenseId : undefined
+  const link = single ? appLink(`/spese/${single}`, 'Apri la spesa') : appLink('/spese', 'Apri lo storico')
+  if (link) lines.push('', link)
+  return lines.join('\n')
+}
+
+/** Promemoria qualche giorno prima dell'addebito: niente è ancora registrato. */
+export function subscriptionRemindersMessage(
+  items: (SubscriptionNotice & { daysLeft: number })[],
+): string {
+  const lines = [items.length === 1 ? '⏰ <b>Promemoria abbonamento</b>' : '⏰ <b>Promemoria abbonamenti</b>']
+  for (const item of items) {
+    const when = item.daysLeft === 1 ? 'Domani' : `Fra ${item.daysLeft} giorni`
+    lines.push(
+      '',
+      subscriptionHeadline(item),
+      `<i>${when}, ${formatWeekdayDate(item.dueOn)} · ${escapeHtml(
+        splitLabel(item.splitRule, item.chargedToName),
+      )} · addebito a ${escapeHtml(item.payerName)}</i>`,
+    )
+  }
+  lines.push('', '<i>La spesa si registra da sola il giorno dell’addebito.</i>')
+  const link = appLink('/abbonamenti', 'Vedi gli abbonamenti')
+  if (link) lines.push(link)
+  return lines.join('\n')
 }

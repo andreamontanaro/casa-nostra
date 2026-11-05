@@ -53,6 +53,15 @@ Senza tutte e due l'integrazione è spenta: la schermata Energia dice che il col
 
 **Attivazione**: eseguire `docs/migrations/2026-10-15_energia.sql` nell'editor SQL di Supabase (crea la riga di `energy_fastweb_state`), poi impostare le due variabili e `SUPABASE_SERVICE_ROLE_KEY` nell'ambiente Vercel (Production, e Preview per provarla in anteprima) e ridistribuire. Se Fastweb chiede il captcha la schermata lo dice e non riprova per 6 ore: non c'è niente da sbloccare a mano.
 
+### Abbonamenti (cron orario)
+Senza `CRON_SECRET` la rotta `/api/cron/abbonamenti` risponde `503` e nessuna spesa si registra da sola: la schermata Abbonamenti funziona, ma resta un elenco.
+
+* `CRON_SECRET`: stringa casuale lunga (es. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`, che funziona anche su Windows dove `openssl` di solito manca), su Vercel come variabile **Sensitive** in Production. È anche quella che `pg_cron` manda nell'header `Authorization: Bearer …`. Serve anche `SUPABASE_SERVICE_ROLE_KEY`; per notifiche e promemoria serve Telegram configurato.
+
+**Attivazione**: (1) BLOCCO 1 di `docs/migrations/2026-11-05_abbonamenti.sql` nell'editor SQL di Supabase; (2) `CRON_SECRET` su Vercel e ridistribuire; (3) in Supabase, Database → Extensions, attivare `pg_cron` e `pg_net`; (4) BLOCCO 2 della stessa migrazione, con l'URL dell'app e il secret al posto dei segnaposto (finiscono nel Vault di Supabase, non nel testo del job). Verifica: `select * from cron.job_run_details order by start_time desc limit 5;` e le risposte in `net._http_response` (`status: early` prima dell'ora scelta, `ok` dopo).
+
+Costanti → `lib/subscriptions/schedule.ts`: `REMINDER_DAYS_BEFORE = 3`, `CATCH_UP_DAYS = 40` (quanto indietro si recuperano gli addebiti se il cron è rimasto fermo), `INTERVAL_OPTIONS = [1, 2, 3, 6, 12]` (le stesse del vincolo sul database: lo verifica `tests/subscriptions.test.mjs`).
+
 ---
 
 ## Limiti Applicativi e Costanti di Configurazione

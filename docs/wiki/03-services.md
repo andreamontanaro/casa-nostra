@@ -46,6 +46,15 @@ Gusci sottili sopra `lib/chores/service.ts` → `app/actions/chores.ts`, stessa 
 
 **Nessuna notifica Telegram**, per scelta esplicita: le faccende servono a tenere traccia, non a mettere pressione.
 
+### Abbonamenti (`subscriptions.ts`)
+Gusci sottili sopra `lib/subscriptions/service.ts` → `app/actions/subscriptions.ts`.
+* `saveSubscriptionAction(id | null, input)`: Crea o modifica. Validazione con messaggi per campo (importo, nome, categoria, divisione, quota personalizzata, frequenza, prossimo addebito non nel passato). In modifica la cadenza riparte dalla data indicata solo se è diversa dal prossimo addebito calcolato o se cambia la frequenza: correggere l'importo non sposta il calendario. Default della divisione come le spese (`DEFAULT_SPLIT`, 60/40 per `abbonamento`), sempre modificabile.
+* `setSubscriptionActiveAction(id, active)`: Sospende o riattiva (riattivando si riparte dal prossimo addebito).
+* `deleteSubscriptionAction(id)`: Elimina dopo il `Dialog` di conferma. Le spese già create restano.
+* `setNotifyHourAction(hour)`: Cambia l'ora di addebiti e promemoria.
+
+**Nessuna notifica Telegram da queste action**: creare o correggere un abbonamento non muove soldi. Avvisano solo il promemoria e l'addebito, che manda il cron.
+
 ### Telegram (`telegram.ts`)
 Azioni di supporto all'integrazione con il gruppo Telegram → `app/actions/telegram.ts`:
 * `linkTelegramAccount(_prev, formData)`: Collega (o scollega, con campo vuoto) l'id Telegram al profilo di chi è loggato. Valida che sia un intero positivo e traduce la violazione di unicità in un messaggio comprensibile ("già collegato all'altro profilo"). La policy `profiles_update_own` garantisce che ciascuno possa modificare solo la propria riga.
@@ -81,6 +90,15 @@ Una spesa creata in automatico che l'utente non vede sarebbe peggio di una spesa
 **Perché il riconoscimento lo fa il modello e non un confronto di stringhe**: sugli scontrini i prodotti sono abbreviati e storpiati (`LT PS PARM 1L` = latte parzialmente scremato, `POM PELATI` = pomodori pelati). Nessuna normalizzazione testuale regge il colpo, mentre il modello sta già leggendo l'immagine: chiedergli anche l'abbinamento non costa una chiamata in più.
 
 ---
+
+## Abbonamenti: il lavoro del cron (`lib/subscriptions/service.ts`)
+`runSubscriptionJobs(db, now)` è quello che fa `/api/cron/abbonamenti` a ogni chiamata, con il client service role:
+1. **Ora**: legge `notify_hour`; se a Roma è prima di quell'ora esce subito (`status: 'early'`). Da quell'ora in poi ogni chiamata del giorno rifà il giro, ma trova lavoro solo la prima.
+2. **Addebiti**: per ogni abbonamento attivo, le date fino a oggi (`dueDatesThrough`: dal primo addebito, al massimo 40 giorni indietro se il cron è rimasto fermo) senza `charged_at`. Per ognuna: presa in carico (upsert della riga, poi `UPDATE … SET charged_at = now() WHERE charged_at IS NULL`: una sola esecuzione la vince), insert della spesa con `expense_date` = giorno dell'addebito e `created_by` = `paid_by`, poi `expense_id` sul registro. Se l'insert fallisce la presa in carico si libera e ci riprova l'ora dopo.
+3. **Promemoria** (solo con Telegram configurato): il prossimo addebito dopo oggi, se cade entro 3 giorni (`reminderDueOn`) e non ha `reminded_at`. Di norma esattamente 3 giorni prima; se quel giorno è saltato, o l'abbonamento è nato a ridosso, parte appena possibile.
+4. **Messaggi**: un messaggio per gli addebiti, anche se sono più d'uno, con il saldo da `v_user_open_balance`; uno per i promemoria → `subscriptionChargesMessage`, `subscriptionRemindersMessage` in `lib/telegram/notify.ts`. Qui l'invio è atteso: non c'è un utente che aspetta. Un messaggio non consegnato finisce nei log e non si ripete.
+
+Le spese create sono spese normali: entrano nel saldo e nel conguaglio, si modificano e si eliminano dallo storico.
 
 ### Notifiche Telegram delle mutazioni
 Le action su spese e conguagli, dopo la mutazione, leggono nomi e saldo aggiornato e accodano il messaggio con `after()` di Next.js: la chiamata a Telegram avviene dopo la risposta HTTP, non rallenta il salvataggio e non può farlo fallire → `app/actions/expenses.ts`, `lib/telegram/notify.ts`. Se l'integrazione non è configurata, le funzioni escono subito senza effetti.

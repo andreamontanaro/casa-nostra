@@ -5,7 +5,12 @@ export async function proxy(request: NextRequest) {
   // Il webhook di Telegram arriva dai server di Telegram, senza cookie di
   // sessione: si autentica da solo con il secret condiviso, quindi va escluso
   // dal controllo di autenticazione (altrimenti verrebbe rediretto a /landing).
-  if (request.nextUrl.pathname.startsWith('/api/telegram/')) {
+  // Stesso discorso per la sveglia oraria degli abbonamenti (pg_cron di
+  // Supabase): si autentica con CRON_SECRET nella rotta.
+  if (
+    request.nextUrl.pathname.startsWith('/api/telegram/') ||
+    request.nextUrl.pathname.startsWith('/api/cron/')
+  ) {
     return NextResponse.next({ request })
   }
 
