@@ -100,6 +100,8 @@ Una spesa creata in automatico che l'utente non vede sarebbe peggio di una spesa
 
 Le spese create sono spese normali: entrano nel saldo e nel conguaglio, si modificano e si eliminano dallo storico.
 
+Per la home, `getUpcomingSubscriptions(db, today)` filtra la stessa lettura della schermata (`getSubscriptionsOverview`) sugli attivi con il prossimo addebito entro `HOME_UPCOMING_DAYS` (4) giorni. Non solleva: se la lettura non riesce la home resta senza la sezione.
+
 ### Notifiche Telegram delle mutazioni
 Le action su spese e conguagli, dopo la mutazione, leggono nomi e saldo aggiornato e accodano il messaggio con `after()` di Next.js: la chiamata a Telegram avviene dopo la risposta HTTP, non rallenta il salvataggio e non può farlo fallire → `app/actions/expenses.ts`, `lib/telegram/notify.ts`. Se l'integrazione non è configurata, le funzioni escono subito senza effetti.
 

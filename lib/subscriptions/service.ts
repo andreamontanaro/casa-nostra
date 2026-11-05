@@ -10,11 +10,13 @@ import {
 } from '@/lib/telegram/notify'
 import {
   CATCH_UP_DAYS,
+  HOME_UPCOMING_DAYS,
   INTERVAL_OPTIONS,
   addDays,
   cadenceFromDate,
   daysBetween,
   dueDatesThrough,
+  dueWithin,
   isIsoDate,
   nextDueOn,
   reminderDueOn,
@@ -280,6 +282,27 @@ export async function getSubscriptionsOverview(db: QueryClient, today: string): 
   subscriptions.sort((a, b) => Number(b.active) - Number(a.active) || a.nextDue.localeCompare(b.nextDue))
 
   return { subscriptions, notifyHour: settingsRes.data?.notify_hour ?? 9 }
+}
+
+/**
+ * Per la home: gli abbonamenti attivi con il prossimo addebito ancora da
+ * registrare entro `HOME_UPCOMING_DAYS` giorni, dal più vicino. Non solleva:
+ * se la lettura non riesce (migrazione mancante) la home resta com'era.
+ */
+export async function getUpcomingSubscriptions(
+  db: QueryClient,
+  today: string,
+): Promise<{ subscriptions: SubscriptionView[]; notifyHour: number }> {
+  try {
+    const overview = await getSubscriptionsOverview(db, today)
+    return {
+      subscriptions: overview.subscriptions.filter((s) => s.active && dueWithin(s.nextDue, today, HOME_UPCOMING_DAYS)),
+      notifyHour: overview.notifyHour,
+    }
+  } catch (error) {
+    console.error('[abbonamenti] lettura per la home non riuscita:', error)
+    return { subscriptions: [], notifyHour: 9 }
+  }
 }
 
 // ------------------------------------------------------------

@@ -142,6 +142,15 @@ export function reminderDueOn(cadence: Cadence, today: string): string | null {
   return daysBetween(today, next) <= REMINDER_DAYS_BEFORE ? next : null
 }
 
+/** Quanti giorni avanti guarda la sezione «Abbonamenti in arrivo» della home. */
+export const HOME_UPCOMING_DAYS = 4
+
+/** `due` cade fra oggi e `days` giorni da oggi, estremi compresi. */
+export function dueWithin(due: string, today: string, days: number): boolean {
+  const left = daysBetween(today, due)
+  return left >= 0 && left <= days
+}
+
 /** «Ogni mese, il giorno 8» · «Ogni 3 mesi, il giorno 31» · «Ogni anno, l'8 dicembre». */
 export function cadenceLabel(cadence: Cadence, nextDue?: string): string {
   const { chargeDay, intervalMonths } = cadence

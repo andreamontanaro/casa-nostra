@@ -10,6 +10,7 @@ const {
   cadenceLabel,
   daysBetween,
   dueDatesThrough,
+  dueWithin,
   isIsoDate,
   monthlyAmount,
   nextDueOn,
@@ -100,6 +101,14 @@ test('etichette della cadenza', () => {
   assert.equal(cadenceLabel({ chargeDay: 31, intervalMonths: 3, startMonth: '2027-01-01' }), 'Ogni 3 mesi, il giorno 31')
   assert.equal(cadenceLabel({ chargeDay: 8, intervalMonths: 12, startMonth: '2026-12-01' }), 'Ogni anno, l’8 dicembre')
   assert.equal(cadenceLabel({ chargeDay: 1, intervalMonths: 12, startMonth: '2027-03-01' }), 'Ogni anno, il 1º marzo')
+})
+
+test('in home: gli addebiti da oggi ai prossimi 4 giorni compresi', () => {
+  assert.equal(dueWithin('2026-11-05', '2026-11-05', 4), true)
+  assert.equal(dueWithin('2026-11-09', '2026-11-05', 4), true)
+  assert.equal(dueWithin('2026-11-10', '2026-11-05', 4), false)
+  assert.equal(dueWithin('2026-11-04', '2026-11-05', 4), false)
+  assert.equal(dueWithin('2027-01-02', '2026-12-30', 4), true)
 })
 
 test('peso mensile', () => {

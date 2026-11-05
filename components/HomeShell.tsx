@@ -10,6 +10,8 @@ import { BalanceStrip } from '@/components/BalanceStrip'
 import { HeaderActions } from '@/components/HeaderActions'
 import { ExpenseRow } from '@/components/ExpenseRow'
 import { NuovaSpesaFab } from '@/components/NuovaSpesaFab'
+import { UpcomingSubscriptions } from '@/components/UpcomingSubscriptions'
+import type { SubscriptionView } from '@/lib/subscriptions/service'
 import { Card } from '@/components/ui/Card'
 import { formatDateShort, formatEur } from '@/lib/fmt'
 import { revealDelay } from '@/lib/motion'
@@ -30,6 +32,10 @@ interface HomeShellProps {
   recentExpenses: Expense[]
   /** Spese datate dopo oggi, dalla più vicina: stanno in una sezione loro. */
   upcomingExpenses: Expense[]
+  /** Abbonamenti con l'addebito nei prossimi giorni, non ancora registrati. */
+  upcomingSubscriptions: SubscriptionView[]
+  /** Ora degli addebiti, per «oggi alle 09:00». */
+  notifyHour: number
   profiles: Profile[]
   suggestions: ExpenseSuggestion[]
   /** Oggi nel fuso della casa (`todayISO()`): divide le ultime spese in gruppi. */
@@ -42,6 +48,8 @@ export function HomeShell({
   balanceRows,
   recentExpenses,
   upcomingExpenses,
+  upcomingSubscriptions,
+  notifyHour,
   profiles,
   suggestions,
   today,
@@ -54,8 +62,10 @@ export function HomeShell({
   // già stato calcolato per l'anello, basta ritrovarlo per id.
   const contributions = new Map(openExpenses.map((e) => [e.id, e.my_contribution]))
   const upcomingTotal = upcomingExpenses.reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100
-  // Con le spese future in cima, le ultime spese arrivano un passo dopo.
-  const recentStep = upcomingExpenses.length > 0 ? 3 : 2
+  // Ogni sezione in cima (spese future, abbonamenti in arrivo) sposta di un
+  // passo l'entrata di quelle sotto.
+  const subscriptionsStep = upcomingExpenses.length > 0 ? 3 : 2
+  const recentStep = subscriptionsStep + (upcomingSubscriptions.length > 0 ? 1 : 0)
   return (
     <div className="px-4 pt-4 pb-24 lg:pb-6">
       <BalanceStrip rows={balanceRows} currentUserId={userId} expenses={openExpenses} headline={balanceHeadline} ring={balanceRing} />
@@ -80,6 +90,17 @@ export function HomeShell({
           </div>
           <ExpenseCard expenses={upcomingExpenses} step={2.5} contributions={contributions} profiles={profiles} />
         </section>
+      )}
+
+      {upcomingSubscriptions.length > 0 && (
+        <UpcomingSubscriptions
+          subscriptions={upcomingSubscriptions}
+          notifyHour={notifyHour}
+          today={today}
+          userId={userId}
+          profiles={profiles}
+          step={subscriptionsStep}
+        />
       )}
 
       <section>

@@ -43,6 +43,8 @@ Le regole di business sono già codificate nel database, ma l'app deve rispettar
 
 **Spese future.** Dal 20 ottobre 2026, su richiesta, home e storico mostrano in cima, in una sezione «Spese future», le spese datate dopo oggi (di solito bollette inserite appena arriva l'importo, con la data dell'addebito). È solo presentazione (`lib/upcoming-expenses.ts`): nel saldo e nel conguaglio una spesa futura aperta conta come le altre. Escluderle sarebbe un cambio di dominio, da chiedere prima.
 
+**Abbonamenti in arrivo.** Dal 5 novembre 2026, su richiesta, la home mostra sotto le spese future gli abbonamenti attivi con il prossimo addebito ancora da registrare fra oggi e 4 giorni (`HOME_UPCOMING_DAYS` e `dueWithin` in `lib/subscriptions/schedule.ts`, lettura `getUpcomingSubscriptions`). Non sono spese: non pesano sul saldo finché il cron non le registra, e la home lo dice. Se la lettura fallisce la sezione semplicemente non c'è.
+
 **Calcolo del saldo.** Non calcolarlo lato client sommando le spese a mano. Esiste già la vista `v_user_open_balance` che fa tutto: per ogni utente restituisce `total_anticipated`, `total_owed` e `net_position`. Il saldo da mostrare in home è semplicemente il valore assoluto di uno dei due `net_position`, con l'indicazione di chi deve a chi (chi ha `net_position` positivo è in credito, l'altro gli deve soldi).
 
 **Conguaglio.** Non scrivere logica transazionale custom. Esiste la funzione RPC `register_settlement(p_notes text)` che in un'unica transazione crea la riga in `settlements` e marca tutte le spese aperte come saldate. Chiamala con `supabase.rpc('register_settlement', { p_notes: ... })`. Solleva un'eccezione se il saldo è zero, quindi gestisci quel caso a monte disabilitando il bottone.
