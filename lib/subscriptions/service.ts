@@ -18,7 +18,7 @@ import {
   dueDatesThrough,
   dueWithin,
   isIsoDate,
-  nextDueOn,
+  nextUnchargedDueOn,
   reminderDueOn,
   romeClock,
   type Cadence,
@@ -229,24 +229,24 @@ export async function setNotifyHour(db: QueryClient, hour: number): Promise<{ ok
 // ------------------------------------------------------------
 
 /**
- * Il prossimo addebito ancora da registrare: oggi, se quello di oggi non è
- * ancora passato dal cron, altrimenti il successivo.
+ * Il prossimo addebito ancora da registrare, da oggi in poi: salta quello di
+ * oggi se il cron è già passato e quelli anticipati a mano.
  */
 async function upcomingDueOn(db: QueryClient, id: string, cadence: Cadence, today: string): Promise<string> {
-  const next = nextDueOn(cadence, today)
-  if (next !== today) return next
   const { data } = await db
     .from('subscription_charges')
-    .select('charged_at')
+    .select('due_on')
     .eq('subscription_id', id)
-    .eq('due_on', today)
-    .maybeSingle()
-  return data?.charged_at ? nextDueOn(cadence, addDays(today, 1)) : next
+    .gte('due_on', today)
+    .not('charged_at', 'is', null)
+  return nextUnchargedDueOn(cadence, today, new Set((data ?? []).map((c) => c.due_on)))
 }
 
 export interface SubscriptionView extends Subscription {
   /** Prossimo addebito ancora da registrare (YYYY-MM-DD). */
   nextDue: string
+  /** Attivo e con il prossimo addebito entro `HOME_UPCOMING_DAYS`: si può anticipare. */
+  canAnticipate: boolean
   /** Ultima spesa creata da questo abbonamento, se c'è ancora. */
   lastExpenseId: string | null
   lastChargedOn: string | null
@@ -273,10 +273,16 @@ export async function getSubscriptionsOverview(db: QueryClient, today: string): 
   const charges = chargesRes.data ?? []
   const subscriptions = (subsRes.data ?? []).map((sub): SubscriptionView => {
     const cadence = cadenceOf(sub)
-    const last = charges.find((c) => c.subscription_id === sub.id)
-    let nextDue = nextDueOn(cadence, today)
-    if (nextDue === today && last?.due_on === today) nextDue = nextDueOn(cadence, addDays(today, 1))
-    return { ...sub, nextDue, lastExpenseId: last?.expense_id ?? null, lastChargedOn: last?.due_on ?? null }
+    const own = charges.filter((c) => c.subscription_id === sub.id)
+    const last = own[0]
+    const nextDue = nextUnchargedDueOn(cadence, today, new Set(own.map((c) => c.due_on)))
+    return {
+      ...sub,
+      nextDue,
+      canAnticipate: sub.active && dueWithin(nextDue, today, HOME_UPCOMING_DAYS),
+      lastExpenseId: last?.expense_id ?? null,
+      lastChargedOn: last?.due_on ?? null,
+    }
   })
   // Prima gli attivi, dal prossimo addebito più vicino.
   subscriptions.sort((a, b) => Number(b.active) - Number(a.active) || a.nextDue.localeCompare(b.nextDue))
@@ -296,13 +302,71 @@ export async function getUpcomingSubscriptions(
   try {
     const overview = await getSubscriptionsOverview(db, today)
     return {
-      subscriptions: overview.subscriptions.filter((s) => s.active && dueWithin(s.nextDue, today, HOME_UPCOMING_DAYS)),
+      subscriptions: overview.subscriptions.filter((s) => s.canAnticipate),
       notifyHour: overview.notifyHour,
     }
   } catch (error) {
     console.error('[abbonamenti] lettura per la home non riuscita:', error)
     return { subscriptions: [], notifyHour: 9 }
   }
+}
+
+// ------------------------------------------------------------
+// Anticipare un addebito
+// ------------------------------------------------------------
+
+export type AnticipateResult =
+  | { ok: true; expenseId: string; subscription: Subscription }
+  | { ok: false; error: string }
+
+const ANTICIPATE_ERRORS: Record<string, string> = {
+  already_charged: 'Questo addebito è già registrato.',
+  subscription_not_active: 'L’abbonamento è sospeso o non c’è più.',
+  invalid_dates: 'La data della spesa deve essere oggi o il giorno dell’addebito.',
+  not_authorized: 'Non autorizzato.',
+}
+
+/**
+ * Registra subito la spesa del prossimo addebito, se cade entro
+ * `HOME_UPCOMING_DAYS` giorni, con la data scelta (oggi o il giorno
+ * dell'addebito). Quell'addebito risulta fatto: il cron non lo ricrea e non
+ * manda il promemoria. Spesa e registro li scrive insieme la RPC
+ * `anticipate_subscription_charge`; qui si controlla che `dueOn` sia davvero
+ * il prossimo addebito, perché le date le sa calcolare solo `schedule.ts`.
+ */
+export async function anticipateCharge(
+  db: QueryClient,
+  subscriptionId: string,
+  dueOn: string,
+  expenseDate: string,
+  today: string,
+): Promise<AnticipateResult> {
+  const { data: sub, error: readError } = await db
+    .from('subscriptions')
+    .select('*')
+    .eq('id', subscriptionId)
+    .maybeSingle()
+  if (readError || !sub) return { ok: false, error: 'Abbonamento non trovato.' }
+  if (!sub.active) return { ok: false, error: ANTICIPATE_ERRORS.subscription_not_active }
+
+  const upcoming = await upcomingDueOn(db, sub.id, cadenceOf(sub), today)
+  if (upcoming !== dueOn) return { ok: false, error: 'Il prossimo addebito è cambiato: ricarica la pagina.' }
+  if (!dueWithin(dueOn, today, HOME_UPCOMING_DAYS)) {
+    return { ok: false, error: `Si può anticipare solo un addebito dei prossimi ${HOME_UPCOMING_DAYS} giorni.` }
+  }
+  if (expenseDate !== today && expenseDate !== dueOn) return { ok: false, error: ANTICIPATE_ERRORS.invalid_dates }
+
+  const { data: expenseId, error } = await db.rpc('anticipate_subscription_charge', {
+    p_subscription_id: sub.id,
+    p_due_on: dueOn,
+    p_expense_date: expenseDate,
+  })
+  if (error || !expenseId) {
+    const known = Object.keys(ANTICIPATE_ERRORS).find((code) => error?.message?.includes(code))
+    if (!known) console.error('[abbonamenti] anticipo non riuscito:', error)
+    return { ok: false, error: known ? ANTICIPATE_ERRORS[known] : 'Non riesco ad anticipare l’addebito. Riprova.' }
+  }
+  return { ok: true, expenseId, subscription: sub }
 }
 
 // ------------------------------------------------------------
@@ -440,7 +504,9 @@ export async function runSubscriptionJobs(db: QueryClient, now = new Date()): Pr
 
     if (!telegram) continue
     const remindOn = reminderDueOn(cadence, today)
-    if (!remindOn || known.get(`${sub.id}|${remindOn}`)?.reminded_at) continue
+    const remindRow = remindOn ? known.get(`${sub.id}|${remindOn}`) : undefined
+    // Già ricordato, o già anticipato a mano: niente promemoria.
+    if (!remindOn || remindRow?.reminded_at || remindRow?.charged_at) continue
     try {
       if (await claim(db, sub.id, remindOn, 'reminded_at')) {
         reminders.push({ ...notice(sub, remindOn), daysLeft: daysBetween(today, remindOn) })

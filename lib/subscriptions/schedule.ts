@@ -117,6 +117,17 @@ export function nextDueOn(cadence: Cadence, from: string): string {
 }
 
 /**
+ * Il primo addebito dal giorno `from` in poi che non è già registrato:
+ * `charged` sono le date già passate dal cron o anticipate a mano.
+ */
+export function nextUnchargedDueOn(cadence: Cadence, from: string, charged: ReadonlySet<string>): string {
+  let due = nextDueOn(cadence, from)
+  // Al più qualche giro: si anticipa solo il prossimo addebito.
+  for (let i = 0; i < 24 && charged.has(due); i++) due = nextDueOn(cadence, addDays(due, 1))
+  return due
+}
+
+/**
  * Gli addebiti da registrare entro `through` (compreso), dal più vecchio:
  * tutti quelli dal primo in poi, ma non più vecchi di `CATCH_UP_DAYS`.
  */

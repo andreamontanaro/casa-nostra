@@ -52,8 +52,9 @@ Gusci sottili sopra `lib/subscriptions/service.ts` → `app/actions/subscription
 * `setSubscriptionActiveAction(id, active)`: Sospende o riattiva (riattivando si riparte dal prossimo addebito).
 * `deleteSubscriptionAction(id)`: Elimina dopo il `Dialog` di conferma. Le spese già create restano.
 * `setNotifyHourAction(hour)`: Cambia l'ora di addebiti e promemoria.
+* `anticipateSubscriptionAction(id, dueOn, expenseDate)`: Anticipa il prossimo addebito (entro 4 giorni) con la data scelta, oggi o `dueOn`. Chiama `anticipateCharge`, che verifica che `dueOn` sia davvero il prossimo addebito non registrato (`nextUnchargedDueOn`) e che cada nella finestra, poi la RPC `anticipate_subscription_charge`; traduce in frasi i suoi errori (`already_charged`, `subscription_not_active`, `invalid_dates`). Rivalida home, storico e abbonamenti e, unica fra queste action, notifica Telegram (`subscriptionAnticipatedMessage`, con `after()`): crea una spesa.
 
-**Nessuna notifica Telegram da queste action**: creare o correggere un abbonamento non muove soldi. Avvisano solo il promemoria e l'addebito, che manda il cron.
+**Nessuna notifica Telegram dalle altre action**: creare o correggere un abbonamento non muove soldi. Avvisano il promemoria e l'addebito, che manda il cron, e l'anticipo.
 
 ### Telegram (`telegram.ts`)
 Azioni di supporto all'integrazione con il gruppo Telegram → `app/actions/telegram.ts`:
@@ -95,7 +96,7 @@ Una spesa creata in automatico che l'utente non vede sarebbe peggio di una spesa
 `runSubscriptionJobs(db, now)` è quello che fa `/api/cron/abbonamenti` a ogni chiamata, con il client service role:
 1. **Ora**: legge `notify_hour`; se a Roma è prima di quell'ora esce subito (`status: 'early'`). Da quell'ora in poi ogni chiamata del giorno rifà il giro, ma trova lavoro solo la prima.
 2. **Addebiti**: per ogni abbonamento attivo, le date fino a oggi (`dueDatesThrough`: dal primo addebito, al massimo 40 giorni indietro se il cron è rimasto fermo) senza `charged_at`. Per ognuna: presa in carico (upsert della riga, poi `UPDATE … SET charged_at = now() WHERE charged_at IS NULL`: una sola esecuzione la vince), insert della spesa con `expense_date` = giorno dell'addebito e `created_by` = `paid_by`, poi `expense_id` sul registro. Se l'insert fallisce la presa in carico si libera e ci riprova l'ora dopo.
-3. **Promemoria** (solo con Telegram configurato): il prossimo addebito dopo oggi, se cade entro 3 giorni (`reminderDueOn`) e non ha `reminded_at`. Di norma esattamente 3 giorni prima; se quel giorno è saltato, o l'abbonamento è nato a ridosso, parte appena possibile.
+3. **Promemoria** (solo con Telegram configurato): il prossimo addebito dopo oggi, se cade entro 3 giorni (`reminderDueOn`) e non ha né `reminded_at` né `charged_at` (un addebito anticipato non si ricorda). Di norma esattamente 3 giorni prima; se quel giorno è saltato, o l'abbonamento è nato a ridosso, parte appena possibile.
 4. **Messaggi**: un messaggio per gli addebiti, anche se sono più d'uno, con il saldo da `v_user_open_balance`; uno per i promemoria → `subscriptionChargesMessage`, `subscriptionRemindersMessage` in `lib/telegram/notify.ts`. Qui l'invio è atteso: non c'è un utente che aspetta. Un messaggio non consegnato finisce nei log e non si ripete.
 
 Le spese create sono spese normali: entrano nel saldo e nel conguaglio, si modificano e si eliminano dallo storico.

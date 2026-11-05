@@ -438,3 +438,26 @@ export function subscriptionRemindersMessage(
   if (link) lines.push(link)
   return lines.join('\n')
 }
+
+/** Un addebito anticipato a mano dall'app, prima del giorno previsto. */
+export function subscriptionAnticipatedMessage(
+  actorName: string,
+  item: SubscriptionNotice & { expenseDate: string },
+  balance: BalanceRow[],
+): string {
+  const category = CATEGORY_LABELS[item.category] ?? item.category
+  const lines = [
+    `⏩ <b>${escapeHtml(actorName)}</b> ha anticipato un addebito`,
+    '',
+    subscriptionHeadline(item),
+    `<i>${escapeHtml(category)} · ${escapeHtml(splitLabel(item.splitRule, item.chargedToName))} · pagata da ${escapeHtml(
+      item.payerName,
+    )} · ${formatDate(item.expenseDate)}</i>`,
+    `<i>Era previsto per ${formatWeekdayDate(item.dueOn)}: quel giorno non verrà registrato di nuovo.</i>`,
+    '',
+    balanceLine(balance),
+  ]
+  const link = item.expenseId ? appLink(`/spese/${item.expenseId}`, 'Apri la spesa') : ''
+  if (link) lines.push('', link)
+  return lines.join('\n')
+}

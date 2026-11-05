@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { BellRing, Pause, Play, Plus, Repeat, Trash2 } from 'lucide-react'
+import { BellRing, FastForward, Pause, Play, Plus, Repeat, Trash2 } from 'lucide-react'
 import type { SubscriptionFieldErrors, SubscriptionInput, SubscriptionView } from '@/lib/subscriptions/service'
 import {
   deleteSubscriptionAction,
@@ -35,6 +35,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { AmountInput } from '@/components/ui/AmountInput'
 import { Input } from '@/components/ui/Input'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { AnticipateChargeSheet } from '@/components/AnticipateChargeSheet'
 
 type Profile = Tables<'profiles'>
 type Category = (typeof Constants.public.Enums.expense_category)[number]
@@ -69,6 +70,12 @@ export function AbbonamentiShell({ subscriptions, notifyHour, profiles, currentU
     key: 0,
   })
   const openSheet = (sub: SubscriptionView | null) => setSheet((s) => ({ open: true, sub, key: s.key + 1 }))
+  // Il foglio dell'anticipo, aperto dal foglio di modifica (che intanto si chiude).
+  const [anticipate, setAnticipate] = useState<{ open: boolean; sub: SubscriptionView | null; key: number }>({
+    open: false,
+    sub: null,
+    key: 0,
+  })
   const active = subscriptions.filter((s) => s.active)
   const monthly = active.reduce((sum, s) => sum + monthlyAmount(Number(s.amount), s.interval_months), 0)
   const nameOf = (id: string) => (id === currentUserId ? 'te' : profiles.find((p) => p.id === id)?.display_name ?? '?')
@@ -154,6 +161,20 @@ export function AbbonamentiShell({ subscriptions, notifyHour, profiles, currentU
         currentUserId={currentUserId}
         today={today}
         notifyHour={notifyHour}
+        onAnticipate={(sub) => {
+          setSheet((s) => ({ ...s, open: false }))
+          setAnticipate((a) => ({ open: true, sub, key: a.key + 1 }))
+        }}
+      />
+
+      <AnticipateChargeSheet
+        key={anticipate.key}
+        open={anticipate.open}
+        subscription={anticipate.sub}
+        onClose={() => setAnticipate((a) => ({ ...a, open: false }))}
+        today={today}
+        userId={currentUserId}
+        profiles={profiles}
       />
     </div>
   )
@@ -219,9 +240,10 @@ interface SheetProps {
   currentUserId: string
   today: string
   notifyHour: number
+  onAnticipate: (sub: SubscriptionView) => void
 }
 
-function SubscriptionSheet({ open, subscription, onClose, profiles, currentUserId, today, notifyHour }: SheetProps) {
+function SubscriptionSheet({ open, subscription, onClose, profiles, currentUserId, today, notifyHour, onAnticipate }: SheetProps) {
   const sub = subscription
   const [amount, setAmount] = useState(sub ? Number(sub.amount).toFixed(2).replace('.', ',') : '')
   const [description, setDescription] = useState(sub?.description ?? '')
@@ -471,6 +493,19 @@ function SubscriptionSheet({ open, subscription, onClose, profiles, currentUserI
               <p className="text-xs text-muted">{cadenceHint}</p>
             )}
           </div>
+
+          {sub?.canAnticipate && (
+            <div className="flex flex-col gap-2 rounded-2xl bg-accent-muted p-4">
+              <p className="text-sm text-accent-soft">
+                L’addebito arriva {relativeDays(daysBetween(today, sub.nextDue))}, il {formatDateShort(sub.nextDue)}. Puoi
+                registrarlo già adesso: entra subito nel saldo e quel giorno non si ripete.
+              </p>
+              <Button variant="primary" size="sm" className="self-start" onClick={() => onAnticipate(sub)} disabled={pending}>
+                <FastForward className="size-4" aria-hidden />
+                Anticipa l’addebito
+              </Button>
+            </div>
+          )}
 
           {sub && (
             <div className="flex flex-col gap-2 border-t border-border pt-5">

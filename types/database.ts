@@ -967,6 +967,14 @@ export type Database = {
     }
     Functions: {
       accept_chore_hint: { Args: { p_hint_id: string }; Returns: string }
+      anticipate_subscription_charge: {
+        Args: {
+          p_due_on: string
+          p_expense_date: string
+          p_subscription_id: string
+        }
+        Returns: string
+      }
       chore_bonus: {
         Args: { p_day: string; p_works_from_home: boolean }
         Returns: number

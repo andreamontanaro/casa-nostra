@@ -179,6 +179,7 @@ Lo stampo di una spesa ricorrente → `docs/migrations/2026-11-05_abbonamenti.sq
 ### 14. Registro degli addebiti (`subscription_charges`)
 Una riga per abbonamento e data di addebito (`due_on`), creata dal primo dei due eventi.
 * `reminded_at`: promemoria preso in carico; `charged_at`: spesa presa in carico; `expense_id`: la spesa creata (`ON DELETE SET NULL`: se la si elimina dallo storico l'addebito resta registrato e non viene ricreato).
+* **Anticipo**: la riga può nascere anche dall'app, prima del giorno dell'addebito, con la RPC `anticipate_subscription_charge` (vedi `05-data-access.md`): `charged_at` è allora il momento dell'anticipo e la spesa ha la data scelta (oggi o `due_on`). Per il cron è un addebito già fatto.
 * **Idempotenza**: `UNIQUE (subscription_id, due_on)` più un `UPDATE … WHERE charged_at IS NULL` (o `reminded_at`) come presa in carico: due esecuzioni del cron in parallelo non creano due spese (vedi `03-services.md`).
 * **RLS**: solo lettura per i due utenti; lo scrive il cron con il service role. Eliminando l'abbonamento le righe se ne vanno (`CASCADE`), le spese restano.
 

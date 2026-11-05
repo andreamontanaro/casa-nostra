@@ -136,6 +136,16 @@ WHERE i.bought_at IS NULL AND i.created_at < c.checked_at
 
 ---
 
+## Anticipo di un Abbonamento (RPC)
+
+`anticipate_subscription_charge(p_subscription_id, p_due_on, p_expense_date)` → `docs/migrations/2026-11-05_abbonamenti_anticipo.sql`, sezione 16 dello schema. Registra subito la spesa di un addebito futuro e lo segna come fatto, in una transazione:
+1. Controlla l'utente (`is_authorized_user()`), che `p_due_on` non sia passato e che `p_expense_date` sia oggi (Europe/Rome) o `p_due_on`.
+2. Legge l'abbonamento, solo se attivo.
+3. Prende in carico l'addebito come il cron: insert in `subscription_charges` con `ON CONFLICT DO NOTHING`, poi `UPDATE … SET charged_at = now() WHERE charged_at IS NULL`. Se nessuna riga si aggiorna l'addebito è già registrato: `already_charged`.
+4. Inserisce la spesa dai campi dell'abbonamento, con `created_by = auth.uid()` (chi anticipa) e la data scelta, e ne scrive l'id sul registro. Ritorna l'id della spesa.
+
+È `SECURITY DEFINER` perché dall'app `subscription_charges` si legge soltanto. Che `p_due_on` sia davvero il prossimo addebito dell'abbonamento lo verifica il servizio, che sa calcolare le date (`lib/subscriptions/schedule.ts`).
+
 ## Logica di Conguaglio Transazionale (RPC)
 
 Il conguaglio delle spese avviene in modo atomico sul database Postgres tramite la funzione `register_settlement` dichiarata con clausola `SECURITY DEFINER` → `docs/casa_nostra_schema.sql#L306-L394`.

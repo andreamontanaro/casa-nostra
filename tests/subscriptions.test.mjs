@@ -14,6 +14,7 @@ const {
   isIsoDate,
   monthlyAmount,
   nextDueOn,
+  nextUnchargedDueOn,
   occurrence,
   reminderDueOn,
   romeClock,
@@ -51,6 +52,16 @@ test('il prossimo addebito è oggi se cade oggi, altrimenti il successivo', () =
   // Prima del primo addebito non si torna indietro.
   assert.equal(nextDueOn(internet, '2026-01-01'), '2026-11-08')
   assert.equal(nextDueOn({ chargeDay: 10, intervalMonths: 3, startMonth: '2026-01-01' }, '2026-11-05'), '2027-01-10')
+})
+
+test('il prossimo addebito salta quelli già registrati o anticipati', () => {
+  assert.equal(nextUnchargedDueOn(internet, '2026-11-05', new Set()), '2026-11-08')
+  // Internet dell'8 anticipato il 5: il prossimo da registrare è dicembre.
+  assert.equal(nextUnchargedDueOn(internet, '2026-11-05', new Set(['2026-11-08'])), '2026-12-08')
+  // Il giorno stesso, dopo il cron.
+  assert.equal(nextUnchargedDueOn(internet, '2026-11-08', new Set(['2026-11-08'])), '2026-12-08')
+  // Date registrate che non c'entrano non spostano niente.
+  assert.equal(nextUnchargedDueOn(internet, '2026-11-05', new Set(['2026-10-08'])), '2026-11-08')
 })
 
 test('la cadenza nasce dalla data del prossimo addebito', () => {

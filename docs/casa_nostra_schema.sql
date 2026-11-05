@@ -1436,6 +1436,81 @@ CREATE POLICY "subscription_settings_update_authorized"
   WITH CHECK (public.is_authorized_user());
 
 
+
+-- ------------------------------------------------------------
+-- Anticipare un addebito (docs/migrations/2026-11-05_abbonamenti_anticipo.sql)
+-- ------------------------------------------------------------
+-- Con l'addebito entro 4 giorni, la spesa si puo' registrare
+-- subito (data: oggi o il giorno dell'addebito, a scelta) e
+-- quell'addebito risulta fatto. Spesa e registro nascono insieme.
+
+CREATE FUNCTION public.anticipate_subscription_charge(
+  p_subscription_id uuid,
+  p_due_on          date,
+  p_expense_date    date
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_today      date := (now() AT TIME ZONE 'Europe/Rome')::date;
+  v_sub        public.subscriptions%ROWTYPE;
+  v_charge_id  uuid;
+  v_expense_id uuid;
+BEGIN
+  IF NOT public.is_authorized_user() THEN
+    RAISE EXCEPTION 'not_authorized' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_due_on < v_today OR p_expense_date NOT IN (v_today, p_due_on) THEN
+    RAISE EXCEPTION 'invalid_dates' USING ERRCODE = 'P0001';
+  END IF;
+
+  SELECT * INTO v_sub FROM public.subscriptions WHERE id = p_subscription_id AND active;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'subscription_not_active' USING ERRCODE = 'P0001';
+  END IF;
+
+  -- Stessa presa in carico del cron: una sola delle due la vince.
+  INSERT INTO public.subscription_charges (subscription_id, due_on)
+  VALUES (p_subscription_id, p_due_on)
+  ON CONFLICT (subscription_id, due_on) DO NOTHING;
+
+  UPDATE public.subscription_charges
+     SET charged_at = now()
+   WHERE subscription_id = p_subscription_id
+     AND due_on = p_due_on
+     AND charged_at IS NULL
+  RETURNING id INTO v_charge_id;
+
+  IF v_charge_id IS NULL THEN
+    RAISE EXCEPTION 'already_charged' USING ERRCODE = 'P0001';
+  END IF;
+
+  INSERT INTO public.expenses (
+    amount, description, category, split_rule, custom_other_share,
+    paid_by, expense_date, created_by
+  ) VALUES (
+    v_sub.amount, v_sub.description, v_sub.category, v_sub.split_rule, v_sub.custom_other_share,
+    v_sub.paid_by, p_expense_date, auth.uid()
+  )
+  RETURNING id INTO v_expense_id;
+
+  UPDATE public.subscription_charges SET expense_id = v_expense_id WHERE id = v_charge_id;
+
+  RETURN v_expense_id;
+END;
+$$;
+
+COMMENT ON FUNCTION public.anticipate_subscription_charge IS
+  'Anticipa l''addebito p_due_on di un abbonamento: crea la spesa (data p_expense_date, oggi o il giorno dell''addebito) e lo segna come fatto, in un''unica transazione. Ritorna l''id della spesa.';
+
+REVOKE ALL ON FUNCTION public.anticipate_subscription_charge FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.anticipate_subscription_charge TO authenticated;
+
+
 -- ============================================================
 -- FINE SCHEMA
 -- ============================================================
